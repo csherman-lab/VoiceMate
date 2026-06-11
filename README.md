@@ -55,10 +55,14 @@ You do **not** need `localhost`, a terminal, a server, npm, or Python.
 
 To turn VoiceMate into a real production product, connect the UI to:
 
-- a realtime voice stack such as LiveKit plus OpenAI or xAI;
+- Grok xAI Voice Agent API for the first high quality voice test;
+- a small backend that stores the Grok API key safely;
+- LiveKit when you need WebRTC sessions, phone calls, observability, and provider switching;
 - a multimodal model for real image understanding;
 - persistent private memory;
 - source-backed answers;
 - web/data connectors;
 - calendar, CRM, and workflow actions;
 - account-level privacy controls.
+
+Do not ship a real Grok API key inside `open-voicemate.html`. A browser file can be inspected by anyone who has it. Use a backend for real keys.

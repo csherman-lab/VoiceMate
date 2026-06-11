@@ -3,86 +3,183 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>VoiceMate Voice Agent</title>
+    <title>VoiceMate</title>
     <meta
       name="description"
-      content="VoiceMate is an Apple-inspired multimodal voice agent for human conversations, pitching, knowledge uploads, images, and data."
+      content="VoiceMate is a calm voice agent for talking, texting, uploads, memory, and pitch support."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
+    <div class="ambient ambient-three"></div>
 
     <header class="nav">
-      <a class="brand" href="#top" aria-label="VoiceMate home">
-        <span class="brand-mark">V</span>
+      <button class="brand page-link" type="button" data-page="home" aria-label="VoiceMate home">
+        <span class="vm-icon" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
         <span>VoiceMate</span>
-      </a>
+      </button>
       <nav aria-label="Primary navigation">
-        <a href="#agent">Agent</a>
-        <a href="#studio">Studio</a>
-        <a href="#ideas">Ideas</a>
+        <button class="nav-link active" type="button" data-page="home">Home</button>
+        <button class="nav-link" type="button" data-page="talk">Talk</button>
+        <button class="nav-link" type="button" data-page="memory">Memory</button>
+        <button class="nav-link" type="button" data-page="setup">Setup</button>
       </nav>
     </header>
 
-    <main id="top">
-      <section class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Voice, text, vision, and data</p>
-          <h1>Your human-like AI operator for conversations that matter.</h1>
-          <p class="lede">
-            VoiceMate can talk naturally, text like an assistant, absorb the information you give it,
-            help pitch ideas, inspect uploaded files, summarize real data, and show its work as it
-            thinks.
-          </p>
-          <div class="hero-actions">
-            <a class="button primary" href="#agent">Open the agent</a>
-            <a class="button secondary" href="#studio">Add knowledge</a>
+    <main>
+      <section class="page active" id="homePage" data-page-panel="home">
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Voice, text, vision, data</p>
+            <h1>Talk to your AI. Give it context. Watch it work.</h1>
+            <p class="lede">
+              VoiceMate is a simple Apple style voice agent for real conversations, pitches,
+              uploads, and memory.
+            </p>
+            <div class="hero-actions">
+              <button class="button primary page-link" type="button" data-page="talk">Start talking</button>
+              <button class="button secondary page-link" type="button" data-page="memory">View memory</button>
+            </div>
           </div>
-          <div class="metric-strip" aria-label="VoiceMate capabilities">
-            <div>
-              <strong>Voice</strong>
-              <span>talk and listen</span>
+
+          <div class="phone-card">
+            <div class="device-top"></div>
+            <div class="orb hero-orb" id="heroOrb" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <i></i>
             </div>
-            <div>
-              <strong>Vision</strong>
-              <span>image uploads</span>
-            </div>
-            <div>
-              <strong>Data</strong>
-              <span>CSV/text insight</span>
-            </div>
+            <p class="device-label">Speak. Type. Upload.</p>
+            <p class="device-subtitle">A cleaner way to use an AI voice agent.</p>
           </div>
         </div>
 
-        <div class="device-shell" aria-label="Voice agent preview">
-          <div class="device-top"></div>
-          <div class="orb" id="voiceOrb">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <p class="device-label">Speak, type, upload, decide.</p>
-          <p class="device-subtitle">A calm Apple-like agent surface for serious work and normal conversation.</p>
+        <div class="feature-row">
+          <article class="feature-card">
+            <span>Talk</span>
+            <strong>Natural voice mode</strong>
+            <p>Use your mic where Chrome allows it. VoiceMate answers out loud.</p>
+          </article>
+          <article class="feature-card">
+            <span>Upload</span>
+            <strong>Files and images</strong>
+            <p>Add notes, CSV files, briefs, screenshots, and reference images.</p>
+          </article>
+          <article class="feature-card">
+            <span>Pitch</span>
+            <strong>Sales ready answers</strong>
+            <p>Turn rough information into clear client friendly talking points.</p>
+          </article>
         </div>
       </section>
 
-      <section class="panel agent-panel" id="agent">
-        <div class="section-heading">
-          <p class="eyebrow">Live standalone prototype</p>
-          <h2>Talk to VoiceMate or type like ChatGPT.</h2>
-          <p>
-            This version runs locally in Chrome with no server required. It uses browser voice tools
-            for demos and keeps uploaded files on your computer.
-          </p>
+      <section class="page talk-page" id="talkPage" data-page-panel="talk">
+        <div class="talk-stage">
+          <div class="talk-top">
+            <div>
+              <p class="eyebrow">Talk mode</p>
+              <h2>VoiceMate is listening when you are ready.</h2>
+              <p class="small-copy">Use voice, text, files, and images in one simple bar.</p>
+            </div>
+            <span class="status-pill" id="speechStatus">Ready</span>
+          </div>
+
+          <div class="focus-orb-wrap">
+            <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
+              <span></span>
+              <span></span>
+              <span></span>
+              <i></i>
+            </div>
+            <div class="voice-caption">
+              <strong id="activePersonaName">Sol</strong>
+              <span id="modeCaption">Natural conversation</span>
+            </div>
+          </div>
+
+          <div class="transcript" id="transcript" aria-live="polite"></div>
+
+          <form class="talk-dock" id="promptForm">
+            <button class="dock-button mic-button" id="micButton" type="button" aria-label="Start voice input">
+              <span></span>
+            </button>
+            <input
+              id="promptInput"
+              autocomplete="off"
+              placeholder="Ask anything"
+              aria-label="Message VoiceMate"
+            />
+            <label class="dock-button file-button" for="quickFileUpload" aria-label="Upload files">
+              <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,image/*" />
+              <span></span>
+            </label>
+            <button class="dock-button send-button" type="submit" aria-label="Send message">
+              <span></span>
+            </button>
+          </form>
+
+          <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+        </div>
+      </section>
+
+      <section class="page" id="memoryPage" data-page-panel="memory">
+        <div class="page-heading">
+          <p class="eyebrow">Memory</p>
+          <h2>Information VoiceMate has right now.</h2>
+          <p class="small-copy">Add files, images, and pasted notes. Everything stays in this browser session.</p>
         </div>
 
-        <div class="agent-grid">
-          <aside class="voice-card">
-            <h3>Agent setup</h3>
+        <div class="memory-layout">
+          <div class="upload-panel">
+            <h3>Add information</h3>
+            <label class="drop-zone" for="knowledgeUpload">
+              <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
+              <b>Choose files</b>
+              <small>Notes, scripts, CSV files, briefs, and logs</small>
+            </label>
+            <label class="drop-zone" for="imageUpload">
+              <input id="imageUpload" type="file" multiple accept="image/*" />
+              <b>Choose images</b>
+              <small>Screenshots, charts, product shots, and references</small>
+            </label>
+            <textarea id="manualContext" placeholder="Paste anything VoiceMate should know"></textarea>
+            <button class="button secondary full" id="saveContext" type="button">Save memory</button>
+          </div>
+
+          <div class="memory-panel">
+            <div class="memory-top">
+              <h3>Past information</h3>
+              <button class="button ghost" id="clearMemory" type="button">Clear memory</button>
+            </div>
+            <div class="memory-grid" id="memoryGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="setupPage" data-page-panel="setup">
+        <div class="page-heading">
+          <p class="eyebrow">Setup</p>
+          <h2>Make the voice feel right.</h2>
+          <p class="small-copy">Choose personality, mode, browser voice, and the production voice plan.</p>
+        </div>
+
+        <div class="setup-grid">
+          <article class="setup-card">
+            <span>Voice</span>
+            <h3>Personality</h3>
             <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
-            <label class="select-label" for="agentMode">Conversation mode</label>
+          </article>
+
+          <article class="setup-card">
+            <span>Mode</span>
+            <h3>Conversation type</h3>
             <select id="agentMode">
               <option value="companion">Natural conversation</option>
               <option value="pitch">Pitch builder</option>
@@ -92,132 +189,31 @@
             <label class="select-label" for="systemVoice">Browser voice</label>
             <select id="systemVoice"></select>
             <button class="button secondary full" id="sampleVoice" type="button">Preview voice</button>
-          </aside>
+          </article>
 
-          <section class="conversation-card" aria-live="polite">
-            <div class="conversation-top">
-              <div>
-                <p class="eyebrow">Conversation</p>
-                <h3 id="activePersonaName">Avery</h3>
-              </div>
-              <span class="status-pill" id="speechStatus">Text ready</span>
-            </div>
-            <div class="transcript" id="transcript"></div>
-            <form class="composer" id="promptForm">
-              <button class="mic-button" id="micButton" type="button" aria-label="Start voice input">
-                <span></span>
-              </button>
-              <input
-                id="promptInput"
-                autocomplete="off"
-                placeholder="Ask anything, request a pitch, or ask about uploaded files..."
-              />
-              <button class="send-button" type="submit">Send</button>
-            </form>
-            <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
-          </section>
+          <article class="setup-card grok-card">
+            <span>Production voice</span>
+            <h3>Use Grok through a backend</h3>
+            <p>
+              Grok xAI voice is a strong option to test because it offers realtime voice,
+              tool use, and simple minute pricing. Do not ship a secret key inside this page.
+            </p>
+            <input id="grokKeyInput" type="password" placeholder="Paste temporary Grok key for notes" />
+            <button class="button secondary full" id="saveGrokKey" type="button">Save local key note</button>
+            <p class="tiny-copy" id="grokStatus">No key note saved.</p>
+          </article>
 
-          <aside class="activity-card">
-            <div class="conversation-top compact">
-              <div>
-                <p class="eyebrow">Visible work</p>
-                <h3>What VoiceMate is doing</h3>
-              </div>
-            </div>
+          <article class="setup-card activity-card">
+            <span>Work log</span>
+            <h3>What it is doing</h3>
             <div class="activity-feed" id="activityFeed"></div>
-          </aside>
-        </div>
-      </section>
-
-      <section class="knowledge-grid" id="studio">
-        <div class="panel mini">
-          <p class="eyebrow">Knowledge studio</p>
-          <h2>Give it information.</h2>
-          <p>
-            Upload text, markdown, JSON, CSV, or images. VoiceMate summarizes the material locally and
-            uses it in future responses during this session.
-          </p>
-        </div>
-        <div class="upload-card">
-          <span>Documents and data</span>
-          <strong>Add company info, scripts, FAQs, CSVs, or notes.</strong>
-          <label class="drop-zone" for="knowledgeUpload">
-            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
-            <b>Choose files</b>
-            <small>or drag them into Chrome after opening this page</small>
-          </label>
-        </div>
-        <div class="upload-card">
-          <span>Images</span>
-          <strong>Upload screenshots, product shots, charts, or reference photos.</strong>
-          <label class="drop-zone" for="imageUpload">
-            <input id="imageUpload" type="file" multiple accept="image/*" />
-            <b>Choose images</b>
-            <small>VoiceMate reads dimensions, file data, and previews them</small>
-          </label>
-        </div>
-        <div class="upload-card">
-          <span>Paste context</span>
-          <strong>Drop in a product brief, offer, audience, or pitch notes.</strong>
-          <textarea id="manualContext" placeholder="Paste anything you want VoiceMate to know..."></textarea>
-          <button class="button secondary full" id="saveContext" type="button">Save to memory</button>
-        </div>
-      </section>
-
-      <section class="panel memory-panel">
-        <div class="section-heading">
-          <p class="eyebrow">Session memory</p>
-          <h2>What you have given it</h2>
-        </div>
-        <div class="memory-grid" id="memoryGrid"></div>
-      </section>
-
-      <section class="panel stack-panel" id="ideas">
-        <div class="section-heading">
-          <p class="eyebrow">More product ideas</p>
-          <h2>Features I would build next.</h2>
-          <p>
-            VoiceMate should feel like a polished AI teammate, not a generic bot. These are the next
-            product directions baked into the concept.
-          </p>
-        </div>
-        <div class="stack-grid">
-          <article class="stack-card recommended">
-            <span>Human voice</span>
-            <h3>Interruptions, pauses, and tone</h3>
-            <p>Use realtime voice APIs in production so it can respond with natural timing.</p>
-          </article>
-          <article class="stack-card">
-            <span>Trust layer</span>
-            <h3>Source-backed answers</h3>
-            <p>Show which uploaded files or data points informed every important answer.</p>
-          </article>
-          <article class="stack-card">
-            <span>Operator mode</span>
-            <h3>Visible tool actions</h3>
-            <p>Let users watch it search, analyze, draft, compare, and prepare follow-ups.</p>
-          </article>
-          <article class="stack-card">
-            <span>Sales mode</span>
-            <h3>Pitch generator</h3>
-            <p>Turn raw company notes into crisp demos, objection handling, and client-specific pitches.</p>
-          </article>
-          <article class="stack-card">
-            <span>Data mode</span>
-            <h3>Live dashboards</h3>
-            <p>Upload CSVs and have the agent explain trends, anomalies, and next decisions.</p>
-          </article>
-          <article class="stack-card">
-            <span>Memory control</span>
-            <h3>Private by default</h3>
-            <p>Keep local sessions local, then add account memory only when users opt in.</p>
           </article>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>VoiceMate standalone prototype. Open <strong>index.html</strong> directly in Chrome, no server needed.</p>
+      <p>VoiceMate opens directly in Chrome. No server required for this demo.</p>
     </footer>
 
     <script src="app.js"></script>

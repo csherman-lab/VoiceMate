@@ -34,7 +34,9 @@ VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a
 
 ### Real realtime voice
 
-Use LiveKit for WebRTC/telephony orchestration and test model providers such as OpenAI Realtime or xAI Voice Agent API for the conversational engine.
+Use Grok xAI Voice Agent API as the first production voice test because it supports realtime voice, tool use, and simple minute pricing. Do not put the Grok API key inside the static website. Put the key on a small backend, create voice sessions there, and let the browser connect to that backend.
+
+Use LiveKit when VoiceMate needs WebRTC sessions, phone calls, call routing, recording, observability, and provider switching. LiveKit should be treated as the realtime infrastructure layer, while Grok or OpenAI should be treated as the voice intelligence layer.
 
 ### Real vision
 
