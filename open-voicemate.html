@@ -1,3 +1,1106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open VoiceMate</title>
+    <meta
+      name="description"
+      content="VoiceMate is an Apple-inspired multimodal voice agent for human conversations, pitching, knowledge uploads, images, and data."
+    />
+    <style>
+:root {
+  color-scheme: light;
+  --ink: #101217;
+  --muted: #646b7a;
+  --soft: #f5f7fb;
+  --card: rgba(255, 255, 255, 0.72);
+  --stroke: rgba(20, 28, 45, 0.12);
+  --blue: #0a84ff;
+  --blue-dark: #0066d6;
+  --violet: #7c3aed;
+  --green: #21c063;
+  --shadow: 0 24px 80px rgba(20, 28, 45, 0.14);
+  --radius-xl: 34px;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(10, 132, 255, 0.16), transparent 34rem),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 32rem),
+    linear-gradient(180deg, #fbfcff 0%, #eef3fb 100%);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.ambient {
+  position: fixed;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(12px);
+  opacity: 0.55;
+}
+
+.ambient-one {
+  width: 28rem;
+  height: 28rem;
+  top: 8rem;
+  left: -12rem;
+  background: rgba(10, 132, 255, 0.18);
+}
+
+.ambient-two {
+  width: 22rem;
+  height: 22rem;
+  right: -8rem;
+  bottom: 18rem;
+  background: rgba(33, 192, 99, 0.16);
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1180px, calc(100% - 32px));
+  margin: 16px auto 0;
+  padding: 12px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 16px 48px rgba(20, 28, 45, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+.brand,
+.nav nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--ink), #475067);
+  color: white;
+}
+
+.nav nav {
+  gap: 6px;
+}
+
+.nav nav a {
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.nav nav a:hover {
+  background: rgba(10, 132, 255, 0.09);
+  color: var(--ink);
+}
+
+main {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.8fr);
+  gap: 44px;
+  align-items: center;
+  min-height: calc(100vh - 88px);
+  padding: 64px 0;
+}
+
+.hero-copy {
+  max-width: 720px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--blue-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 22px;
+  font-size: clamp(3.6rem, 8vw, 7.6rem);
+  line-height: 0.88;
+  letter-spacing: -0.075em;
+}
+
+h2 {
+  margin-bottom: 14px;
+  font-size: clamp(2.1rem, 4vw, 4.4rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+}
+
+h3 {
+  margin-bottom: 10px;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.lede {
+  max-width: 640px;
+  color: var(--muted);
+  font-size: clamp(1.08rem, 2vw, 1.35rem);
+  line-height: 1.55;
+}
+
+.hero-actions,
+.metric-strip,
+.stack-grid,
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.button,
+.send-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.button:hover,
+.send-button:hover,
+.mic-button:hover {
+  transform: translateY(-1px);
+}
+
+.button.primary,
+.send-button {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 16px 36px rgba(10, 132, 255, 0.28);
+}
+
+.button.secondary {
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--ink);
+}
+
+.button.full {
+  width: 100%;
+}
+
+.metric-strip {
+  margin-top: 34px;
+}
+
+.metric-strip div {
+  min-width: 145px;
+  padding: 18px;
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(18px);
+}
+
+.metric-strip strong,
+.metric-strip span {
+  display: block;
+}
+
+.metric-strip strong {
+  font-size: 1.5rem;
+  letter-spacing: -0.04em;
+}
+
+.metric-strip span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.device-shell {
+  position: relative;
+  min-height: 620px;
+  padding: 72px 30px 34px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 54px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.46)),
+    radial-gradient(circle at 50% 28%, rgba(10, 132, 255, 0.24), transparent 16rem);
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 28, 45, 0.08),
+    0 36px 100px rgba(20, 28, 45, 0.2);
+  text-align: center;
+  backdrop-filter: blur(28px);
+}
+
+.device-shell::after {
+  position: absolute;
+  inset: auto 22px 22px;
+  height: 140px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.48);
+  content: "";
+}
+
+.device-top {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: 112px;
+  height: 30px;
+  border-radius: 999px;
+  background: #111827;
+  transform: translateX(-50%);
+}
+
+.orb {
+  position: relative;
+  display: grid;
+  width: min(310px, 75vw);
+  height: min(310px, 75vw);
+  margin: 72px auto 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0 18%, #cfe8ff 28%, #8bc5ff 42%, #905cff 72%, #111827 100%);
+  box-shadow:
+    0 0 0 18px rgba(255, 255, 255, 0.42),
+    0 32px 80px rgba(10, 132, 255, 0.28);
+}
+
+.orb span {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: inherit;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.orb span:nth-child(1) {
+  inset: 16px;
+}
+
+.orb span:nth-child(2) {
+  inset: 44px;
+  animation-delay: 0.3s;
+}
+
+.orb span:nth-child(3) {
+  inset: 78px;
+  animation-delay: 0.6s;
+}
+
+.orb.listening {
+  animation: float 2.6s ease-in-out infinite;
+}
+
+.device-label {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 8px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.device-subtitle {
+  position: relative;
+  z-index: 1;
+  max-width: 310px;
+  margin: 0 auto;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.panel,
+.fact-card {
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(24px);
+}
+
+.panel {
+  padding: clamp(24px, 4vw, 42px);
+}
+
+.section-heading {
+  max-width: 780px;
+  margin-bottom: 28px;
+}
+
+.section-heading p:last-child,
+.panel.mini p,
+.fact-card p,
+.stack-card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: 18px;
+}
+
+.voice-card,
+.conversation-card,
+.stack-card,
+.activity-card,
+.upload-card {
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.voice-card,
+.conversation-card,
+.activity-card,
+.upload-card {
+  padding: 18px;
+}
+
+.persona-list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.persona-option {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.persona-option strong,
+.persona-option span {
+  display: block;
+}
+
+.persona-option span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.persona-option.active {
+  border-color: rgba(10, 132, 255, 0.46);
+  background: rgba(10, 132, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.18);
+}
+
+.select-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+select,
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--stroke);
+  outline: 0;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+}
+
+select {
+  min-height: 46px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border-radius: 14px;
+}
+
+textarea {
+  min-height: 150px;
+  margin: 8px 0 12px;
+  padding: 14px;
+  border-radius: 18px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.conversation-card {
+  display: grid;
+  min-height: 590px;
+  grid-template-rows: auto 1fr auto auto;
+}
+
+.conversation-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.conversation-top.compact {
+  padding-bottom: 12px;
+}
+
+.status-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(33, 192, 99, 0.12);
+  color: #087b39;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 320px;
+  max-height: 420px;
+  padding: 18px 4px;
+  overflow-y: auto;
+}
+
+.message {
+  max-width: 82%;
+  padding: 14px 16px;
+  border-radius: 20px;
+  line-height: 1.48;
+}
+
+.message.agent {
+  align-self: flex-start;
+  border-bottom-left-radius: 7px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 10px 32px rgba(20, 28, 45, 0.08);
+}
+
+.message.user {
+  align-self: flex-end;
+  border-bottom-right-radius: 7px;
+  background: var(--blue);
+  color: white;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--stroke);
+}
+
+.mic-button {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #111827, #394258);
+  box-shadow: 0 14px 30px rgba(17, 24, 39, 0.22);
+  cursor: pointer;
+}
+
+.mic-button span {
+  width: 14px;
+  height: 24px;
+  border: 3px solid white;
+  border-top-left-radius: 999px;
+  border-top-right-radius: 999px;
+  border-bottom: 0;
+}
+
+.mic-button.recording {
+  background: linear-gradient(135deg, #ff375f, #ff8a00);
+}
+
+input {
+  min-height: 54px;
+  padding: 0 16px;
+  border-radius: 18px;
+}
+
+.quick-prompts {
+  margin-top: 14px;
+}
+
+.quick-prompts button {
+  padding: 9px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.activity-card {
+  min-height: 590px;
+}
+
+.activity-feed {
+  display: grid;
+  gap: 12px;
+  max-height: 500px;
+  padding-top: 16px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.activity-item > span {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 5px rgba(10, 132, 255, 0.1);
+}
+
+.activity-item strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.92rem;
+}
+
+.activity-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.knowledge-grid {
+  display: grid;
+  grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.panel.mini,
+.fact-card {
+  min-height: 260px;
+  padding: 26px;
+}
+
+.fact-card span,
+.upload-card span,
+.stack-card span {
+  display: inline-flex;
+  margin-bottom: 16px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(10, 132, 255, 0.1);
+  color: var(--blue-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.fact-card strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
+}
+
+.upload-card strong {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.drop-zone {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed rgba(10, 132, 255, 0.34);
+  border-radius: 22px;
+  background: rgba(10, 132, 255, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.drop-zone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drop-zone b,
+.drop-zone small {
+  display: block;
+}
+
+.drop-zone b {
+  color: var(--ink);
+}
+
+.drop-zone small {
+  max-width: 210px;
+  line-height: 1.4;
+}
+
+.memory-panel {
+  margin: 18px 0;
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.memory-card,
+.memory-empty {
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.memory-card img {
+  width: 100%;
+  height: 115px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.memory-card > div:not(.memory-icon) {
+  padding: 14px;
+}
+
+.memory-card span {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--blue-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.memory-card strong {
+  display: block;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.03em;
+}
+
+.memory-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.memory-icon {
+  display: grid;
+  height: 115px;
+  place-items: center;
+  border-bottom: 1px solid var(--stroke);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(10, 132, 255, 0.22), transparent 46%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.38));
+  color: var(--blue-dark);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.memory-empty {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.stack-panel {
+  margin-bottom: 24px;
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stack-card {
+  min-height: 230px;
+  padding: 24px;
+}
+
+.stack-card.recommended {
+  background:
+    linear-gradient(160deg, rgba(10, 132, 255, 0.14), rgba(255, 255, 255, 0.68)),
+    rgba(255, 255, 255, 0.64);
+}
+
+footer {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 20px 0 42px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.84;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.44;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-8px) scale(1.02);
+  }
+}
+
+@media (max-width: 940px) {
+  .hero,
+  .agent-grid,
+  .knowledge-grid,
+  .stack-grid,
+  .memory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: auto;
+  }
+
+  .device-shell {
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav {
+    align-items: flex-start;
+    border-radius: 24px;
+  }
+
+  .nav nav {
+    display: none;
+  }
+
+  h1 {
+    font-size: clamp(3rem, 18vw, 4.6rem);
+  }
+
+  .composer {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .send-button {
+    grid-column: 1 / -1;
+  }
+
+  .message {
+    max-width: 92%;
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="nav">
+      <a class="brand" href="#top" aria-label="VoiceMate home">
+        <span class="brand-mark">V</span>
+        <span>VoiceMate</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#agent">Agent</a>
+        <a href="#studio">Studio</a>
+        <a href="#ideas">Ideas</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Voice, text, vision, and data</p>
+          <h1>Your human-like AI operator for conversations that matter.</h1>
+          <p class="lede">
+            VoiceMate can talk naturally, text like an assistant, absorb the information you give it,
+            help pitch ideas, inspect uploaded files, summarize real data, and show its work as it
+            thinks.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#agent">Open the agent</a>
+            <a class="button secondary" href="#studio">Add knowledge</a>
+          </div>
+          <div class="metric-strip" aria-label="VoiceMate capabilities">
+            <div>
+              <strong>Voice</strong>
+              <span>talk and listen</span>
+            </div>
+            <div>
+              <strong>Vision</strong>
+              <span>image uploads</span>
+            </div>
+            <div>
+              <strong>Data</strong>
+              <span>CSV/text insight</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="device-shell" aria-label="Voice agent preview">
+          <div class="device-top"></div>
+          <div class="orb" id="voiceOrb">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p class="device-label">Speak, type, upload, decide.</p>
+          <p class="device-subtitle">A calm Apple-like agent surface for serious work and normal conversation.</p>
+        </div>
+      </section>
+
+      <section class="panel agent-panel" id="agent">
+        <div class="section-heading">
+          <p class="eyebrow">Live standalone prototype</p>
+          <h2>Talk to VoiceMate or type like ChatGPT.</h2>
+          <p>
+            This version runs locally in Chrome with no server required. It uses browser voice tools
+            for demos and keeps uploaded files on your computer.
+          </p>
+        </div>
+
+        <div class="agent-grid">
+          <aside class="voice-card">
+            <h3>Agent setup</h3>
+            <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
+            <label class="select-label" for="agentMode">Conversation mode</label>
+            <select id="agentMode">
+              <option value="companion">Natural conversation</option>
+              <option value="pitch">Pitch builder</option>
+              <option value="analyst">Data analyst</option>
+              <option value="coach">Meeting coach</option>
+            </select>
+            <label class="select-label" for="systemVoice">Browser voice</label>
+            <select id="systemVoice"></select>
+            <button class="button secondary full" id="sampleVoice" type="button">Preview voice</button>
+          </aside>
+
+          <section class="conversation-card" aria-live="polite">
+            <div class="conversation-top">
+              <div>
+                <p class="eyebrow">Conversation</p>
+                <h3 id="activePersonaName">Avery</h3>
+              </div>
+              <span class="status-pill" id="speechStatus">Text ready</span>
+            </div>
+            <div class="transcript" id="transcript"></div>
+            <form class="composer" id="promptForm">
+              <button class="mic-button" id="micButton" type="button" aria-label="Start voice input">
+                <span></span>
+              </button>
+              <input
+                id="promptInput"
+                autocomplete="off"
+                placeholder="Ask anything, request a pitch, or ask about uploaded files..."
+              />
+              <button class="send-button" type="submit">Send</button>
+            </form>
+            <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+          </section>
+
+          <aside class="activity-card">
+            <div class="conversation-top compact">
+              <div>
+                <p class="eyebrow">Visible work</p>
+                <h3>What VoiceMate is doing</h3>
+              </div>
+            </div>
+            <div class="activity-feed" id="activityFeed"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="knowledge-grid" id="studio">
+        <div class="panel mini">
+          <p class="eyebrow">Knowledge studio</p>
+          <h2>Give it information.</h2>
+          <p>
+            Upload text, markdown, JSON, CSV, or images. VoiceMate summarizes the material locally and
+            uses it in future responses during this session.
+          </p>
+        </div>
+        <div class="upload-card">
+          <span>Documents and data</span>
+          <strong>Add company info, scripts, FAQs, CSVs, or notes.</strong>
+          <label class="drop-zone" for="knowledgeUpload">
+            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
+            <b>Choose files</b>
+            <small>or drag them into Chrome after opening this page</small>
+          </label>
+        </div>
+        <div class="upload-card">
+          <span>Images</span>
+          <strong>Upload screenshots, product shots, charts, or reference photos.</strong>
+          <label class="drop-zone" for="imageUpload">
+            <input id="imageUpload" type="file" multiple accept="image/*" />
+            <b>Choose images</b>
+            <small>VoiceMate reads dimensions, file data, and previews them</small>
+          </label>
+        </div>
+        <div class="upload-card">
+          <span>Paste context</span>
+          <strong>Drop in a product brief, offer, audience, or pitch notes.</strong>
+          <textarea id="manualContext" placeholder="Paste anything you want VoiceMate to know..."></textarea>
+          <button class="button secondary full" id="saveContext" type="button">Save to memory</button>
+        </div>
+      </section>
+
+      <section class="panel memory-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Session memory</p>
+          <h2>What you have given it</h2>
+        </div>
+        <div class="memory-grid" id="memoryGrid"></div>
+      </section>
+
+      <section class="panel stack-panel" id="ideas">
+        <div class="section-heading">
+          <p class="eyebrow">More product ideas</p>
+          <h2>Features I would build next.</h2>
+          <p>
+            VoiceMate should feel like a polished AI teammate, not a generic bot. These are the next
+            product directions baked into the concept.
+          </p>
+        </div>
+        <div class="stack-grid">
+          <article class="stack-card recommended">
+            <span>Human voice</span>
+            <h3>Interruptions, pauses, and tone</h3>
+            <p>Use realtime voice APIs in production so it can respond with natural timing.</p>
+          </article>
+          <article class="stack-card">
+            <span>Trust layer</span>
+            <h3>Source-backed answers</h3>
+            <p>Show which uploaded files or data points informed every important answer.</p>
+          </article>
+          <article class="stack-card">
+            <span>Operator mode</span>
+            <h3>Visible tool actions</h3>
+            <p>Let users watch it search, analyze, draft, compare, and prepare follow-ups.</p>
+          </article>
+          <article class="stack-card">
+            <span>Sales mode</span>
+            <h3>Pitch generator</h3>
+            <p>Turn raw company notes into crisp demos, objection handling, and client-specific pitches.</p>
+          </article>
+          <article class="stack-card">
+            <span>Data mode</span>
+            <h3>Live dashboards</h3>
+            <p>Upload CSVs and have the agent explain trends, anomalies, and next decisions.</p>
+          </article>
+          <article class="stack-card">
+            <span>Memory control</span>
+            <h3>Private by default</h3>
+            <p>Keep local sessions local, then add account memory only when users opt in.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>VoiceMate standalone prototype. Open <strong>index.html</strong> directly in Chrome, no server needed.</p>
+    </footer>
+
+    <script>
 const STARTER_MEMORY = [
   {
     type: "brief",
@@ -687,3 +1790,7 @@ function escapeHtml(value) {
 }
 
 init();
+
+    </script>
+  </body>
+</html>

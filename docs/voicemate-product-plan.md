@@ -1,8 +1,8 @@
-# Auralis Product Plan
+# VoiceMate Product Plan
 
 ## Concept
 
-Auralis is a human-like multimodal voice agent. It should feel like a mix of a natural phone assistant, ChatGPT-style text chat, a pitch coach, and a visible AI operator that shows what it is doing.
+VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a natural phone assistant, ChatGPT-style text chat, a pitch coach, and a visible AI operator that shows what it is doing.
 
 ## Core experience
 
@@ -38,7 +38,7 @@ Use LiveKit for WebRTC/telephony orchestration and test model providers such as 
 
 ### Real vision
 
-Connect image uploads to a multimodal model so Auralis can identify objects, read screenshots, explain charts, and reason over visual evidence.
+Connect image uploads to a multimodal model so VoiceMate can identify objects, read screenshots, explain charts, and reason over visual evidence.
 
 ### Real memory
 
@@ -52,7 +52,7 @@ Add account-based private memory with controls for:
 
 ### Real tools
 
-Give Auralis permissioned actions:
+Give VoiceMate permissioned actions:
 
 - search company data
 - query live databases
@@ -75,6 +75,6 @@ Every serious answer should show:
 
 ## Suggested product name
 
-**Auralis**
+**VoiceMate**
 
-The name suggests audio, aura, intelligence, and a premium assistant feeling without tying the project to any specific company or repo.
+The name is simple on purpose: it immediately communicates a friendly voice assistant without tying the project to any specific company or repo.
