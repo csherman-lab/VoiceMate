@@ -107,6 +107,11 @@ function init() {
     "agent",
     "Hi, I am VoiceMate. Talk to me, type to me, upload files, upload images, or ask me to pitch an idea. I will show what I am doing while I answer."
   );
+
+  const pageFromHash = window.location.hash.replace("#", "");
+  if (["home", "talk", "memory", "setup"].includes(pageFromHash)) {
+    showPage(pageFromHash);
+  }
 }
 
 function wireEvents() {
@@ -213,6 +218,8 @@ function wireEvents() {
 }
 
 function showPage(page) {
+  document.body.classList.toggle("talk-session", page === "talk");
+
   els.pages.forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.pagePanel === page);
   });
@@ -222,6 +229,9 @@ function showPage(page) {
   });
 
   addActivity("Opened page", `${titleCase(page)} page is active.`);
+  if (window.location.hash.replace("#", "") !== page) {
+    window.history.replaceState(null, "", `#${page}`);
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
