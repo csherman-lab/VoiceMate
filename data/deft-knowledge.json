@@ -1,0 +1,134 @@
+{
+  "company": {
+    "name": "Deft.ai / Deft Robotics",
+    "oneLine": "Deft deploys wheeled humanoid robots at automotive manufacturing facilities to automate work that still needs humans.",
+    "positioning": "Deft is not just selling robot hardware. The company integrates production solutions that combine robot foundation models, customer-specific training data, installation, safety design, monitoring, and ongoing software updates.",
+    "locations": ["San Francisco, USA", "Detroit, USA", "South Korea"],
+    "contact": {
+      "cta": "Book a call",
+      "email": "founders@deftai.co",
+      "phone": "510-833-3004"
+    }
+  },
+  "metrics": [
+    {
+      "label": "Typical ROI period",
+      "value": "6-9 months",
+      "talkTrack": "Deft focuses on workflows where payback can happen quickly compared with traditional million-dollar automation projects."
+    },
+    {
+      "label": "Human speed from day one",
+      "value": "75%-95%",
+      "talkTrack": "The robot starts near human operating speed and improves as the system captures real task data."
+    },
+    {
+      "label": "Continuous operation",
+      "value": "24-hour operation",
+      "talkTrack": "Robots can run across shifts without fatigue, helping stabilize throughput when labor availability is unpredictable."
+    },
+    {
+      "label": "Reported task success rate",
+      "value": "99.9%",
+      "talkTrack": "Deft designs deployments around reliability, human oversight, and retraining when edge cases appear."
+    }
+  ],
+  "customerProblems": [
+    "The last 20% of factory work remains manual, especially final assembly, cable handling, line feeding, and kitting.",
+    "Labor shortages, attrition, and compliance requirements make production planning harder.",
+    "Rigid automation systems can break when workflows change or edge cases appear."
+  ],
+  "solution": [
+    "Train AI on baseline tasks and identify automation opportunities.",
+    "Ship hardware configured for the customer's payload, reach, and gripper requirements.",
+    "Collect roughly 100 hours of real production data from the customer's parts, bins, and line.",
+    "Retrain the robot on customer-specific work using fine-tuning for physical manipulation.",
+    "Deploy on the line with human oversight, safety fencing, remote monitoring, reward-model edge-case detection, and OTA retraining."
+  ],
+  "useCases": [
+    "Compressor housing line feeding",
+    "Cross cowl bar line feeding",
+    "Kitting and material handling",
+    "Final assembly workflows that require flexible manipulation",
+    "Manufacturing cells where traditional fixed automation is too rigid or expensive"
+  ],
+  "benefits": [
+    "Consistent execution across shifts",
+    "Reduced dependence on hiring and workforce stability",
+    "Improved throughput with fewer bottlenecks",
+    "Reduced downtime through remote monitoring and faster recovery",
+    "Safety-focused applications designed to comply with ISO 10218-2"
+  ],
+  "engagementProcess": [
+    "Discovery call",
+    "Mutual NDA",
+    "Share automation task videos",
+    "Feasibility report and onsite visit",
+    "Free POC for one to two target tasks under an upfront contract with a risk-free opt-out",
+    "POC results review",
+    "Production rollout"
+  ],
+  "voicePersonas": [
+    {
+      "id": "avery",
+      "name": "Avery",
+      "style": "Warm, consultative, concise",
+      "bestFor": "Client discovery and executive briefings"
+    },
+    {
+      "id": "mira",
+      "name": "Mira",
+      "style": "Energetic, clear, optimistic",
+      "bestFor": "Demos, website visitors, and broad education"
+    },
+    {
+      "id": "noah",
+      "name": "Noah",
+      "style": "Calm, technical, precise",
+      "bestFor": "Operations, engineering, and manufacturing teams"
+    }
+  ],
+  "agentGuardrails": [
+    "Be helpful, human-like, and practical without exaggerating claims.",
+    "Prefer Deft's public facts and route unknowns to a Deft human.",
+    "When discussing pricing or ROI, explain that actual economics depend on workflow, labor costs, shifts, uptime, and deployment details.",
+    "Invite manufacturing prospects to book a discovery call and share task videos.",
+    "Do not invent customer names, private financials, safety certifications, or technical specs that are not in the knowledge base."
+  ],
+  "providerRecommendation": {
+    "shortAnswer": "Use LiveKit as the production orchestration layer when scaling beyond a simple demo. For the model provider, test xAI Voice Agent API for the cheapest integrated realtime voice path and OpenAI GPT-Realtime mini for stronger ecosystem maturity and model quality.",
+    "options": [
+      {
+        "name": "xAI Voice Agent API",
+        "costSignal": "$0.05 per realtime audio minute plus $0.004 per text input message",
+        "fit": "Lowest simple integrated realtime price, good for fast MVPs and cost-sensitive web demos.",
+        "watchouts": "Newer ecosystem and regional availability; validate voice quality, latency, compliance, and tool behavior before committing."
+      },
+      {
+        "name": "OpenAI GPT-Realtime mini",
+        "costSignal": "$0.60 / 1M text input tokens, $2.40 / 1M text output tokens; audio token pricing commonly listed around $10 input and $20 output per 1M tokens",
+        "fit": "Strong default for natural conversations, WebRTC/WebSocket/SIP support, function calling, and broader production tooling.",
+        "watchouts": "Costs can rise with large prompts, long calls, and audio output. Use prompt caching and retrieval instead of stuffing the full company brain into every session."
+      },
+      {
+        "name": "LiveKit Agents",
+        "costSignal": "$0.01 per agent session minute for LiveKit Cloud agent hosting, plus selected STT, LLM, TTS, and telephony providers",
+        "fit": "Best orchestration layer for real deployments: telephony, WebRTC, observability, scaling, rollbacks, and provider flexibility.",
+        "watchouts": "It is not a model by itself. You still choose STT, LLM, and TTS providers."
+      },
+      {
+        "name": "ElevenLabs Conversational AI",
+        "costSignal": "Often around $0.08-$0.10 per minute plus LLM costs depending on plan and usage",
+        "fit": "Excellent voice quality and fast managed agent setup when voice polish matters more than low-level control.",
+        "watchouts": "LLM costs can be pass-through, and advanced workflows may be less flexible than a LiveKit-based architecture."
+      }
+    ]
+  },
+  "sources": [
+    "https://deftai.co/",
+    "https://www.deftai.co/terms",
+    "https://docs.x.ai/developers/models/voice-agent-api",
+    "https://developers.openai.com/api/docs/models/gpt-realtime-mini",
+    "https://livekit.com/blog/deploy-and-scale-agents-on-livekit-cloud",
+    "https://elevenlabs.io/pricing/agents"
+  ]
+}

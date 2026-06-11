@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deft.ai Voice Agent</title>
+    <meta
+      name="description"
+      content="Apple-inspired Deft.ai voice agent prototype with voice persona selection and provider recommendations."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="nav">
+      <a class="brand" href="#top" aria-label="Deft voice agent home">
+        <span class="brand-mark">D</span>
+        <span>Deft Voice</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#agent">Agent</a>
+        <a href="#knowledge">Knowledge</a>
+        <a href="#stack">Stack</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Deft.ai client concierge</p>
+          <h1>A human-like voice agent for the work that still needs humans.</h1>
+          <p class="lede">
+            Explain Deft Robotics, qualify manufacturing opportunities, answer ROI and deployment
+            questions, and guide prospects toward the right next step.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#agent">Talk to the prototype</a>
+            <a class="button secondary" href="docs/voice-ai-recommendation.md">Read provider recommendation</a>
+          </div>
+          <div class="metric-strip" aria-label="Deft public metrics">
+            <div>
+              <strong>6-9 mo</strong>
+              <span>typical ROI</span>
+            </div>
+            <div>
+              <strong>75-95%</strong>
+              <span>human speed</span>
+            </div>
+            <div>
+              <strong>24 hr</strong>
+              <span>operation</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="device-shell" aria-label="Voice agent preview">
+          <div class="device-top"></div>
+          <div class="orb" id="voiceOrb">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p class="device-label">Ready when your prospect is.</p>
+          <p class="device-subtitle">Voice, text, routing, and company knowledge in one assistant.</p>
+        </div>
+      </section>
+
+      <section class="panel agent-panel" id="agent">
+        <div class="section-heading">
+          <p class="eyebrow">Live prototype</p>
+          <h2>Choose a voice. Ask about Deft.</h2>
+          <p>
+            This demo uses browser speech APIs for local interaction. Production can swap in xAI,
+            OpenAI, LiveKit, or another realtime provider.
+          </p>
+        </div>
+
+        <div class="agent-grid">
+          <aside class="voice-card">
+            <h3>Voice personality</h3>
+            <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
+            <label class="select-label" for="systemVoice">Browser voice</label>
+            <select id="systemVoice"></select>
+            <button class="button secondary full" id="sampleVoice" type="button">Preview voice</button>
+          </aside>
+
+          <section class="conversation-card" aria-live="polite">
+            <div class="conversation-top">
+              <div>
+                <p class="eyebrow">Conversation</p>
+                <h3 id="activePersonaName">Avery</h3>
+              </div>
+              <span class="status-pill" id="speechStatus">Text ready</span>
+            </div>
+            <div class="transcript" id="transcript"></div>
+            <form class="composer" id="promptForm">
+              <button class="mic-button" id="micButton" type="button" aria-label="Start voice input">
+                <span></span>
+              </button>
+              <input
+                id="promptInput"
+                autocomplete="off"
+                placeholder="Ask about ROI, deployment, safety, pricing, or the best voice stack..."
+              />
+              <button class="send-button" type="submit">Send</button>
+            </form>
+            <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="knowledge-grid" id="knowledge">
+        <div class="panel mini">
+          <p class="eyebrow">Company brain</p>
+          <h2>What the agent knows</h2>
+          <p>
+            Public Deft.ai facts are structured as editable JSON so sales, engineering, and
+            operations knowledge can be expanded without rewriting the interface.
+          </p>
+        </div>
+        <div class="fact-card">
+          <span>Problem</span>
+          <strong>The last 20% of factory work remains manual.</strong>
+          <p>Final assembly, cable handling, line feeding, and kitting need flexible automation.</p>
+        </div>
+        <div class="fact-card">
+          <span>Solution</span>
+          <strong>Integrated wheeled humanoid robot work cells.</strong>
+          <p>Configured hardware, customer data, retraining, safety setup, and ongoing updates.</p>
+        </div>
+        <div class="fact-card">
+          <span>Next step</span>
+          <strong>Discovery call plus task videos.</strong>
+          <p>The agent routes serious prospects into the engagement process with clear asks.</p>
+        </div>
+      </section>
+
+      <section class="panel stack-panel" id="stack">
+        <div class="section-heading">
+          <p class="eyebrow">Voice AI stack</p>
+          <h2>Cheaper vs better depends on the layer.</h2>
+          <p>
+            The practical answer is to separate the model from the realtime infrastructure so Deft
+            can optimize cost, quality, and scale independently.
+          </p>
+        </div>
+        <div class="stack-grid">
+          <article class="stack-card recommended">
+            <span>Lowest simple realtime cost</span>
+            <h3>xAI Voice Agent API</h3>
+            <p>$0.05/min realtime audio makes it the first cost benchmark for a web MVP.</p>
+          </article>
+          <article class="stack-card">
+            <span>Quality default</span>
+            <h3>OpenAI GPT-Realtime mini</h3>
+            <p>Strong realtime ecosystem, function calling, WebRTC/WebSocket/SIP, and mature tooling.</p>
+          </article>
+          <article class="stack-card">
+            <span>Production layer</span>
+            <h3>LiveKit Agents</h3>
+            <p>Use it for orchestration, telephony, scaling, observability, rollbacks, and provider freedom.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Prototype only. Replace public facts with approved Deft internal materials before production.</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
