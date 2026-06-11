@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Deft.ai Voice Agent</title>
+    <title>Auralis Voice Agent</title>
     <meta
       name="description"
-      content="Apple-inspired Deft.ai voice agent prototype with voice persona selection and provider recommendations."
+      content="Auralis is an Apple-inspired multimodal voice agent for human conversations, pitching, knowledge uploads, images, and data."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -15,42 +15,43 @@
     <div class="ambient ambient-two"></div>
 
     <header class="nav">
-      <a class="brand" href="#top" aria-label="Deft voice agent home">
-        <span class="brand-mark">D</span>
-        <span>Deft Voice</span>
+      <a class="brand" href="#top" aria-label="Auralis home">
+        <span class="brand-mark">A</span>
+        <span>Auralis</span>
       </a>
       <nav aria-label="Primary navigation">
         <a href="#agent">Agent</a>
-        <a href="#knowledge">Knowledge</a>
-        <a href="#stack">Stack</a>
+        <a href="#studio">Studio</a>
+        <a href="#ideas">Ideas</a>
       </nav>
     </header>
 
     <main id="top">
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Deft.ai client concierge</p>
-          <h1>A human-like voice agent for the work that still needs humans.</h1>
+          <p class="eyebrow">Voice, text, vision, and data</p>
+          <h1>Your human-like AI operator for conversations that matter.</h1>
           <p class="lede">
-            Explain Deft Robotics, qualify manufacturing opportunities, answer ROI and deployment
-            questions, and guide prospects toward the right next step.
+            Auralis can talk naturally, text like an assistant, absorb the information you give it,
+            help pitch ideas, inspect uploaded files, summarize real data, and show its work as it
+            thinks.
           </p>
           <div class="hero-actions">
-            <a class="button primary" href="#agent">Talk to the prototype</a>
-            <a class="button secondary" href="docs/voice-ai-recommendation.md">Read provider recommendation</a>
+            <a class="button primary" href="#agent">Open the agent</a>
+            <a class="button secondary" href="#studio">Add knowledge</a>
           </div>
-          <div class="metric-strip" aria-label="Deft public metrics">
+          <div class="metric-strip" aria-label="Auralis capabilities">
             <div>
-              <strong>6-9 mo</strong>
-              <span>typical ROI</span>
+              <strong>Voice</strong>
+              <span>talk and listen</span>
             </div>
             <div>
-              <strong>75-95%</strong>
-              <span>human speed</span>
+              <strong>Vision</strong>
+              <span>image uploads</span>
             </div>
             <div>
-              <strong>24 hr</strong>
-              <span>operation</span>
+              <strong>Data</strong>
+              <span>CSV/text insight</span>
             </div>
           </div>
         </div>
@@ -62,25 +63,32 @@
             <span></span>
             <span></span>
           </div>
-          <p class="device-label">Ready when your prospect is.</p>
-          <p class="device-subtitle">Voice, text, routing, and company knowledge in one assistant.</p>
+          <p class="device-label">Speak, type, upload, decide.</p>
+          <p class="device-subtitle">A calm Apple-like agent surface for serious work and normal conversation.</p>
         </div>
       </section>
 
       <section class="panel agent-panel" id="agent">
         <div class="section-heading">
-          <p class="eyebrow">Live prototype</p>
-          <h2>Choose a voice. Ask about Deft.</h2>
+          <p class="eyebrow">Live standalone prototype</p>
+          <h2>Talk to Auralis or type like ChatGPT.</h2>
           <p>
-            This demo uses browser speech APIs for local interaction. Production can swap in xAI,
-            OpenAI, LiveKit, or another realtime provider.
+            This version runs locally in Chrome with no server required. It uses browser voice tools
+            for demos and keeps uploaded files on your computer.
           </p>
         </div>
 
         <div class="agent-grid">
           <aside class="voice-card">
-            <h3>Voice personality</h3>
+            <h3>Agent setup</h3>
             <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
+            <label class="select-label" for="agentMode">Conversation mode</label>
+            <select id="agentMode">
+              <option value="companion">Natural conversation</option>
+              <option value="pitch">Pitch builder</option>
+              <option value="analyst">Data analyst</option>
+              <option value="coach">Meeting coach</option>
+            </select>
             <label class="select-label" for="systemVoice">Browser voice</label>
             <select id="systemVoice"></select>
             <button class="button secondary full" id="sampleVoice" type="button">Preview voice</button>
@@ -102,72 +110,114 @@
               <input
                 id="promptInput"
                 autocomplete="off"
-                placeholder="Ask about ROI, deployment, safety, pricing, or the best voice stack..."
+                placeholder="Ask anything, request a pitch, or ask about uploaded files..."
               />
               <button class="send-button" type="submit">Send</button>
             </form>
             <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
           </section>
+
+          <aside class="activity-card">
+            <div class="conversation-top compact">
+              <div>
+                <p class="eyebrow">Visible work</p>
+                <h3>What Auralis is doing</h3>
+              </div>
+            </div>
+            <div class="activity-feed" id="activityFeed"></div>
+          </aside>
         </div>
       </section>
 
-      <section class="knowledge-grid" id="knowledge">
+      <section class="knowledge-grid" id="studio">
         <div class="panel mini">
-          <p class="eyebrow">Company brain</p>
-          <h2>What the agent knows</h2>
+          <p class="eyebrow">Knowledge studio</p>
+          <h2>Give it information.</h2>
           <p>
-            Public Deft.ai facts are structured as editable JSON so sales, engineering, and
-            operations knowledge can be expanded without rewriting the interface.
+            Upload text, markdown, JSON, CSV, or images. Auralis summarizes the material locally and
+            uses it in future responses during this session.
           </p>
         </div>
-        <div class="fact-card">
-          <span>Problem</span>
-          <strong>The last 20% of factory work remains manual.</strong>
-          <p>Final assembly, cable handling, line feeding, and kitting need flexible automation.</p>
+        <div class="upload-card">
+          <span>Documents and data</span>
+          <strong>Add company info, scripts, FAQs, CSVs, or notes.</strong>
+          <label class="drop-zone" for="knowledgeUpload">
+            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
+            <b>Choose files</b>
+            <small>or drag them into Chrome after opening this page</small>
+          </label>
         </div>
-        <div class="fact-card">
-          <span>Solution</span>
-          <strong>Integrated wheeled humanoid robot work cells.</strong>
-          <p>Configured hardware, customer data, retraining, safety setup, and ongoing updates.</p>
+        <div class="upload-card">
+          <span>Images</span>
+          <strong>Upload screenshots, product shots, charts, or reference photos.</strong>
+          <label class="drop-zone" for="imageUpload">
+            <input id="imageUpload" type="file" multiple accept="image/*" />
+            <b>Choose images</b>
+            <small>Auralis reads dimensions, file data, and previews them</small>
+          </label>
         </div>
-        <div class="fact-card">
-          <span>Next step</span>
-          <strong>Discovery call plus task videos.</strong>
-          <p>The agent routes serious prospects into the engagement process with clear asks.</p>
+        <div class="upload-card">
+          <span>Paste context</span>
+          <strong>Drop in a product brief, offer, audience, or pitch notes.</strong>
+          <textarea id="manualContext" placeholder="Paste anything you want Auralis to know..."></textarea>
+          <button class="button secondary full" id="saveContext" type="button">Save to memory</button>
         </div>
       </section>
 
-      <section class="panel stack-panel" id="stack">
+      <section class="panel memory-panel">
         <div class="section-heading">
-          <p class="eyebrow">Voice AI stack</p>
-          <h2>Cheaper vs better depends on the layer.</h2>
+          <p class="eyebrow">Session memory</p>
+          <h2>What you have given it</h2>
+        </div>
+        <div class="memory-grid" id="memoryGrid"></div>
+      </section>
+
+      <section class="panel stack-panel" id="ideas">
+        <div class="section-heading">
+          <p class="eyebrow">More product ideas</p>
+          <h2>Features I would build next.</h2>
           <p>
-            The practical answer is to separate the model from the realtime infrastructure so Deft
-            can optimize cost, quality, and scale independently.
+            Auralis should feel like a polished AI teammate, not a generic bot. These are the next
+            product directions baked into the concept.
           </p>
         </div>
         <div class="stack-grid">
           <article class="stack-card recommended">
-            <span>Lowest simple realtime cost</span>
-            <h3>xAI Voice Agent API</h3>
-            <p>$0.05/min realtime audio makes it the first cost benchmark for a web MVP.</p>
+            <span>Human voice</span>
+            <h3>Interruptions, pauses, and tone</h3>
+            <p>Use realtime voice APIs in production so it can respond with natural timing.</p>
           </article>
           <article class="stack-card">
-            <span>Quality default</span>
-            <h3>OpenAI GPT-Realtime mini</h3>
-            <p>Strong realtime ecosystem, function calling, WebRTC/WebSocket/SIP, and mature tooling.</p>
+            <span>Trust layer</span>
+            <h3>Source-backed answers</h3>
+            <p>Show which uploaded files or data points informed every important answer.</p>
           </article>
           <article class="stack-card">
-            <span>Production layer</span>
-            <h3>LiveKit Agents</h3>
-            <p>Use it for orchestration, telephony, scaling, observability, rollbacks, and provider freedom.</p>
+            <span>Operator mode</span>
+            <h3>Visible tool actions</h3>
+            <p>Let users watch it search, analyze, draft, compare, and prepare follow-ups.</p>
+          </article>
+          <article class="stack-card">
+            <span>Sales mode</span>
+            <h3>Pitch generator</h3>
+            <p>Turn raw company notes into crisp demos, objection handling, and client-specific pitches.</p>
+          </article>
+          <article class="stack-card">
+            <span>Data mode</span>
+            <h3>Live dashboards</h3>
+            <p>Upload CSVs and have the agent explain trends, anomalies, and next decisions.</p>
+          </article>
+          <article class="stack-card">
+            <span>Memory control</span>
+            <h3>Private by default</h3>
+            <p>Keep local sessions local, then add account memory only when users opt in.</p>
           </article>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>Prototype only. Replace public facts with approved Deft internal materials before production.</p>
+      <p>Auralis standalone prototype. Open <strong>index.html</strong> directly in Chrome, no server needed.</p>
     </footer>
 
     <script src="app.js"></script>

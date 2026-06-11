@@ -1,31 +1,56 @@
-# Deft.ai Voice Agent Prototype
+# Auralis Voice Agent
 
-An Apple/iOS-inspired browser prototype for a Deft.ai voice agent. The agent is designed to explain Deft Robotics, answer client questions, route prospects toward the right next step, and compare production voice AI provider options.
+Auralis is an Apple-inspired prototype for a human-like multimodal voice agent. It can talk out loud, accept typed chat, remember information you upload during the session, summarize CSV/text files, inspect uploaded image metadata, help pitch ideas, and show a visible activity feed so the user can see what it is doing.
+
+## What the original available repo did
+
+The requested `https://github.com/deftai/evobot` repository was not accessible from this environment. GitHub returned "repository not found" for that URL.
+
+The repository that was actually checked out here originally contained only a placeholder README with `# k`, so there was no app logic to analyze. This branch turns that empty repo into the Auralis prototype.
 
 ## What is included
 
 - A polished static web app (`index.html`, `styles.css`, `app.js`)
-- Voice persona selection with browser speech synthesis
-- Push-to-talk demo using the browser Web Speech API where supported
-- A Deft.ai public knowledge base (`data/deft-knowledge.json`)
-- A provider recommendation memo (`docs/voice-ai-recommendation.md`)
+- Voice personality selection
+- Browser speech synthesis
+- Push-to-talk speech recognition where Chrome allows it
+- Typed chat
+- Uploads for text, markdown, JSON, CSV, logs, and images
+- Local summaries for uploaded files
+- A visible "what Auralis is doing" activity feed
+- Pitch mode, analyst mode, meeting coach mode, and natural conversation mode
+- Apple/iOS-style visual design
 
-## Run locally
+## Open it on your regular computer
 
-```bash
-python3 -m http.server 4173
-```
+The simplest way:
 
-Then open `http://localhost:4173`.
+1. Download or copy this project folder to your computer.
+2. Keep these three files together in the same folder:
+   - `index.html`
+   - `styles.css`
+   - `app.js`
+3. Open Google Chrome.
+4. Press `Ctrl+O` on Windows/Linux or `Cmd+O` on Mac.
+5. Choose `index.html`.
 
-Chrome-based browsers have the best support for speech recognition. If speech recognition is unavailable, type into the prompt box and press send.
+You do **not** need `localhost`, a terminal, a server, npm, or Python.
 
-## Production recommendation
+## Notes
 
-Start with the architecture in `docs/voice-ai-recommendation.md`:
+- Text chat and uploads work directly from the file.
+- Voice output works through Chrome's built-in speech synthesis.
+- Microphone speech input depends on Chrome permissions and may require serving the page from `http://localhost` on some machines. If the mic does not work, type into the chat box.
+- Uploaded files stay in the browser session; this prototype does not send them to a server.
 
-1. **Fastest low-cost voice MVP:** xAI Voice Agent API.
-2. **Best quality/capability default:** OpenAI GPT-Realtime mini.
-3. **Best scalable production architecture:** LiveKit Agents as the orchestration layer with swappable providers.
+## Production direction
 
-The current prototype is intentionally provider-neutral so Deft can swap in xAI, OpenAI, LiveKit, or another realtime stack without redesigning the client experience.
+To turn Auralis into a real production product, connect the UI to:
+
+- a realtime voice stack such as LiveKit plus OpenAI or xAI;
+- a multimodal model for real image understanding;
+- persistent private memory;
+- source-backed answers;
+- web/data connectors;
+- calendar, CRM, and workflow actions;
+- account-level privacy controls.

@@ -43,7 +43,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -383,20 +384,24 @@ h3 {
 
 .agent-grid {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
   gap: 18px;
 }
 
 .voice-card,
 .conversation-card,
-.stack-card {
+.stack-card,
+.activity-card,
+.upload-card {
   border: 1px solid var(--stroke);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.64);
 }
 
 .voice-card,
-.conversation-card {
+.conversation-card,
+.activity-card,
+.upload-card {
   padding: 18px;
 }
 
@@ -443,7 +448,8 @@ h3 {
 }
 
 select,
-input {
+input,
+textarea {
   width: 100%;
   border: 1px solid var(--stroke);
   outline: 0;
@@ -456,6 +462,15 @@ select {
   margin-bottom: 12px;
   padding: 0 12px;
   border-radius: 14px;
+}
+
+textarea {
+  min-height: 150px;
+  margin: 8px 0 12px;
+  padding: 14px;
+  border-radius: 18px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .conversation-card {
@@ -471,6 +486,10 @@ select {
   gap: 14px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--stroke);
+}
+
+.conversation-top.compact {
+  padding-bottom: 12px;
 }
 
 .status-pill {
@@ -567,6 +586,50 @@ input {
   font-size: 0.88rem;
 }
 
+.activity-card {
+  min-height: 590px;
+}
+
+.activity-feed {
+  display: grid;
+  gap: 12px;
+  max-height: 500px;
+  padding-top: 16px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.activity-item > span {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 5px rgba(10, 132, 255, 0.1);
+}
+
+.activity-item strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.92rem;
+}
+
+.activity-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .knowledge-grid {
   display: grid;
   grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
@@ -581,6 +644,7 @@ input {
 }
 
 .fact-card span,
+.upload-card span,
 .stack-card span {
   display: inline-flex;
   margin-bottom: 16px;
@@ -598,6 +662,122 @@ input {
   margin-bottom: 10px;
   font-size: 1.35rem;
   letter-spacing: -0.04em;
+}
+
+.upload-card strong {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.drop-zone {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed rgba(10, 132, 255, 0.34);
+  border-radius: 22px;
+  background: rgba(10, 132, 255, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+}
+
+.drop-zone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drop-zone b,
+.drop-zone small {
+  display: block;
+}
+
+.drop-zone b {
+  color: var(--ink);
+}
+
+.drop-zone small {
+  max-width: 210px;
+  line-height: 1.4;
+}
+
+.memory-panel {
+  margin: 18px 0;
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.memory-card,
+.memory-empty {
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.memory-card img {
+  width: 100%;
+  height: 115px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.memory-card > div:not(.memory-icon) {
+  padding: 14px;
+}
+
+.memory-card span {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--blue-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.memory-card strong {
+  display: block;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.03em;
+}
+
+.memory-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.memory-icon {
+  display: grid;
+  height: 115px;
+  place-items: center;
+  border-bottom: 1px solid var(--stroke);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(10, 132, 255, 0.22), transparent 46%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.38));
+  color: var(--blue-dark);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.memory-empty {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
 }
 
 .stack-panel {
@@ -656,7 +836,8 @@ footer {
   .hero,
   .agent-grid,
   .knowledge-grid,
-  .stack-grid {
+  .stack-grid,
+  .memory-grid {
     grid-template-columns: 1fr;
   }
 
