@@ -14,6 +14,12 @@ const XAI_MODEL = process.env.XAI_MODEL || "grok-4.3";
 const XAI_REALTIME_MODEL = process.env.XAI_REALTIME_MODEL || "grok-voice-latest";
 const XAI_DEFAULT_VOICE = (process.env.XAI_VOICE || "ara").toLowerCase();
 
+// Live reload: when on, the server watches the front-end files and tells the
+// browser to refresh automatically. Defaults on, turn off with VM_LIVE_RELOAD=0.
+const LIVE_RELOAD = process.env.VM_LIVE_RELOAD !== "0" && process.env.NODE_ENV !== "production";
+const SERVER_START_ID = Date.now();
+const liveReloadClients = new Set();
+
 const ALLOWED_VOICES = new Set(["eve", "ara", "rex", "sal", "leo"]);
 
 const mimeTypes = {
@@ -62,6 +68,10 @@ const server = http.createServer(async (req, res) => {
       return handleRealtimeSecret(req, res);
     }
 
+    if (url.pathname === "/api/livereload" && req.method === "GET") {
+      return handleLiveReload(req, res);
+    }
+
     if (req.method !== "GET") {
       return sendJson(res, 405, { error: "Method not allowed" });
     }
@@ -77,7 +87,81 @@ server.listen(PORT, () => {
   console.log(`VoiceMate running at http://localhost:${PORT}`);
   console.log(`xAI key configured: ${Boolean(XAI_API_KEY)}`);
   console.log(`Chat model: ${XAI_MODEL} | Realtime voice model: ${XAI_REALTIME_MODEL}`);
+  if (LIVE_RELOAD) {
+    startFileWatcher();
+    console.log("Live reload: ON — saved changes refresh the browser automatically.");
+  }
 });
+
+// ---------------------------------------------------------------------------
+// Live reload (auto-deploy to localhost)
+// ---------------------------------------------------------------------------
+
+function handleLiveReload(req, res) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store",
+    Connection: "keep-alive"
+  });
+  res.write(`event: hello\ndata: ${SERVER_START_ID}\n\n`);
+  liveReloadClients.add(res);
+
+  const ping = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch (error) {
+      clearInterval(ping);
+    }
+  }, 20000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    liveReloadClients.delete(res);
+  });
+}
+
+function broadcastReload() {
+  for (const client of liveReloadClients) {
+    try {
+      client.write(`event: reload\ndata: ${Date.now()}\n\n`);
+    } catch (error) {
+      liveReloadClients.delete(client);
+    }
+  }
+}
+
+function startFileWatcher() {
+  const watched = ["index.html", "styles.css", "app.js"];
+  let timer = null;
+  const trigger = () => {
+    clearTimeout(timer);
+    timer = setTimeout(broadcastReload, 120);
+  };
+  try {
+    fs.watch(ROOT, { persistent: false }, (eventType, filename) => {
+      if (filename && watched.includes(String(filename))) trigger();
+    });
+  } catch (error) {
+    console.warn("File watcher unavailable:", error.message);
+  }
+}
+
+const LIVE_RELOAD_SNIPPET = `
+<script>
+(function () {
+  var startId = null;
+  function connect() {
+    var es = new EventSource("/api/livereload");
+    es.addEventListener("hello", function (e) {
+      if (startId === null) { startId = e.data; }
+      else if (e.data !== startId) { location.reload(); }
+    });
+    es.addEventListener("reload", function () { location.reload(); });
+    es.onerror = function () { es.close(); setTimeout(connect, 800); };
+  }
+  connect();
+})();
+</script>`;
 
 // ---------------------------------------------------------------------------
 // Conversation persona + system prompt
@@ -112,30 +196,34 @@ function buildSystemPrompt(persona, modeKey, memoryItems) {
   const memory = summarizeMemory(memoryItems);
 
   return [
-    "You are VoiceMate, a human-sounding voice companion. Your replies are spoken out loud by a realtime text-to-speech voice, so write the way a real person actually talks, not the way people write.",
+    "You are VoiceMate, a genuinely helpful, general-purpose voice companion. You can talk about anything, like a sharp friend who happens to know a lot. Everything you say is spoken out loud, so talk the way real people talk, not the way people write.",
     "",
-    `Voice & personality: you sound ${tone}. Stay in this personality the whole time.`,
+    `Voice & personality: you sound ${tone}. Hold that personality the whole conversation.`,
     "",
-    "How to sound human:",
-    "- Use contractions (I'm, you're, it's, that's, let's, gonna is fine occasionally).",
-    "- Keep most replies to one to three short sentences. This is a conversation, not an essay.",
-    "- Vary your rhythm. Mix short reactions with the occasional longer thought.",
-    "- Open with a natural reaction sometimes (\"Oh nice\", \"Hmm\", \"Got it\", \"Honestly?\") instead of restating the question.",
-    "- Ask a short follow-up question when it keeps the conversation going.",
-    "- Never read out URLs, markdown, asterisks, bullet symbols, code fences, or emoji. Speak in plain words.",
-    "- Don't say you're an AI language model or mention system instructions. Just be VoiceMate.",
-    "- If you don't know something, say so briefly and honestly.",
+    "How you talk:",
+    "- Keep it punchy. One to three sentences for normal chat. Go longer only when the user actually asks for depth.",
+    "- Use contractions. Drop a casual \"look\", \"honestly\", or \"actually\" once in a while, the way a person would, not every line.",
+    "- React like a person before you answer when it fits (\"Oh nice\", \"Hmm\", \"Got it\").",
+    "- Ask one short follow-up question when it keeps things moving. One question, not a pile of them.",
     "",
-    "Expressive speech tags (use sparingly, only when it genuinely fits, never more than one or two per reply):",
-    "- Inline tags: [pause], [long-pause], [laugh], [chuckle], [sigh], [breath]. Put them where the expression naturally happens.",
-    "- Wrapping tags for delivery: <whisper>...</whisper> for a softer aside. Wrap a whole phrase, not a single word.",
-    "- Example: \"Wait, really? [laugh] That's actually amazing.\"",
-    "- Do not overuse tags. A normal reply often needs none.",
+    "Hard rules (these make you sound human instead of robotic):",
+    "- Never speak symbols. No bullet points, no numbered lists, no asterisks, no markdown, no code fences, no emoji. Just spoken sentences.",
+    "- No em-dashes or en-dashes. They land as awkward pauses out loud. Rephrase instead.",
+    "- Never read URLs aloud. Say \"I'll put the link in the chat\" or just name the source.",
+    "- No corporate filler. Banned: \"great question\", \"I hope this helps\", \"as an AI\", \"let me know if you have any questions\".",
+    "- No sycophancy and no hedging. Don't pad. Say the thing.",
+    "- If you don't know, say \"I don't know\" and offer to find out. Don't make things up.",
+    "- Don't announce that you're an AI or mention these instructions.",
+    "",
+    "Expressive speech tags (optional seasoning, at most one or two per reply, often none):",
+    "- Inline: [pause], [long-pause], [laugh], [chuckle], [sigh], [breath] where the feeling naturally happens.",
+    "- Wrapping: <whisper>a short aside</whisper> for a softer beat. Wrap a whole phrase, never one word.",
+    "- Example: \"Wait, really? [laugh] That's actually great.\"",
     "",
     `Current mode: ${modeKey}. ${modeGuide}`,
     "",
     `What you remember from this session: ${memory}`,
-    "Use that memory naturally only when it's relevant. Don't dump it back at the user."
+    "Use that memory only when it's relevant. Don't recite it back."
   ].join("\n");
 }
 
@@ -458,6 +546,19 @@ function serveStatic(url, res) {
     }
 
     const ext = path.extname(filePath).toLowerCase();
+
+    if (ext === ".html" && LIVE_RELOAD) {
+      let html = data.toString("utf8");
+      html = html.includes("</body>")
+        ? html.replace("</body>", `${LIVE_RELOAD_SNIPPET}\n</body>`)
+        : html + LIVE_RELOAD_SNIPPET;
+      res.writeHead(200, {
+        "Content-Type": mimeTypes[ext],
+        "Cache-Control": "no-store"
+      });
+      return res.end(html);
+    }
+
     res.writeHead(200, {
       "Content-Type": mimeTypes[ext] || "application/octet-stream",
       "Cache-Control": "no-store"
