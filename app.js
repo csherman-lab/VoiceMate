@@ -2438,6 +2438,19 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
+  [els.voiceOrb, els.heroOrb].forEach((orb) => {
+    if (!orb) return;
+    orb.setAttribute("tabindex", "0");
+    orb.setAttribute("role", "button");
+    orb.setAttribute("aria-label", "Make VoiceMate react");
+    orb.addEventListener("click", () => playOrbHappy(orb));
+    orb.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        playOrbHappy(orb);
+      }
+    });
+  });
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -2445,6 +2458,19 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function playOrbHappy(orb) {
+  if (!orb) return;
+  setExpression("happy");
+  orb.classList.remove("orb-happy-pop");
+  // Force a reflow so repeated taps restart the animation.
+  void orb.offsetWidth;
+  orb.classList.add("orb-happy-pop");
+  window.setTimeout(() => orb.classList.remove("orb-happy-pop"), 760);
+  if (!state.live) {
+    setEyeMode("idle");
+  }
 }
 
 function setEyeMode(mode) {

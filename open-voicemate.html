@@ -429,6 +429,7 @@ h3 {
   border-radius: 50%;
   isolation: isolate;
   overflow: hidden;
+  cursor: pointer;
   transform:
     perspective(900px)
     rotateX(var(--orb-tilt-x, 0deg))
@@ -451,6 +452,11 @@ h3 {
   animation: orbHue 14s ease-in-out infinite;
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: filter, transform;
+}
+
+.orb:focus-visible {
+  outline: 4px solid rgba(0, 122, 255, 0.34);
+  outline-offset: 8px;
 }
 
 /* Slow internal refraction: darker and less uniform than the old rainbow fill. */
@@ -493,6 +499,26 @@ h3 {
     linear-gradient(116deg, rgba(255, 255, 255, 0.32), transparent 22%, transparent 67%, rgba(255, 255, 255, 0.12));
   transform: translate3d(var(--orb-glint-x, 0px), var(--orb-glint-y, 0px), 28px) rotate(var(--orb-glint-rot, 0deg));
   transition: transform 220ms ease-out;
+}
+
+.orb.orb-happy-pop {
+  animation: orbHue 14s ease-in-out infinite, orbHappyPop 720ms cubic-bezier(0.17, 0.9, 0.24, 1.18);
+}
+
+.orb.orb-happy-pop::after {
+  filter: brightness(1.18) saturate(1.12);
+}
+
+.orb.orb-happy-pop::before {
+  filter: blur(14px) saturate(1.65);
+}
+
+.orb.orb-happy-pop .orb-eyes {
+  animation: happyEyesNod 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.orb.orb-happy-pop::selection {
+  background: transparent;
 }
 
 .orb-eyes {
@@ -1802,6 +1828,50 @@ footer {
   50% {
     --orb-scale: 1.05;
     filter: saturate(1.2);
+  }
+}
+
+@keyframes orbHappyPop {
+  0% {
+    --orb-scale: 1;
+    filter: saturate(1.08) contrast(1.03);
+    box-shadow:
+      inset 0 2px 3px rgba(255, 255, 255, 0.8),
+      inset 10px 16px 36px rgba(230, 244, 255, 0.42),
+      inset -34px 0 58px rgba(1, 4, 55, 0.82),
+      inset 0 -42px 70px rgba(91, 0, 117, 0.72),
+      inset 0 0 0 1px rgba(218, 228, 255, 0.3),
+      0 24px 56px rgba(40, 30, 140, 0.28),
+      0 0 90px rgba(128, 112, 255, 0.2);
+  }
+  34% {
+    --orb-scale: 1.075;
+    filter: saturate(1.35) contrast(1.08) brightness(1.08);
+    box-shadow:
+      inset 0 2px 3px rgba(255, 255, 255, 0.9),
+      inset 10px 16px 36px rgba(230, 244, 255, 0.52),
+      inset -34px 0 58px rgba(1, 4, 55, 0.78),
+      inset 0 -42px 70px rgba(91, 0, 117, 0.68),
+      inset 0 0 0 1px rgba(218, 228, 255, 0.38),
+      0 28px 68px rgba(91, 70, 220, 0.34),
+      0 0 0 10px rgba(180, 210, 255, 0.12),
+      0 0 105px rgba(204, 76, 255, 0.3);
+  }
+  64% {
+    --orb-scale: 0.982;
+  }
+  100% {
+    --orb-scale: 1;
+    filter: saturate(1.08) contrast(1.03);
+  }
+}
+
+@keyframes happyEyesNod {
+  0%, 100% {
+    translate: 0 0;
+  }
+  35% {
+    translate: 0 3%;
   }
 }
 
@@ -5899,6 +5969,19 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
+  [els.voiceOrb, els.heroOrb].forEach((orb) => {
+    if (!orb) return;
+    orb.setAttribute("tabindex", "0");
+    orb.setAttribute("role", "button");
+    orb.setAttribute("aria-label", "Make VoiceMate react");
+    orb.addEventListener("click", () => playOrbHappy(orb));
+    orb.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        playOrbHappy(orb);
+      }
+    });
+  });
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -5906,6 +5989,19 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function playOrbHappy(orb) {
+  if (!orb) return;
+  setExpression("happy");
+  orb.classList.remove("orb-happy-pop");
+  // Force a reflow so repeated taps restart the animation.
+  void orb.offsetWidth;
+  orb.classList.add("orb-happy-pop");
+  window.setTimeout(() => orb.classList.remove("orb-happy-pop"), 760);
+  if (!state.live) {
+    setEyeMode("idle");
+  }
 }
 
 function setEyeMode(mode) {
