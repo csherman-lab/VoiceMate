@@ -728,7 +728,7 @@ h3 {
   display: grid;
   min-height: calc(100vh - 142px);
   grid-template-rows: auto auto 1fr minmax(120px, 190px) auto auto auto;
-  gap: 14px;
+  gap: 12px;
   padding: clamp(18px, 3vw, 28px);
   border-radius: var(--radius-xl);
 }
@@ -898,10 +898,16 @@ h3 {
   width: min(720px, 100%);
   margin: 0 auto;
   border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--soft-shadow);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: none;
   backdrop-filter: blur(20px);
+}
+
+.talk-context-panel[hidden],
+.thinking-drawer[hidden],
+.quick-prompts[hidden] {
+  display: none;
 }
 
 .context-head {
@@ -909,7 +915,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px 8px;
+  padding: 10px 12px 6px;
 }
 
 .context-head strong {
@@ -922,7 +928,7 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 14px 14px;
+  padding: 0 12px 12px;
 }
 
 .context-empty {
@@ -935,7 +941,7 @@ h3 {
   align-items: center;
   gap: 9px;
   max-width: 100%;
-  padding: 8px;
+  padding: 7px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
@@ -1000,7 +1006,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   cursor: pointer;
   font-weight: 760;
 }
@@ -1021,7 +1027,7 @@ h3 {
 .talk-trace {
   display: grid;
   gap: 6px;
-  padding: 0 14px 14px;
+  padding: 0 12px 12px;
 }
 
 .focus-orb-wrap {
@@ -1060,7 +1066,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  min-height: 118px;
+  min-height: 44px;
   max-height: min(34vh, 360px);
   overflow-y: auto;
   padding: 2px;
@@ -1924,11 +1930,7 @@ footer {
 }
 
 .composer-attach input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .composer-field {
@@ -2076,11 +2078,7 @@ footer {
 }
 
 .add-tile input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .add-icon {
@@ -3034,7 +3032,7 @@ footer {
             </div>
           </div>
 
-          <div class="talk-context-panel" aria-label="Current VoiceMate context">
+          <div class="talk-context-panel" id="talkContextPanel" aria-label="Current VoiceMate context" hidden>
             <div class="context-head">
               <div>
                 <span class="eyebrow">Context</span>
@@ -3061,7 +3059,7 @@ footer {
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
-          <details class="thinking-drawer" id="thinkingDrawer" open>
+          <details class="thinking-drawer" id="thinkingDrawer" hidden>
             <summary>
               <span>Thinking and actions</span>
               <small id="thinkingSummary">VoiceMate will show context, sources, and tools here.</small>
@@ -3607,6 +3605,8 @@ function cacheEls() {
     heroOrb: document.querySelector("#heroOrb"),
     quickPrompts: document.querySelector("#quickPrompts"),
     activityFeed: document.querySelector("#activityFeed"),
+    talkContextPanel: document.querySelector("#talkContextPanel"),
+    thinkingDrawer: document.querySelector("#thinkingDrawer"),
     talkTrace: document.querySelector("#talkTrace"),
     thinkingSummary: document.querySelector("#thinkingSummary"),
     contextTitle: document.querySelector("#contextTitle"),
@@ -3826,6 +3826,9 @@ function wireEvents() {
 
   els.clearTranscript.addEventListener("click", () => {
     els.transcript.innerHTML = "";
+    if (els.talkTrace) els.talkTrace.innerHTML = "";
+    if (els.thinkingSummary) els.thinkingSummary.textContent = "VoiceMate will show context, sources, and tools here.";
+    updateTalkChrome();
     newConversation();
     state.talkStarted = false;
     addActivity("Started new chat", "Saved the last one and started fresh.");
@@ -3998,14 +4001,12 @@ function renderContextChips() {
   if (!els.contextChips || !els.contextTitle) return;
   const active = uploadContextItems();
   els.contextChips.innerHTML = "";
+  if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length;
   els.contextTitle.textContent = active.length
     ? `${active.length} active item${active.length === 1 ? "" : "s"}`
     : "Nothing active yet";
   if (!active.length) {
-    const empty = document.createElement("span");
-    empty.className = "context-empty";
-    empty.textContent = "Upload or paste something and it appears here.";
-    els.contextChips.appendChild(empty);
+    updateTalkChrome();
     return;
   }
 
@@ -4029,6 +4030,7 @@ function renderContextChips() {
     buttons[1].addEventListener("click", () => removeFromActiveContext(item.id));
     els.contextChips.appendChild(chip);
   });
+  updateTalkChrome();
 }
 
 function removeFromActiveContext(id) {
@@ -4090,14 +4092,7 @@ function showPage(page) {
 function startTalkSession() {
   if (state.talkStarted) return;
   state.talkStarted = true;
-  const persona = getPersona();
-  const greeting = state.backendOnline
-    ? `Hey, I'm ${persona.name}. [pause] What's on your mind?`
-    : `Hey, I'm ${persona.name}. You can type, upload something, or set up live voice in Settings.`;
-
-  addActivity("Started talk session", `${persona.name} voice is active.`);
-  addMessage("agent", stripSpeechTags(greeting));
-  pushHistory("assistant", stripSpeechTags(greeting));
+  updateTalkChrome();
 }
 
 function endTalkSession() {
@@ -4151,7 +4146,6 @@ function startSkillWorkflow(skill) {
   if (!skill) return;
   setMode(skill.id, false);
   showPage("talk");
-  addActivity("Skill launched", `${skill.name} started a guided workflow.`);
   runSkillWorkflow(skill.id);
 }
 
@@ -4280,7 +4274,7 @@ function setMode(modeId, fromSelect) {
   renderSkills();
   renderQuickPrompts();
   updateLiveSession({ instructions: liveSessionHint() });
-  addActivity("Mode set", `${skill.name} mode is active.`);
+  if (fromSelect) addActivity("Mode set", `${skill.name} mode is active.`);
 }
 
 function updateModeCaption() {
@@ -5765,7 +5759,18 @@ function addMessage(role, text) {
   message.textContent = role === "user" ? text : noDashes(text);
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
+  updateTalkChrome();
   return message;
+}
+
+function updateTalkChrome() {
+  if (els.quickPrompts && els.transcript) {
+    const hasMessages = Boolean(els.transcript.querySelector(".message"));
+    els.quickPrompts.hidden = hasMessages;
+  }
+  if (els.thinkingDrawer && els.talkTrace && !els.talkTrace.children.length) {
+    els.thinkingDrawer.hidden = true;
+  }
 }
 
 function getTranscriptText() {
@@ -5800,14 +5805,18 @@ function addTrace(type, title, detail) {
       els.activityFeed.removeChild(els.activityFeed.lastChild);
     }
   }
-  if (els.talkTrace) {
+  if (els.talkTrace && type !== "system") {
+    if (els.thinkingDrawer) {
+      els.thinkingDrawer.hidden = false;
+      if (!els.thinkingDrawer.hasAttribute("open")) els.thinkingDrawer.setAttribute("open", "");
+    }
     els.talkTrace.prepend(item);
     while (els.talkTrace.children.length > 8) {
       els.talkTrace.removeChild(els.talkTrace.lastChild);
     }
-  }
-  if (els.thinkingSummary) {
-    els.thinkingSummary.textContent = `${title}: ${detail}`;
+    if (els.thinkingSummary) {
+      els.thinkingSummary.textContent = `${title}: ${detail}`;
+    }
   }
 }
 

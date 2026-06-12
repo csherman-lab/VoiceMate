@@ -703,7 +703,7 @@ h3 {
   display: grid;
   min-height: calc(100vh - 142px);
   grid-template-rows: auto auto 1fr minmax(120px, 190px) auto auto auto;
-  gap: 14px;
+  gap: 12px;
   padding: clamp(18px, 3vw, 28px);
   border-radius: var(--radius-xl);
 }
@@ -873,10 +873,16 @@ h3 {
   width: min(720px, 100%);
   margin: 0 auto;
   border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--soft-shadow);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: none;
   backdrop-filter: blur(20px);
+}
+
+.talk-context-panel[hidden],
+.thinking-drawer[hidden],
+.quick-prompts[hidden] {
+  display: none;
 }
 
 .context-head {
@@ -884,7 +890,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px 8px;
+  padding: 10px 12px 6px;
 }
 
 .context-head strong {
@@ -897,7 +903,7 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 0 14px 14px;
+  padding: 0 12px 12px;
 }
 
 .context-empty {
@@ -910,7 +916,7 @@ h3 {
   align-items: center;
   gap: 9px;
   max-width: 100%;
-  padding: 8px;
+  padding: 7px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
@@ -975,7 +981,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   cursor: pointer;
   font-weight: 760;
 }
@@ -996,7 +1002,7 @@ h3 {
 .talk-trace {
   display: grid;
   gap: 6px;
-  padding: 0 14px 14px;
+  padding: 0 12px 12px;
 }
 
 .focus-orb-wrap {
@@ -1035,7 +1041,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  min-height: 118px;
+  min-height: 44px;
   max-height: min(34vh, 360px);
   overflow-y: auto;
   padding: 2px;
@@ -1899,11 +1905,7 @@ footer {
 }
 
 .composer-attach input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .composer-field {
@@ -2051,11 +2053,7 @@ footer {
 }
 
 .add-tile input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .add-icon {

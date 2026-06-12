@@ -97,7 +97,7 @@
             </div>
           </div>
 
-          <div class="talk-context-panel" aria-label="Current VoiceMate context">
+          <div class="talk-context-panel" id="talkContextPanel" aria-label="Current VoiceMate context" hidden>
             <div class="context-head">
               <div>
                 <span class="eyebrow">Context</span>
@@ -124,7 +124,7 @@
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
-          <details class="thinking-drawer" id="thinkingDrawer" open>
+          <details class="thinking-drawer" id="thinkingDrawer" hidden>
             <summary>
               <span>Thinking and actions</span>
               <small id="thinkingSummary">VoiceMate will show context, sources, and tools here.</small>

@@ -289,6 +289,8 @@ function cacheEls() {
     heroOrb: document.querySelector("#heroOrb"),
     quickPrompts: document.querySelector("#quickPrompts"),
     activityFeed: document.querySelector("#activityFeed"),
+    talkContextPanel: document.querySelector("#talkContextPanel"),
+    thinkingDrawer: document.querySelector("#thinkingDrawer"),
     talkTrace: document.querySelector("#talkTrace"),
     thinkingSummary: document.querySelector("#thinkingSummary"),
     contextTitle: document.querySelector("#contextTitle"),
@@ -508,6 +510,9 @@ function wireEvents() {
 
   els.clearTranscript.addEventListener("click", () => {
     els.transcript.innerHTML = "";
+    if (els.talkTrace) els.talkTrace.innerHTML = "";
+    if (els.thinkingSummary) els.thinkingSummary.textContent = "VoiceMate will show context, sources, and tools here.";
+    updateTalkChrome();
     newConversation();
     state.talkStarted = false;
     addActivity("Started new chat", "Saved the last one and started fresh.");
@@ -680,14 +685,12 @@ function renderContextChips() {
   if (!els.contextChips || !els.contextTitle) return;
   const active = uploadContextItems();
   els.contextChips.innerHTML = "";
+  if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length;
   els.contextTitle.textContent = active.length
     ? `${active.length} active item${active.length === 1 ? "" : "s"}`
     : "Nothing active yet";
   if (!active.length) {
-    const empty = document.createElement("span");
-    empty.className = "context-empty";
-    empty.textContent = "Upload or paste something and it appears here.";
-    els.contextChips.appendChild(empty);
+    updateTalkChrome();
     return;
   }
 
@@ -711,6 +714,7 @@ function renderContextChips() {
     buttons[1].addEventListener("click", () => removeFromActiveContext(item.id));
     els.contextChips.appendChild(chip);
   });
+  updateTalkChrome();
 }
 
 function removeFromActiveContext(id) {
@@ -772,14 +776,7 @@ function showPage(page) {
 function startTalkSession() {
   if (state.talkStarted) return;
   state.talkStarted = true;
-  const persona = getPersona();
-  const greeting = state.backendOnline
-    ? `Hey, I'm ${persona.name}. [pause] What's on your mind?`
-    : `Hey, I'm ${persona.name}. You can type, upload something, or set up live voice in Settings.`;
-
-  addActivity("Started talk session", `${persona.name} voice is active.`);
-  addMessage("agent", stripSpeechTags(greeting));
-  pushHistory("assistant", stripSpeechTags(greeting));
+  updateTalkChrome();
 }
 
 function endTalkSession() {
@@ -833,7 +830,6 @@ function startSkillWorkflow(skill) {
   if (!skill) return;
   setMode(skill.id, false);
   showPage("talk");
-  addActivity("Skill launched", `${skill.name} started a guided workflow.`);
   runSkillWorkflow(skill.id);
 }
 
@@ -962,7 +958,7 @@ function setMode(modeId, fromSelect) {
   renderSkills();
   renderQuickPrompts();
   updateLiveSession({ instructions: liveSessionHint() });
-  addActivity("Mode set", `${skill.name} mode is active.`);
+  if (fromSelect) addActivity("Mode set", `${skill.name} mode is active.`);
 }
 
 function updateModeCaption() {
@@ -2447,7 +2443,18 @@ function addMessage(role, text) {
   message.textContent = role === "user" ? text : noDashes(text);
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
+  updateTalkChrome();
   return message;
+}
+
+function updateTalkChrome() {
+  if (els.quickPrompts && els.transcript) {
+    const hasMessages = Boolean(els.transcript.querySelector(".message"));
+    els.quickPrompts.hidden = hasMessages;
+  }
+  if (els.thinkingDrawer && els.talkTrace && !els.talkTrace.children.length) {
+    els.thinkingDrawer.hidden = true;
+  }
 }
 
 function getTranscriptText() {
@@ -2482,14 +2489,18 @@ function addTrace(type, title, detail) {
       els.activityFeed.removeChild(els.activityFeed.lastChild);
     }
   }
-  if (els.talkTrace) {
+  if (els.talkTrace && type !== "system") {
+    if (els.thinkingDrawer) {
+      els.thinkingDrawer.hidden = false;
+      if (!els.thinkingDrawer.hasAttribute("open")) els.thinkingDrawer.setAttribute("open", "");
+    }
     els.talkTrace.prepend(item);
     while (els.talkTrace.children.length > 8) {
       els.talkTrace.removeChild(els.talkTrace.lastChild);
     }
-  }
-  if (els.thinkingSummary) {
-    els.thinkingSummary.textContent = `${title}: ${detail}`;
+    if (els.thinkingSummary) {
+      els.thinkingSummary.textContent = `${title}: ${detail}`;
+    }
   }
 }
 
