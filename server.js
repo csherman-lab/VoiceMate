@@ -1,8 +1,10 @@
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 
 loadEnvFile(path.join(ROOT, ".env.local"));
@@ -72,7 +74,9 @@ const server = http.createServer(async (req, res) => {
         xaiConfigured: Boolean(XAI_API_KEY),
         model: XAI_MODEL,
         realtimeModel: XAI_REALTIME_MODEL,
-        defaultVoice: XAI_DEFAULT_VOICE
+        defaultVoice: XAI_DEFAULT_VOICE,
+        port: PORT,
+        host: req.headers.host || `localhost:${PORT}`
       });
     }
 
@@ -111,8 +115,18 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`VoiceMate running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  const localUrl = `http://localhost:${PORT}`;
+  console.log(`VoiceMate running at ${localUrl}`);
+  if (HOST !== "127.0.0.1" && HOST !== "localhost") {
+    for (const addresses of Object.values(os.networkInterfaces())) {
+      for (const address of addresses || []) {
+        if (address.family === "IPv4" && !address.internal) {
+          console.log(`  Also reachable at http://${address.address}:${PORT}`);
+        }
+      }
+    }
+  }
   console.log(`xAI key configured: ${Boolean(XAI_API_KEY)}`);
   console.log(`Chat model: ${XAI_MODEL} | Realtime voice model: ${XAI_REALTIME_MODEL}`);
   if (LIVE_RELOAD) {
