@@ -6,227 +6,354 @@
     <title>VoiceMate</title>
     <meta
       name="description"
-      content="VoiceMate is a calm voice agent for talking, texting, uploads, memory, and pitch support."
+      content="VoiceMate is a human sounding voice companion with skills, memory, and a clean Apple style interface."
     />
+    <meta name="theme-color" content="#0a84ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="VoiceMate" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
-    <div class="ambient ambient-three"></div>
 
     <header class="nav">
       <button class="brand page-link" type="button" data-page="home" aria-label="VoiceMate home">
-        <span class="vm-icon" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-        <span>VoiceMate</span>
+        <span class="vm-logo" id="brandLogo" aria-hidden="true"></span>
+        <span class="brand-name">VoiceMate</span>
       </button>
       <nav aria-label="Primary navigation">
-        <button class="nav-link active" type="button" data-page="home">Home</button>
-        <button class="nav-link" type="button" data-page="talk">Talk</button>
-        <button class="nav-link" type="button" data-page="memory">Memory</button>
-        <button class="nav-link" type="button" data-page="settings">Settings</button>
+        <button class="nav-link active" type="button" data-page="home">
+          <span class="nav-ic" data-icon="home"></span><span class="nav-label">Home</span>
+        </button>
+        <button class="nav-link" type="button" data-page="talk">
+          <span class="nav-ic" data-icon="waveform"></span><span class="nav-label">Talk</span>
+        </button>
+        <button class="nav-link" type="button" data-page="memory">
+          <span class="nav-ic" data-icon="archive"></span><span class="nav-label">Memory</span>
+        </button>
+        <button class="nav-link" type="button" data-page="settings">
+          <span class="nav-ic" data-icon="gear"></span><span class="nav-label">Settings</span>
+        </button>
       </nav>
     </header>
 
     <main>
+      <!-- HOME -->
       <section class="page active" id="homePage" data-page-panel="home">
         <div class="hero">
           <div class="hero-copy">
-            <p class="eyebrow">Voice, text, memory</p>
+            <p class="eyebrow">Your voice companion</p>
             <h1>Meet VoiceMate.</h1>
             <p class="lede">
-              A simple AI voice agent for conversations, files, images, and helpful answers.
+              Talk to it like a person and it talks back. Run skills, keep a memory, and watch it think.
             </p>
             <div class="hero-actions">
               <button class="button primary page-link" type="button" data-page="talk">Start talking</button>
-              <button class="button secondary page-link" type="button" data-page="memory">View memory</button>
+              <button class="button secondary page-link" type="button" data-page="memory">Add memory</button>
             </div>
           </div>
 
           <div class="phone-card">
-            <div class="device-top"></div>
             <div class="orb hero-orb" id="heroOrb" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-              <i></i>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="device-label">Speak. Type. Upload.</p>
-            <p class="device-subtitle">Everything stays calm and easy.</p>
+            <p class="device-label">Talk. It talks back.</p>
+            <p class="device-subtitle">A natural voice with real pauses, not a robot reading text.</p>
           </div>
         </div>
 
-        <div class="feature-row">
-          <article class="feature-card">
-            <span>Talk</span>
-            <strong>Natural voice mode</strong>
-            <p>Use your mic where Chrome allows it. VoiceMate answers out loud.</p>
-            <button class="card-action page-link" type="button" data-page="talk">Open Talk</button>
-          </article>
-          <article class="feature-card">
-            <span>Upload</span>
-            <strong>Files and images</strong>
-            <p>Add notes, CSV files, briefs, screenshots, and reference images.</p>
-            <button class="card-action page-link" type="button" data-page="memory">Add Memory</button>
-          </article>
-          <article class="feature-card">
-            <span>Pitch</span>
-            <strong>Sales ready answers</strong>
-            <p>Turn rough information into clear client friendly talking points.</p>
-            <button class="card-action prompt-link" type="button" data-prompt="Pitch this to a client">Practice Pitch</button>
-          </article>
+        <div class="home-section">
+          <div class="section-head">
+            <p class="eyebrow">Skills</p>
+            <h2>Pick what VoiceMate does.</h2>
+            <p class="small-copy">Choose a skill, or just start talking and VoiceMate routes to the right one.</p>
+          </div>
+          <div class="skill-grid" id="skillGrid" aria-label="VoiceMate skills"></div>
         </div>
       </section>
 
+      <!-- TALK -->
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
         <div class="talk-stage">
           <div class="talk-top">
             <div class="session-title">
-              <span class="vm-icon small" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-              </span>
+              <span class="vm-logo small" id="talkLogo" aria-hidden="true"></span>
               <div>
                 <strong>VoiceMate</strong>
-                <span id="modeCaption">Natural conversation</span>
+                <span id="modeCaption">Natural chat</span>
               </div>
             </div>
             <div class="session-controls">
-              <span class="backend-pill" id="backendStatus">Local mode</span>
+              <span class="voice-pill" id="backendStatus">Browser voice</span>
               <span class="status-pill" id="speechStatus">Ready</span>
+              <button class="session-button camera-button" id="cameraButton" type="button" aria-label="Show the camera">
+                <span class="dock-icon" data-icon="camera"></span>
+              </button>
               <button class="session-button end-button page-link" type="button" data-page="home">End</button>
             </div>
           </div>
 
           <div class="focus-orb-wrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
-              <span></span>
-              <span></span>
-              <span></span>
-              <i></i>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <div class="voice-caption">
-                <strong id="activePersonaName">Eve</strong>
-              <span>Voice starts when this opens</span>
+              <strong id="activePersonaName">Ara</strong>
+              <span id="voiceHint">Tap Start call to talk out loud</span>
             </div>
+            <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
+              <span class="call-icon" id="callIcon"></span>
+              <span class="live-label">Start call</span>
+            </button>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
-          <form class="talk-dock" id="promptForm">
-            <button class="dock-button mic-button" id="micButton" type="button" aria-label="Start voice input">
-              <span></span>
-            </button>
-            <input
-              id="promptInput"
-              autocomplete="off"
-              placeholder="Ask anything"
-              aria-label="Message VoiceMate"
-            />
-            <label class="dock-button file-button" for="quickFileUpload" aria-label="Upload files">
+          <form class="composer" id="promptForm">
+            <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,image/*" />
-              <span></span>
+              <span class="dock-icon" data-icon="plus"></span>
             </label>
-            <button class="dock-button send-button" type="submit" aria-label="Send message">
-              <span></span>
+            <div class="composer-field">
+              <input
+                id="promptInput"
+                autocomplete="off"
+                placeholder="Message"
+                aria-label="Message VoiceMate"
+              />
+              <button class="composer-mic mic-button" id="micButton" type="button" aria-label="Use microphone">
+                <span class="dock-icon" data-icon="mic"></span>
+              </button>
+            </div>
+            <button class="composer-send send-button" type="submit" aria-label="Send message">
+              <span class="dock-icon" data-icon="arrow-up"></span>
             </button>
           </form>
 
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
           <div class="conversation-tools" aria-label="Conversation tools">
-            <button class="tool-button" id="copyTranscript" type="button">Copy chat</button>
-            <button class="tool-button" id="saveTranscript" type="button">Save chat</button>
             <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+            <button class="tool-button subtle" id="historyButton" type="button">History</button>
+            <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
+            <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
           </div>
         </div>
       </section>
 
+      <!-- MEMORY -->
       <section class="page" id="memoryPage" data-page-panel="memory">
         <div class="page-heading">
           <p class="eyebrow">Memory</p>
-          <h2>Memory</h2>
-          <p class="small-copy">Add files, images, and notes for this session.</p>
+          <h2>What VoiceMate remembers</h2>
+          <p class="small-copy">Add files, photos, or notes and VoiceMate will use them in this session.</p>
         </div>
 
-        <div class="memory-layout">
-          <div class="upload-panel">
-            <h3>Add information</h3>
-            <label class="drop-zone" for="knowledgeUpload">
-              <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
-              <b>Choose files</b>
-              <small>Notes, scripts, CSV files, briefs, and logs</small>
-            </label>
-            <label class="drop-zone" for="imageUpload">
-              <input id="imageUpload" type="file" multiple accept="image/*" />
-              <b>Choose images</b>
-              <small>Screenshots, charts, product shots, and references</small>
-            </label>
-            <textarea id="manualContext" placeholder="Paste anything VoiceMate should know"></textarea>
-            <button class="button secondary full" id="saveContext" type="button">Save memory</button>
-          </div>
+        <div class="memory-actions" aria-label="Add to memory">
+          <label class="add-tile" for="knowledgeUpload">
+            <span class="add-icon" data-icon="doc" data-tint="#0a84ff"></span>
+            <strong>Upload files</strong>
+            <small>Notes, CSV, briefs, logs</small>
+            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
+          </label>
+          <label class="add-tile" for="imageUpload">
+            <span class="add-icon" data-icon="photo" data-tint="#34c759"></span>
+            <strong>Add photos</strong>
+            <small>Screenshots, charts, refs</small>
+            <input id="imageUpload" type="file" multiple accept="image/*" />
+          </label>
+          <button class="add-tile" id="pasteToggle" type="button">
+            <span class="add-icon" data-icon="text" data-tint="#ff9f0a"></span>
+            <strong>Paste a note</strong>
+            <small>Type or paste anything</small>
+          </button>
+        </div>
 
-          <div class="memory-panel">
-            <div class="memory-top">
-              <h3>Past information</h3>
-              <button class="button ghost" id="clearMemory" type="button">Clear memory</button>
-            </div>
-            <div class="memory-grid" id="memoryGrid"></div>
+        <div class="paste-panel" id="pastePanel" hidden>
+          <textarea id="manualContext" placeholder="Paste anything VoiceMate should know"></textarea>
+          <div class="paste-actions">
+            <button class="button secondary" id="saveContext" type="button">Save note</button>
           </div>
         </div>
+
+        <div class="memory-list-head">
+          <h3>Saved items</h3>
+          <button class="button ghost" id="clearMemory" type="button">Clear all</button>
+        </div>
+        <div class="memory-list" id="memoryGrid"></div>
       </section>
 
+      <!-- SETTINGS -->
       <section class="page" id="settingsPage" data-page-panel="settings">
         <div class="page-heading">
-          <p class="eyebrow">Settings</p>
           <h2>Settings</h2>
-          <p class="small-copy">Choose the Grok voice, mode, and connection.</p>
         </div>
 
-        <div class="setup-grid">
-          <article class="setup-card">
-            <span>Grok voices</span>
-            <h3>Choose Grok voice</h3>
-            <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
-          </article>
+        <div class="settings-wrap">
+          <section class="settings-group">
+            <p class="group-label">Voice</p>
+            <div class="group-card">
+              <div class="persona-list" id="personaList" role="listbox" aria-label="Voices"></div>
+            </div>
+            <p class="group-foot">Pick the voice VoiceMate speaks with.</p>
+          </section>
 
-          <article class="setup-card">
-            <span>Mode</span>
-            <h3>Conversation type</h3>
-            <select id="agentMode">
-              <option value="companion">Natural conversation</option>
-              <option value="pitch">Pitch builder</option>
-              <option value="analyst">Data analyst</option>
-              <option value="coach">Meeting coach</option>
-            </select>
-            <button class="button secondary full" id="sampleVoice" type="button">Preview Grok voice</button>
-          </article>
+          <section class="settings-group">
+            <p class="group-label">Conversation</p>
+            <div class="group-card">
+              <div class="settings-row">
+                <span class="row-icon" data-icon="chat" data-tint="#5e5ce6"></span>
+                <div class="row-text">
+                  <strong>Conversation style</strong>
+                  <span>How VoiceMate approaches your messages</span>
+                </div>
+                <select id="agentMode" class="row-control">
+                  <option value="companion">Natural chat</option>
+                  <option value="research">Deep research</option>
+                  <option value="digest">Daily briefing</option>
+                  <option value="pitch">Pitch builder</option>
+                  <option value="analyst">Data analyst</option>
+                  <option value="coach">Meeting coach</option>
+                </select>
+              </div>
+              <div class="settings-row">
+                <span class="row-icon" data-icon="search" data-tint="#5e5ce6"></span>
+                <div class="row-text">
+                  <strong>Language</strong>
+                  <span>Voice and replies. Auto-detect, or pick one</span>
+                </div>
+                <select id="langSelect" class="row-control"></select>
+              </div>
+              <div class="settings-row">
+                <span class="row-icon" data-icon="mic" data-tint="#ff9f0a"></span>
+                <div class="row-text">
+                  <strong>"Hey VoiceMate" wake phrase</strong>
+                  <span>Listen on the Talk screen to start a call hands-free</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="wakeToggle" />
+                  <span class="switch-track"></span>
+                </label>
+              </div>
+              <div class="settings-row">
+                <span class="row-icon" data-icon="play" data-tint="#34c759"></span>
+                <div class="row-text">
+                  <strong>Preview voice</strong>
+                  <span>Hear the selected voice</span>
+                </div>
+                <button class="row-button" id="sampleVoice" type="button">Play</button>
+              </div>
+            </div>
+          </section>
 
-          <article class="setup-card grok-card">
-            <span>Production voice</span>
-            <h3>Grok connection</h3>
-            <p>
-              VoiceMate uses Grok through the local backend. Your key stays in `.env.local`.
-            </p>
-            <p class="connection-card" id="grokStatus">Checking connection.</p>
-            <button class="button secondary full" id="testConnection" type="button">Test connection</button>
-          </article>
+          <section class="settings-group">
+            <p class="group-label">Appearance</p>
+            <div class="group-card">
+              <div class="settings-row">
+                <span class="row-icon" data-icon="theme" data-tint="#5e5ce6"></span>
+                <div class="row-text">
+                  <strong>Theme</strong>
+                  <span>Match your device or pick one</span>
+                </div>
+                <div class="segmented" id="themeSeg" role="group" aria-label="Theme">
+                  <button type="button" data-theme="light" class="active">Light</button>
+                  <button type="button" data-theme="dark">Dark</button>
+                  <button type="button" data-theme="system">System</button>
+                </div>
+              </div>
+            </div>
+          </section>
 
-          <article class="setup-card activity-card">
-            <span>Activity</span>
-            <h3>Session activity</h3>
-            <div class="activity-feed" id="activityFeed"></div>
-          </article>
+          <section class="settings-group">
+            <p class="group-label">Reminders</p>
+            <div class="group-card">
+              <div class="reminder-add">
+                <input id="reminderInput" type="text" placeholder="Add a reminder" aria-label="Add a reminder" />
+                <button class="row-button" id="addReminder" type="button">Add</button>
+              </div>
+              <div class="reminder-list" id="reminderList"></div>
+            </div>
+            <p class="group-foot">Ask VoiceMate to remind you out loud, or add one here.</p>
+          </section>
+
+          <section class="settings-group">
+            <p class="group-label">Connection</p>
+            <div class="group-card">
+              <div class="settings-row">
+                <span class="row-icon" data-icon="waveform" data-tint="#0a84ff"></span>
+                <div class="row-text">
+                  <strong>Voice engine</strong>
+                  <span id="grokStatus">Checking connection.</span>
+                </div>
+                <button class="row-button" id="testConnection" type="button">Test</button>
+              </div>
+            </div>
+            <p class="group-foot">Live voice runs through your local VoiceMate server. Your key stays on the server, never in the browser.</p>
+          </section>
+
+          <section class="settings-group">
+            <p class="group-label">Data</p>
+            <div class="group-card">
+              <div class="settings-row">
+                <span class="row-icon" data-icon="download" data-tint="#34c759"></span>
+                <div class="row-text">
+                  <strong>Export memory</strong>
+                  <span>Download your memory and reminders as a file</span>
+                </div>
+                <button class="row-button" id="exportData" type="button">Export</button>
+              </div>
+              <label class="settings-row" for="importData" style="cursor:pointer">
+                <span class="row-icon" data-icon="upload" data-tint="#0a84ff"></span>
+                <div class="row-text">
+                  <strong>Import memory</strong>
+                  <span>Load a previously exported file</span>
+                </div>
+                <span class="row-button">Choose</span>
+                <input id="importData" type="file" accept="application/json" hidden />
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <p class="group-label">Session activity</p>
+            <div class="group-card">
+              <div class="activity-feed" id="activityFeed"></div>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <p class="group-label">About</p>
+            <div class="group-card">
+              <div class="settings-row static">
+                <span class="row-icon" data-icon="info" data-tint="#8e8e93"></span>
+                <div class="row-text">
+                  <strong>VoiceMate</strong>
+                  <span>A human sounding voice companion with skills and memory.</span>
+                </div>
+                <span class="row-value">0.3.0</span>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
 
+    <div class="modal" id="historyModal" hidden>
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Conversations</h3>
+          <button class="modal-close" id="historyClose" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="historySearch" type="search" placeholder="Search conversations" aria-label="Search conversations" />
+        <div class="convo-list" id="historyList"></div>
+      </div>
+    </div>
+
     <footer>
-      <p>VoiceMate opens directly in Chrome. No server required for this demo.</p>
+      <p>VoiceMate runs locally. Open the one-file demo, or run the server for full live voice.</p>
     </footer>
 
     <script src="app.js"></script>
