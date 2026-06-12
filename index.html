@@ -65,16 +65,19 @@
             <span>Talk</span>
             <strong>Natural voice mode</strong>
             <p>Use your mic where Chrome allows it. VoiceMate answers out loud.</p>
+            <button class="card-action page-link" type="button" data-page="talk">Open Talk</button>
           </article>
           <article class="feature-card">
             <span>Upload</span>
             <strong>Files and images</strong>
             <p>Add notes, CSV files, briefs, screenshots, and reference images.</p>
+            <button class="card-action page-link" type="button" data-page="memory">Add Memory</button>
           </article>
           <article class="feature-card">
             <span>Pitch</span>
             <strong>Sales ready answers</strong>
             <p>Turn rough information into clear client friendly talking points.</p>
+            <button class="card-action prompt-link" type="button" data-prompt="Pitch this to a client">Practice Pitch</button>
           </article>
         </div>
       </section>
@@ -135,6 +138,11 @@
           </form>
 
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+          <div class="conversation-tools" aria-label="Conversation tools">
+            <button class="tool-button" id="copyTranscript" type="button">Copy chat</button>
+            <button class="tool-button" id="saveTranscript" type="button">Save chat</button>
+            <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+          </div>
         </div>
       </section>
 
@@ -205,6 +213,7 @@
               VoiceMate uses Grok through the local backend. Your key stays in `.env.local`.
             </p>
             <p class="connection-card" id="grokStatus">Checking connection.</p>
+            <button class="button secondary full" id="testConnection" type="button">Test connection</button>
           </article>
 
           <article class="setup-card activity-card">

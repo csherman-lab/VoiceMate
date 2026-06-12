@@ -78,6 +78,7 @@ const state = {
 const els = {
   navLinks: document.querySelectorAll(".nav-link"),
   pageLinks: document.querySelectorAll(".page-link"),
+  promptLinks: document.querySelectorAll(".prompt-link"),
   pages: document.querySelectorAll("[data-page-panel]"),
   personaList: document.querySelector("#personaList"),
   agentMode: document.querySelector("#agentMode"),
@@ -99,9 +100,13 @@ const els = {
   manualContext: document.querySelector("#manualContext"),
   saveContext: document.querySelector("#saveContext"),
   clearMemory: document.querySelector("#clearMemory"),
+  clearTranscript: document.querySelector("#clearTranscript"),
+  copyTranscript: document.querySelector("#copyTranscript"),
+  saveTranscript: document.querySelector("#saveTranscript"),
   memoryGrid: document.querySelector("#memoryGrid"),
   grokStatus: document.querySelector("#grokStatus"),
-  backendStatus: document.querySelector("#backendStatus")
+  backendStatus: document.querySelector("#backendStatus"),
+  testConnection: document.querySelector("#testConnection")
 };
 
 function init() {
@@ -135,6 +140,10 @@ function wireEvents() {
 
   els.pageLinks.forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
+  });
+
+  els.promptLinks.forEach((button) => {
+    button.addEventListener("click", () => handlePrompt(button.dataset.prompt || button.textContent));
   });
 
   els.promptForm.addEventListener("submit", (event) => {
@@ -193,6 +202,54 @@ function wireEvents() {
     renderMemory();
     addActivity("Cleared memory", "Session memory is empty.");
     addMessage("agent", "I cleared the memory for this session.");
+  });
+
+  els.clearTranscript.addEventListener("click", () => {
+    els.transcript.innerHTML = "";
+    state.talkStarted = false;
+    addActivity("Started new chat", "Transcript cleared.");
+    if (document.body.classList.contains("talk-session")) {
+      startTalkSession();
+    }
+  });
+
+  els.copyTranscript.addEventListener("click", async () => {
+    const text = getTranscriptText();
+    if (!text) {
+      addActivity("Nothing to copy", "The chat is empty.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      addActivity("Copied chat", "Transcript copied to clipboard.");
+    } catch (error) {
+      addActivity("Copy unavailable", "Browser clipboard access was blocked.");
+    }
+  });
+
+  els.saveTranscript.addEventListener("click", () => {
+    const text = getTranscriptText();
+    if (!text) {
+      addActivity("Nothing to save", "The chat is empty.");
+      return;
+    }
+
+    state.memory.push({
+      type: "note",
+      name: `Saved chat ${state.memory.length + 1}`,
+      summary: summarizeText(text),
+      content: text,
+      createdAt: new Date().toISOString()
+    });
+    renderMemory();
+    addActivity("Saved chat", "Transcript added to memory.");
+  });
+
+  els.testConnection.addEventListener("click", async () => {
+    addActivity("Testing connection", "Checking the local Grok backend.");
+    await checkBackend();
+    addActivity(state.backendOnline ? "Grok is connected" : "Grok is not connected", els.grokStatus.textContent);
   });
 
   document.addEventListener("dragover", (event) => event.preventDefault());
@@ -713,6 +770,16 @@ function addMessage(role, text) {
   message.textContent = text;
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
+}
+
+function getTranscriptText() {
+  return [...els.transcript.querySelectorAll(".message")]
+    .map((message) => {
+      const speaker = message.classList.contains("user") ? "You" : "VoiceMate";
+      return `${speaker}: ${message.textContent.trim()}`;
+    })
+    .filter(Boolean)
+    .join("\n");
 }
 
 function addActivity(title, detail) {

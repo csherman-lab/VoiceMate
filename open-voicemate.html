@@ -497,6 +497,10 @@ h3 {
   border-radius: var(--radius-lg);
 }
 
+.feature-card p {
+  min-height: 44px;
+}
+
 .feature-card > span,
 .setup-card > span {
   display: inline-flex;
@@ -514,6 +518,31 @@ h3 {
 .feature-card strong {
   display: block;
   margin-bottom: 8px;
+}
+
+.card-action,
+.tool-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 180ms ease, box-shadow 180ms ease;
+}
+
+.card-action:hover,
+.tool-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--soft-shadow);
+}
+
+.card-action:active,
+.tool-button:active {
+  transform: scale(0.97);
 }
 
 .talk-page {
@@ -729,7 +758,8 @@ h3 {
 
 .talk-session .talk-dock,
 .talk-session .quick-prompts,
-.talk-session .transcript {
+.talk-session .transcript,
+.talk-session .conversation-tools {
   width: min(820px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
@@ -824,6 +854,13 @@ h3 {
   color: var(--muted);
   cursor: pointer;
   font-size: 0.85rem;
+}
+
+.conversation-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 .page-heading {
@@ -1267,16 +1304,19 @@ footer {
             <span>Talk</span>
             <strong>Natural voice mode</strong>
             <p>Use your mic where Chrome allows it. VoiceMate answers out loud.</p>
+            <button class="card-action page-link" type="button" data-page="talk">Open Talk</button>
           </article>
           <article class="feature-card">
             <span>Upload</span>
             <strong>Files and images</strong>
             <p>Add notes, CSV files, briefs, screenshots, and reference images.</p>
+            <button class="card-action page-link" type="button" data-page="memory">Add Memory</button>
           </article>
           <article class="feature-card">
             <span>Pitch</span>
             <strong>Sales ready answers</strong>
             <p>Turn rough information into clear client friendly talking points.</p>
+            <button class="card-action prompt-link" type="button" data-prompt="Pitch this to a client">Practice Pitch</button>
           </article>
         </div>
       </section>
@@ -1337,6 +1377,11 @@ footer {
           </form>
 
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+          <div class="conversation-tools" aria-label="Conversation tools">
+            <button class="tool-button" id="copyTranscript" type="button">Copy chat</button>
+            <button class="tool-button" id="saveTranscript" type="button">Save chat</button>
+            <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+          </div>
         </div>
       </section>
 
@@ -1407,6 +1452,7 @@ footer {
               VoiceMate uses Grok through the local backend. Your key stays in `.env.local`.
             </p>
             <p class="connection-card" id="grokStatus">Checking connection.</p>
+            <button class="button secondary full" id="testConnection" type="button">Test connection</button>
           </article>
 
           <article class="setup-card activity-card">
@@ -1503,6 +1549,7 @@ const state = {
 const els = {
   navLinks: document.querySelectorAll(".nav-link"),
   pageLinks: document.querySelectorAll(".page-link"),
+  promptLinks: document.querySelectorAll(".prompt-link"),
   pages: document.querySelectorAll("[data-page-panel]"),
   personaList: document.querySelector("#personaList"),
   agentMode: document.querySelector("#agentMode"),
@@ -1524,9 +1571,13 @@ const els = {
   manualContext: document.querySelector("#manualContext"),
   saveContext: document.querySelector("#saveContext"),
   clearMemory: document.querySelector("#clearMemory"),
+  clearTranscript: document.querySelector("#clearTranscript"),
+  copyTranscript: document.querySelector("#copyTranscript"),
+  saveTranscript: document.querySelector("#saveTranscript"),
   memoryGrid: document.querySelector("#memoryGrid"),
   grokStatus: document.querySelector("#grokStatus"),
-  backendStatus: document.querySelector("#backendStatus")
+  backendStatus: document.querySelector("#backendStatus"),
+  testConnection: document.querySelector("#testConnection")
 };
 
 function init() {
@@ -1560,6 +1611,10 @@ function wireEvents() {
 
   els.pageLinks.forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
+  });
+
+  els.promptLinks.forEach((button) => {
+    button.addEventListener("click", () => handlePrompt(button.dataset.prompt || button.textContent));
   });
 
   els.promptForm.addEventListener("submit", (event) => {
@@ -1618,6 +1673,54 @@ function wireEvents() {
     renderMemory();
     addActivity("Cleared memory", "Session memory is empty.");
     addMessage("agent", "I cleared the memory for this session.");
+  });
+
+  els.clearTranscript.addEventListener("click", () => {
+    els.transcript.innerHTML = "";
+    state.talkStarted = false;
+    addActivity("Started new chat", "Transcript cleared.");
+    if (document.body.classList.contains("talk-session")) {
+      startTalkSession();
+    }
+  });
+
+  els.copyTranscript.addEventListener("click", async () => {
+    const text = getTranscriptText();
+    if (!text) {
+      addActivity("Nothing to copy", "The chat is empty.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      addActivity("Copied chat", "Transcript copied to clipboard.");
+    } catch (error) {
+      addActivity("Copy unavailable", "Browser clipboard access was blocked.");
+    }
+  });
+
+  els.saveTranscript.addEventListener("click", () => {
+    const text = getTranscriptText();
+    if (!text) {
+      addActivity("Nothing to save", "The chat is empty.");
+      return;
+    }
+
+    state.memory.push({
+      type: "note",
+      name: `Saved chat ${state.memory.length + 1}`,
+      summary: summarizeText(text),
+      content: text,
+      createdAt: new Date().toISOString()
+    });
+    renderMemory();
+    addActivity("Saved chat", "Transcript added to memory.");
+  });
+
+  els.testConnection.addEventListener("click", async () => {
+    addActivity("Testing connection", "Checking the local Grok backend.");
+    await checkBackend();
+    addActivity(state.backendOnline ? "Grok is connected" : "Grok is not connected", els.grokStatus.textContent);
   });
 
   document.addEventListener("dragover", (event) => event.preventDefault());
@@ -2138,6 +2241,16 @@ function addMessage(role, text) {
   message.textContent = text;
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
+}
+
+function getTranscriptText() {
+  return [...els.transcript.querySelectorAll(".message")]
+    .map((message) => {
+      const speaker = message.classList.contains("user") ? "You" : "VoiceMate";
+      return `${speaker}: ${message.textContent.trim()}`;
+    })
+    .filter(Boolean)
+    .join("\n");
 }
 
 function addActivity(title, detail) {

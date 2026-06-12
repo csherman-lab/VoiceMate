@@ -486,6 +486,10 @@ h3 {
   border-radius: var(--radius-lg);
 }
 
+.feature-card p {
+  min-height: 44px;
+}
+
 .feature-card > span,
 .setup-card > span {
   display: inline-flex;
@@ -503,6 +507,31 @@ h3 {
 .feature-card strong {
   display: block;
   margin-bottom: 8px;
+}
+
+.card-action,
+.tool-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 180ms ease, box-shadow 180ms ease;
+}
+
+.card-action:hover,
+.tool-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--soft-shadow);
+}
+
+.card-action:active,
+.tool-button:active {
+  transform: scale(0.97);
 }
 
 .talk-page {
@@ -718,7 +747,8 @@ h3 {
 
 .talk-session .talk-dock,
 .talk-session .quick-prompts,
-.talk-session .transcript {
+.talk-session .transcript,
+.talk-session .conversation-tools {
   width: min(820px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
@@ -813,6 +843,13 @@ h3 {
   color: var(--muted);
   cursor: pointer;
   font-size: 0.85rem;
+}
+
+.conversation-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 .page-heading {
