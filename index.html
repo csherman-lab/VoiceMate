@@ -28,7 +28,7 @@
         <button class="nav-link active" type="button" data-page="home">Home</button>
         <button class="nav-link" type="button" data-page="talk">Talk</button>
         <button class="nav-link" type="button" data-page="memory">Memory</button>
-        <button class="nav-link" type="button" data-page="setup">Setup</button>
+        <button class="nav-link" type="button" data-page="settings">Settings</button>
       </nav>
     </header>
 
@@ -82,17 +82,21 @@
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
         <div class="talk-stage">
           <div class="talk-top">
-            <div>
-              <p class="eyebrow">Talk</p>
-              <h2>Talk naturally.</h2>
-              <p class="small-copy">Voice, text, files, and images in one simple bar.</p>
+            <div class="session-title">
+              <span class="vm-icon small" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+              <div>
+                <strong>VoiceMate</strong>
+                <span id="modeCaption">Natural conversation</span>
+              </div>
             </div>
             <div class="session-controls">
               <span class="backend-pill" id="backendStatus">Local mode</span>
               <span class="status-pill" id="speechStatus">Ready</span>
               <button class="session-button page-link" type="button" data-page="home">End</button>
-              <button class="session-button page-link" type="button" data-page="memory">Memory</button>
-              <button class="session-button page-link" type="button" data-page="setup">Setup</button>
             </div>
           </div>
 
@@ -105,9 +109,8 @@
             </div>
             <div class="voice-caption">
               <strong id="activePersonaName">Sol</strong>
-              <span id="modeCaption">Natural conversation</span>
+              <span>Listening when you tap the mic</span>
             </div>
-            <div class="talk-voice-picker" id="talkVoicePicker" aria-label="Choose VoiceMate voice"></div>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
@@ -169,11 +172,11 @@
         </div>
       </section>
 
-      <section class="page" id="setupPage" data-page-panel="setup">
+      <section class="page" id="settingsPage" data-page-panel="settings">
         <div class="page-heading">
-          <p class="eyebrow">Setup</p>
-          <h2>Setup</h2>
-          <p class="small-copy">Choose personality, mode, voice, and the production voice plan.</p>
+          <p class="eyebrow">Settings</p>
+          <h2>Settings</h2>
+          <p class="small-copy">Choose the VoiceMate voice, mode, and Grok connection.</p>
         </div>
 
         <div class="setup-grid">

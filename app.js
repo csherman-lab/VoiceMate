@@ -64,7 +64,6 @@ const els = {
   pageLinks: document.querySelectorAll(".page-link"),
   pages: document.querySelectorAll("[data-page-panel]"),
   personaList: document.querySelector("#personaList"),
-  talkVoicePicker: document.querySelector("#talkVoicePicker"),
   systemVoice: document.querySelector("#systemVoice"),
   agentMode: document.querySelector("#agentMode"),
   sampleVoice: document.querySelector("#sampleVoice"),
@@ -114,8 +113,9 @@ function init() {
   );
 
   const pageFromHash = window.location.hash.replace("#", "");
-  if (["home", "talk", "memory", "setup"].includes(pageFromHash)) {
-    showPage(pageFromHash);
+  const initialPage = pageFromHash === "setup" ? "settings" : pageFromHash;
+  if (["home", "talk", "memory", "settings"].includes(initialPage)) {
+    showPage(initialPage);
   }
 
   window.requestAnimationFrame(() => {
@@ -254,7 +254,6 @@ function showPage(page) {
 
 function renderPersonas() {
   els.personaList.innerHTML = "";
-  els.talkVoicePicker.innerHTML = "";
 
   PERSONAS.forEach((persona) => {
     const button = document.createElement("button");
@@ -265,13 +264,6 @@ function renderPersonas() {
     button.innerHTML = `<strong>${persona.name}</strong><span>${persona.style}<br>${persona.bestFor}</span>`;
     button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
-
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = `voice-chip${persona.id === state.persona ? " active" : ""}`;
-    chip.textContent = persona.name;
-    chip.addEventListener("click", () => selectPersona(persona.id, true));
-    els.talkVoicePicker.appendChild(chip);
   });
 
   updatePersonaLabel();
@@ -445,7 +437,7 @@ function answerPrompt(rawPrompt) {
   const images = state.memory.filter((item) => item.type === "image");
 
   if (containsAny(prompt, ["grok", "xai", "api key", "voice model", "better voice"])) {
-    return "Yes, Grok xAI voice is worth testing for the real voice agent. It supports realtime voice, tool use, and simple usage pricing. I would not put the real key inside this static page because anyone could see it. The right setup is a small backend that stores the Grok key, creates a voice session, and lets this page connect safely. For now, this demo uses Chrome voice so it can open as one file.";
+    return "Yes, Grok xAI voice is worth testing for the real voice agent. It supports realtime voice, tool use, and simple usage pricing. I would not put the real key inside this static page because anyone could see it. The right architecture is a small backend that stores the Grok key, creates a voice session, and lets this page connect safely. For now, this demo uses Chrome voice so it can open as one file.";
   }
 
   if (containsAny(prompt, ["what are you", "what do you do", "who are you", "voicemate"])) {

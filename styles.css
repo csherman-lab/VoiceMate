@@ -326,8 +326,7 @@ h3 {
 .dock-button:hover,
 .persona-option:hover,
 .nav-link:hover,
-.session-button:hover,
-.voice-chip:hover {
+.session-button:hover {
   transform: translateY(-1px);
 }
 
@@ -335,8 +334,7 @@ h3 {
 .dock-button:active,
 .persona-option:active,
 .nav-link:active,
-.session-button:active,
-.voice-chip:active {
+.session-button:active {
   transform: scale(0.97);
 }
 
@@ -570,6 +568,33 @@ h3 {
   gap: 8px;
 }
 
+.session-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-title strong,
+.session-title span {
+  display: block;
+}
+
+.session-title strong {
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+
+.session-title span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.vm-icon.small {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+}
+
 .backend-pill,
 .session-button {
   min-height: 32px;
@@ -638,37 +663,6 @@ h3 {
 .voice-caption span {
   color: var(--muted);
   font-size: 0.9rem;
-}
-
-.talk-voice-picker {
-  display: inline-flex;
-  gap: 6px;
-  margin-top: 16px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: var(--soft-shadow);
-  backdrop-filter: blur(18px);
-}
-
-.voice-chip {
-  min-height: 32px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.86rem;
-  font-weight: 730;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 180ms ease, color 180ms ease, box-shadow 180ms ease;
-}
-
-.voice-chip.active {
-  background: white;
-  color: var(--ink);
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.08);
 }
 
 .transcript {
