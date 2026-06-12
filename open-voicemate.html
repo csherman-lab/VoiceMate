@@ -1536,6 +1536,53 @@ select,
   overflow-y: auto;
 }
 
+.settings-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.settings-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-disclosure summary .group-label {
+  display: block;
+  margin: 0 0 3px;
+}
+
+.settings-disclosure summary strong {
+  letter-spacing: -0.02em;
+}
+
+.settings-disclosure summary em {
+  color: var(--blue);
+  font-size: 0.84rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.settings-disclosure[open] summary em {
+  color: var(--muted);
+}
+
+.settings-disclosure .activity-feed {
+  padding: 0 14px 14px;
+}
+
 .activity-item {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
@@ -1781,6 +1828,10 @@ footer {
   .memory-actions,
   .reminder-add {
     grid-template-columns: 1fr;
+  }
+
+  .reminder-add #reminderContactInput {
+    grid-column: auto;
   }
 
   .memory-item {
@@ -2294,7 +2345,7 @@ footer {
 .settings-wrap {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 22px;
   max-width: 640px;
   margin: 0 auto;
 }
@@ -2318,7 +2369,7 @@ footer {
 .group-card {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: 22px;
   background: var(--surface);
   box-shadow: var(--soft-shadow);
   backdrop-filter: blur(24px);
@@ -2336,7 +2387,7 @@ footer {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 13px 16px;
   border-top: 1px solid var(--line);
 }
 
@@ -2441,15 +2492,16 @@ footer {
 
 .group-card .persona-option {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22px;
+  grid-template-columns: 34px minmax(0, 1fr) 22px;
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 13px 16px;
+  padding: 11px 14px;
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
+  cursor: pointer;
 }
 
 .group-card .persona-option:first-child {
@@ -2458,6 +2510,20 @@ footer {
 
 .group-card .persona-option.active {
   background: var(--blue-soft);
+}
+
+.voice-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.55), transparent 42%),
+    linear-gradient(145deg, #7c5cff, #0a84ff);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .group-card .p-text {
@@ -2473,7 +2539,7 @@ footer {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
 }
 
 .group-card .persona-option::after {
@@ -2497,9 +2563,13 @@ footer {
 /* Reminders */
 .reminder-add {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(140px, 0.9fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.62fr) auto;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 12px;
+}
+
+.reminder-add #reminderContactInput {
+  grid-column: 1 / -2;
 }
 
 .reminder-add input {
@@ -2508,7 +2578,7 @@ footer {
   margin: 0;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
   outline: 0;
@@ -3145,6 +3215,7 @@ footer {
       <section class="page" id="settingsPage" data-page-panel="settings">
         <div class="page-heading">
           <h2>Settings</h2>
+          <p class="small-copy">Tune VoiceMate’s voice, conversation style, reminders, and local data.</p>
         </div>
 
         <div class="settings-wrap">
@@ -3153,7 +3224,7 @@ footer {
             <div class="group-card">
               <div class="persona-list" id="personaList" role="listbox" aria-label="Voices"></div>
             </div>
-            <p class="group-foot">Pick the voice VoiceMate speaks with.</p>
+            <p class="group-foot">Pick the voice for typed replies and live calls.</p>
           </section>
 
           <section class="settings-group">
@@ -3163,7 +3234,7 @@ footer {
                 <span class="row-icon" data-icon="chat" data-tint="#5e5ce6"></span>
                 <div class="row-text">
                   <strong>Conversation style</strong>
-                  <span>How VoiceMate approaches your messages</span>
+                  <span>Sets the default workflow when you start talking</span>
                 </div>
                 <select id="agentMode" class="row-control">
                   <option value="companion">Natural chat</option>
@@ -3178,15 +3249,15 @@ footer {
                 <span class="row-icon" data-icon="search" data-tint="#5e5ce6"></span>
                 <div class="row-text">
                   <strong>Language</strong>
-                  <span>Voice and replies. Auto-detect, or pick one</span>
+                  <span>Replies, transcription hints, and browser dictation</span>
                 </div>
                 <select id="langSelect" class="row-control"></select>
               </div>
               <div class="settings-row">
                 <span class="row-icon" data-icon="mic" data-tint="#ff9f0a"></span>
                 <div class="row-text">
-                  <strong>"Hey VoiceMate" wake phrase</strong>
-                  <span>Listen on the Talk screen to start a call hands-free</span>
+                  <strong>Wake phrase</strong>
+                  <span>Listen for “Hey VoiceMate” on the Talk screen</span>
                 </div>
                 <label class="switch">
                   <input type="checkbox" id="wakeToggle" />
@@ -3233,7 +3304,7 @@ footer {
               </div>
               <div class="reminder-list" id="reminderList"></div>
             </div>
-            <p class="group-foot">Ask VoiceMate to remind you, or add a due time and email or phone. VoiceMate can prepare mail or text links from your device.</p>
+            <p class="group-foot">VoiceMate can notify this browser and open email or text drafts from your device. Automatic sending needs a provider later.</p>
           </section>
 
           <section class="settings-group">
@@ -3248,7 +3319,7 @@ footer {
                 <button class="row-button" id="testConnection" type="button">Test</button>
               </div>
             </div>
-            <p class="group-foot">Live voice runs through your local VoiceMate server. Your key stays on the server, never in the browser.</p>
+            <p class="group-foot">Live voice runs through your local server. Your key stays on the server, never in the browser.</p>
           </section>
 
           <section class="settings-group">
@@ -3274,11 +3345,17 @@ footer {
             </div>
           </section>
 
-          <section class="settings-group">
-            <p class="group-label">Session activity</p>
-            <div class="group-card">
+          <section class="settings-group diagnostics-group">
+            <details class="settings-disclosure">
+              <summary>
+                <span>
+                  <small class="group-label">Diagnostics</small>
+                  <strong>Session activity</strong>
+                </span>
+                <em>Open</em>
+              </summary>
               <div class="activity-feed" id="activityFeed"></div>
-            </div>
+            </details>
           </section>
 
           <section class="settings-group">
@@ -3288,7 +3365,7 @@ footer {
                 <span class="row-icon" data-icon="info" data-tint="#8e8e93"></span>
                 <div class="row-text">
                   <strong>VoiceMate</strong>
-                  <span>A human sounding voice companion with skills and memory.</span>
+                  <span>Voice companion with skills, memory, uploads, and live voice.</span>
                 </div>
                 <span class="row-value">0.3.0</span>
               </div>
@@ -4237,7 +4314,10 @@ function renderPersonas() {
     button.className = `persona-option${persona.id === state.persona ? " active" : ""}`;
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", String(persona.id === state.persona));
-    button.innerHTML = `<div class="p-text"><strong>${persona.name}</strong><span>${persona.style} · ${persona.bestFor}</span></div>`;
+    button.innerHTML = `
+      <span class="voice-avatar">${escapeHtml(persona.name.slice(0, 1))}</span>
+      <div class="p-text"><strong>${persona.name}</strong><span>${persona.style}</span></div>
+    `;
     button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
   });
@@ -5796,10 +5876,12 @@ function addReasoning(type, text) {
 }
 
 function addTrace(type, title, detail) {
+  const noisySettingsTitles = new Set(["Started session", "Started talk session", "Mode set", "Voice engine connected", "Skill selected"]);
+  const showInSettings = type !== "system" || !noisySettingsTitles.has(title);
   const item = document.createElement("div");
   item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
-  if (els.activityFeed) {
+  if (els.activityFeed && showInSettings) {
     els.activityFeed.prepend(item.cloneNode(true));
     while (els.activityFeed.children.length > 60) {
       els.activityFeed.removeChild(els.activityFeed.lastChild);

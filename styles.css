@@ -1511,6 +1511,53 @@ select,
   overflow-y: auto;
 }
 
+.settings-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.settings-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-disclosure summary .group-label {
+  display: block;
+  margin: 0 0 3px;
+}
+
+.settings-disclosure summary strong {
+  letter-spacing: -0.02em;
+}
+
+.settings-disclosure summary em {
+  color: var(--blue);
+  font-size: 0.84rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.settings-disclosure[open] summary em {
+  color: var(--muted);
+}
+
+.settings-disclosure .activity-feed {
+  padding: 0 14px 14px;
+}
+
 .activity-item {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
@@ -1756,6 +1803,10 @@ footer {
   .memory-actions,
   .reminder-add {
     grid-template-columns: 1fr;
+  }
+
+  .reminder-add #reminderContactInput {
+    grid-column: auto;
   }
 
   .memory-item {
@@ -2269,7 +2320,7 @@ footer {
 .settings-wrap {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 22px;
   max-width: 640px;
   margin: 0 auto;
 }
@@ -2293,7 +2344,7 @@ footer {
 .group-card {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: 22px;
   background: var(--surface);
   box-shadow: var(--soft-shadow);
   backdrop-filter: blur(24px);
@@ -2311,7 +2362,7 @@ footer {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 13px 16px;
   border-top: 1px solid var(--line);
 }
 
@@ -2416,15 +2467,16 @@ footer {
 
 .group-card .persona-option {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22px;
+  grid-template-columns: 34px minmax(0, 1fr) 22px;
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 13px 16px;
+  padding: 11px 14px;
   border: 0;
   border-top: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
+  cursor: pointer;
 }
 
 .group-card .persona-option:first-child {
@@ -2433,6 +2485,20 @@ footer {
 
 .group-card .persona-option.active {
   background: var(--blue-soft);
+}
+
+.voice-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.55), transparent 42%),
+    linear-gradient(145deg, #7c5cff, #0a84ff);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .group-card .p-text {
@@ -2448,7 +2514,7 @@ footer {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
 }
 
 .group-card .persona-option::after {
@@ -2472,9 +2538,13 @@ footer {
 /* Reminders */
 .reminder-add {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(140px, 0.9fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.62fr) auto;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 12px;
+}
+
+.reminder-add #reminderContactInput {
+  grid-column: 1 / -2;
 }
 
 .reminder-add input {
@@ -2483,7 +2553,7 @@ footer {
   margin: 0;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
   outline: 0;

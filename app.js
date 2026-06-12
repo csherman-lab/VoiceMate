@@ -921,7 +921,10 @@ function renderPersonas() {
     button.className = `persona-option${persona.id === state.persona ? " active" : ""}`;
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", String(persona.id === state.persona));
-    button.innerHTML = `<div class="p-text"><strong>${persona.name}</strong><span>${persona.style} · ${persona.bestFor}</span></div>`;
+    button.innerHTML = `
+      <span class="voice-avatar">${escapeHtml(persona.name.slice(0, 1))}</span>
+      <div class="p-text"><strong>${persona.name}</strong><span>${persona.style}</span></div>
+    `;
     button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
   });
@@ -2480,10 +2483,12 @@ function addReasoning(type, text) {
 }
 
 function addTrace(type, title, detail) {
+  const noisySettingsTitles = new Set(["Started session", "Started talk session", "Mode set", "Voice engine connected", "Skill selected"]);
+  const showInSettings = type !== "system" || !noisySettingsTitles.has(title);
   const item = document.createElement("div");
   item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
-  if (els.activityFeed) {
+  if (els.activityFeed && showInSettings) {
     els.activityFeed.prepend(item.cloneNode(true));
     while (els.activityFeed.children.length > 60) {
       els.activityFeed.removeChild(els.activityFeed.lastChild);
