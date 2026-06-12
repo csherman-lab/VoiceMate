@@ -54,7 +54,9 @@ const state = {
   selectedVoiceURI: "",
   recognition: null,
   recognizing: false,
-  grokKeySaved: Boolean(window.sessionStorage.getItem("voicemateGrokKeyNote"))
+  grokKeySaved: Boolean(window.sessionStorage.getItem("voicemateGrokKeyNote")),
+  backendOnline: false,
+  backendModel: ""
 };
 
 const els = {
@@ -97,6 +99,7 @@ function init() {
   setupSpeechRecognition();
   wireEvents();
   loadSystemVoices();
+  checkBackend();
 
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = loadSystemVoices;
@@ -325,11 +328,48 @@ function handlePrompt(prompt) {
     window.setTimeout(() => addActivity(step.title, step.detail), index * 120);
   });
 
-  window.setTimeout(() => {
-    const answer = answerPrompt(cleaned);
+  window.setTimeout(async () => {
+    const answer = await getAssistantAnswer(cleaned);
     addMessage("agent", answer);
     speak(answer);
   }, Math.max(340, steps.length * 140));
+}
+
+async function getAssistantAnswer(cleaned) {
+  if (!state.backendOnline) {
+    return answerPrompt(cleaned);
+  }
+
+  try {
+    addActivity("Asked Grok", "Using the server key from the backend.");
+    const response = await fetch("/api/grok/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: cleaned,
+        persona: getPersona().name,
+        mode: modeLabel(),
+        memory: state.memory.map((item) => ({
+          name: item.name,
+          type: item.type,
+          summary: item.summary
+        }))
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Grok request failed");
+    }
+
+    addActivity("Received Grok answer", data.model || state.backendModel || "xAI model");
+    return data.answer || answerPrompt(cleaned);
+  } catch (error) {
+    addActivity("Grok fallback", error.message || "Using local response.");
+    return answerPrompt(cleaned);
+  }
 }
 
 function planSteps(prompt) {
@@ -761,7 +801,30 @@ function getImageDimensions(src) {
 
 function updateGrokStatus() {
   const saved = window.sessionStorage.getItem("voicemateGrokKeyNote");
+  if (state.backendOnline) {
+    els.grokStatus.textContent = `Backend connected. Model: ${state.backendModel || "xAI"}.`;
+    return;
+  }
   els.grokStatus.textContent = saved ? `Local key note saved as ${saved}.` : "No key note saved.";
+}
+
+async function checkBackend() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    const data = await response.json();
+    state.backendOnline = Boolean(response.ok && data.xaiConfigured);
+    state.backendModel = data.model || "";
+
+    if (state.backendOnline) {
+      addActivity("Backend connected", `Grok is ready with ${state.backendModel || "xAI"}.`);
+    } else if (response.ok) {
+      addActivity("Backend missing key", "Add XAI_API_KEY to .env.local.");
+    }
+  } catch (error) {
+    state.backendOnline = false;
+  }
+
+  updateGrokStatus();
 }
 
 function maskKey(value) {

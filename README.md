@@ -44,6 +44,37 @@ The developer version:
 
 You do **not** need `localhost`, a terminal, a server, npm, or Python.
 
+## Run it with your Grok xAI key
+
+Use this version when you want VoiceMate to call Grok safely through the backend.
+
+1. Put your key in `.env.local`:
+
+```bash
+XAI_API_KEY=your_real_grok_xai_key_here
+XAI_MODEL=grok-4.3
+```
+
+2. Start the backend:
+
+```bash
+npm start
+```
+
+or:
+
+```bash
+node server.js
+```
+
+3. Open this in Chrome:
+
+```txt
+http://localhost:3000
+```
+
+Now the browser talks to your local backend, and the backend talks to Grok. The key stays in `.env.local` and is not exposed to the browser.
+
 ## Notes
 
 - Text chat and uploads work directly from the file.
@@ -81,6 +112,7 @@ Then open `.env.local` and paste the key here:
 
 ```bash
 XAI_API_KEY=your_real_grok_xai_key_here
+XAI_MODEL=grok-4.3
 ```
 
-`.env.local` is ignored by git, so it should not be pushed to GitHub. The file is for the future backend only. The current one file browser demo still cannot safely call Grok directly.
+`.env.local` is ignored by git, so it should not be pushed to GitHub. The one file browser demo still cannot safely call Grok directly. Use `npm start` or `node server.js` for the Grok connected version.
