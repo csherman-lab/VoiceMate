@@ -2414,8 +2414,31 @@ function eyeLoop() {
   eyes.rot = (eyes.rot || 0) + (rotTarget - (eyes.rot || 0)) * 0.15;
   const transform = `translate(${(eyes.gx * 8).toFixed(2)}%, ${(eyes.gy * 6).toFixed(2)}%) rotate(${eyes.rot.toFixed(2)}deg)`;
   for (const el of eyes.els) el.style.transform = transform;
+  updateOrbTurn();
 
   requestAnimationFrame(eyeLoop);
+}
+
+function updateOrbTurn() {
+  const tiltY = eyes.gx * 15;
+  const tiltX = eyes.gy * -11;
+  const glintX = eyes.gx * -12;
+  const glintY = eyes.gy * -8;
+  const fluidX = eyes.gx * 10;
+  const fluidY = eyes.gy * 8;
+  const glintRot = eyes.gx * -5;
+  const fluidRot = eyes.gx * 8;
+  for (const orb of [els.voiceOrb, els.heroOrb]) {
+    if (!orb) continue;
+    orb.style.setProperty("--orb-tilt-x", `${tiltX.toFixed(2)}deg`);
+    orb.style.setProperty("--orb-tilt-y", `${tiltY.toFixed(2)}deg`);
+    orb.style.setProperty("--orb-glint-x", `${glintX.toFixed(2)}px`);
+    orb.style.setProperty("--orb-glint-y", `${glintY.toFixed(2)}px`);
+    orb.style.setProperty("--orb-glint-rot", `${glintRot.toFixed(2)}deg`);
+    orb.style.setProperty("--orb-fluid-x", `${fluidX.toFixed(2)}px`);
+    orb.style.setProperty("--orb-fluid-y", `${fluidY.toFixed(2)}px`);
+    orb.style.setProperty("--orb-fluid-rot", `${fluidRot.toFixed(2)}deg`);
+  }
 }
 
 function scheduleBlink() {
