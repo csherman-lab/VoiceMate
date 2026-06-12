@@ -1,0 +1,49 @@
+/* Backup of the VoiceMate orb CSS before the darker reference-image update.
+   Restore this block into styles.css if the new orb direction is not preferred. */
+
+.orb {
+  position: relative;
+  border-radius: 50%;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(135% 135% at 30% 24%,
+      #ffffff 0%, #d3e6ff 4%, #4f8bff 20%, #5b54f2 38%, #a83df0 55%, #ff4f97 71%, #ff6a2c 87%, #c0263f 100%);
+  box-shadow:
+    inset 0 3px 4px rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    inset 0 -34px 60px rgba(70, 5, 50, 0.6),
+    inset 0 22px 50px rgba(255, 255, 255, 0.55),
+    inset -18px -10px 50px rgba(90, 40, 160, 0.35),
+    0 18px 44px rgba(120, 70, 220, 0.25);
+  animation: orbHue 14s ease-in-out infinite;
+  will-change: filter;
+}
+
+.orb::before {
+  content: "";
+  position: absolute;
+  inset: -36%;
+  background:
+    conic-gradient(from 0deg at 50% 50%,
+      rgba(80, 130, 255, 0.1), rgba(95, 84, 242, 0.85), rgba(168, 61, 240, 0.8),
+      rgba(255, 79, 151, 0.85), rgba(255, 106, 44, 0.8), rgba(80, 130, 255, 0.1));
+  filter: blur(22px);
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  animation: orbSwirl 9s linear infinite;
+}
+
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(16% 13% at 33% 21%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(46% 36% at 31% 25%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 62%),
+    radial-gradient(13% 10% at 68% 70%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(100% 100% at 50% 50%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.32) 88%, rgba(255, 255, 255, 0) 93%),
+    radial-gradient(120% 80% at 50% 122%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.22) 100%);
+}
