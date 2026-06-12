@@ -1,0 +1,30 @@
+# VoiceMate — Cursor Agent Rules
+
+## Start here every session
+
+Read `AGENTS.md` before touching any other file. It has exact line numbers
+for every major function in server.js and app.js, the full env var list,
+branch map, and task recipes. This eliminates the discovery round entirely.
+
+## Token / cost rules
+
+- NEVER read `styles.css` unless the task is purely visual (3,281 lines, almost never needed).
+- NEVER read `app.js` or `server.js` top-to-bottom. Use Grep + the line map in AGENTS.md.
+- NEVER read `index.html` unless adding new DOM elements.
+- ALWAYS use `Grep` with a specific pattern before reaching for `Read`.
+- ALWAYS use targeted `StrReplace` edits — never rewrite a whole file.
+- ALWAYS use Ask mode (read-only) for exploration and questions. Switch to Agent only when making actual edits.
+- Prefer one focused task per session over broad multi-file refactors.
+
+## Branching
+
+Active base: `cursor/file-image-context-fbd0`
+New branches: `cursor/<descriptive-name>-bee4`
+Never commit to `main`.
+
+## Code style
+
+- Vanilla JS only — no frameworks, no npm packages.
+- No comments that just narrate what the code does.
+- Match the existing indent/quote style (2-space, double quotes).
+- Spoken replies are 1–3 sentences; keep max_completion_tokens at 350.

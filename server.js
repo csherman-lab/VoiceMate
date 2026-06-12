@@ -14,6 +14,9 @@ const XAI_MODEL = process.env.XAI_MODEL || "grok-4.3";
 const XAI_REALTIME_MODEL = process.env.XAI_REALTIME_MODEL || "grok-voice-latest";
 const XAI_DEFAULT_VOICE = (process.env.XAI_VOICE || "ara").toLowerCase();
 const VM_API_TOKEN = process.env.VM_API_TOKEN || "";
+// Cost-reduction flags: set to "1" to enable, "0" (default) to disable.
+const VM_ENRICH_IMAGES = process.env.VM_ENRICH_IMAGES === "1";
+const VM_BROWSER_TTS = process.env.VM_BROWSER_TTS === "1";
 const rateBuckets = new Map();
 
 // Live reload: when on, the server watches the front-end files and tells the
@@ -72,7 +75,9 @@ const server = http.createServer(async (req, res) => {
         xaiConfigured: Boolean(XAI_API_KEY),
         model: XAI_MODEL,
         realtimeModel: XAI_REALTIME_MODEL,
-        defaultVoice: XAI_DEFAULT_VOICE
+        defaultVoice: XAI_DEFAULT_VOICE,
+        enrichImages: VM_ENRICH_IMAGES,
+        browserTts: VM_BROWSER_TTS
       });
     }
 
@@ -135,7 +140,7 @@ function authorizeApi(req, res) {
   }
   bucket.count += 1;
   rateBuckets.set(ip, bucket);
-  if (bucket.count > 120) {
+  if (bucket.count > 60) {
     sendJson(res, 429, { error: "Too many requests" });
     return false;
   }
@@ -412,18 +417,18 @@ function summarizeMemory(memoryItems) {
   for (const item of memoryItems) {
     if (item && item.active) selected.push(item);
   }
-  for (const item of memoryItems.slice(-12)) {
+  for (const item of memoryItems.slice(-8)) {
     if (item && !selected.some((selectedItem) => selectedItem.id && selectedItem.id === item.id)) {
       selected.push(item);
     }
   }
   return selected
-    .slice(0, 12)
+    .slice(0, 8)
     .map((item) => {
       const name = item.name || "note";
       const type = item.type ? `[${item.type}] ` : "";
       const active = item.active ? "active upload: " : "";
-      const excerpt = item.excerpt ? ` excerpt: "${String(item.excerpt).slice(0, 1200)}"` : "";
+      const excerpt = item.excerpt ? ` excerpt: "${String(item.excerpt).slice(0, 600)}"` : "";
       const summary = item.summary ? ` (${item.summary})` : "";
       return `${active}${type}${name}${summary}${excerpt}`.trim();
     })
@@ -436,7 +441,7 @@ function buildChatMessages(body) {
   const mode = String(body.mode || "companion").toLowerCase();
   const memory = Array.isArray(body.memory) ? body.memory : [];
   const reminders = Array.isArray(body.reminders) ? body.reminders : [];
-  const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
+  const history = Array.isArray(body.history) ? body.history.slice(-6) : [];
   const images = Array.isArray(body.images) ? body.images.slice(0, 3) : [];
   const language = String(body.language || "auto");
 
@@ -504,7 +509,7 @@ async function handleGrokChat(req, res) {
   const payload = {
     model: XAI_MODEL,
     temperature: 0.8,
-    max_completion_tokens: 600,
+    max_completion_tokens: 350,
     messages,
     tools: CHAT_TOOLS,
     tool_choice: "auto"
@@ -555,7 +560,7 @@ async function handleGrokChatStream(req, res) {
   const payload = {
     model: XAI_MODEL,
     temperature: 0.8,
-    max_completion_tokens: 600,
+    max_completion_tokens: 350,
     stream: true,
     messages,
     tools: CHAT_TOOLS,

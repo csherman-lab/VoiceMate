@@ -240,7 +240,9 @@ const state = {
   currentAudioUrl: "",
   currentAudio: null,
   streaming: false,
-  live: null
+  live: null,
+  enrichImages: false,
+  browserTts: false
 };
 
 const LANGUAGES = [
@@ -1307,7 +1309,7 @@ async function chatAgent(prompt, images, onDelta) {
     persona: getPersona().id,
     mode: state.mode,
     language: state.language,
-    history: state.history.slice(0, -1).slice(-10),
+    history: state.history.slice(0, -1).slice(-6),
     memory: state.memory.map((item) => memoryForChat(item, prompt)),
     reminders: remindersForContext()
   };
@@ -1316,7 +1318,7 @@ async function chatAgent(prompt, images, onDelta) {
   let citations = [];
   let finalText = "";
 
-  for (let round = 0; round < 4; round++) {
+  for (let round = 0; round < 2; round++) {
     const data = await streamChatRound(
       {
         ...baseBody,
@@ -1414,7 +1416,7 @@ function memoryForContext(item) {
 function remindersForContext() {
   return state.reminders
     .filter((reminder) => !reminder.done)
-    .slice(0, 12)
+    .slice(0, 6)
     .map((reminder, index) => ({
       id: reminder.id,
       name: `Reminder ${index + 1}`,
@@ -1689,34 +1691,57 @@ function answerFromUploadContext(prompt) {
 // Speaking: Grok TTS with a human touch, browser fallback
 // ---------------------------------------------------------------------------
 
+// Simple in-memory TTS cache: maps text → object-URL so repeated short phrases
+// (greetings, skill intros, etc.) never make a second API call.
+const ttsCache = new Map();
+const TTS_CACHE_MAX_CHARS = 120;
+
 async function speak(text) {
   if (state.live) return; // realtime handles its own audio
   const speechText = humanizeForSpeech(text);
   if (!speechText) return;
 
+  // Bypass xAI TTS when the server flag says to use the browser voice.
+  if (state.browserTts) {
+    speakWithBrowser(speechText);
+    return;
+  }
+
   if (state.backendOnline) {
     try {
       setSpeechStatus("Speaking", false, true);
-      const response = await fetch("/api/grok/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: speechText,
-          voiceId: getPersona().id,
-          language: state.language === "auto" ? "en" : state.language,
-          speed: 1.0
-        })
-      });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Voice request failed");
+      // Use the cache for short phrases to skip the API call entirely.
+      const cacheKey = `${getPersona().id}:${state.language}:${speechText}`;
+      let audioUrl = speechText.length <= TTS_CACHE_MAX_CHARS ? ttsCache.get(cacheKey) : undefined;
+
+      if (!audioUrl) {
+        const response = await fetch("/api/grok/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: speechText,
+            voiceId: getPersona().id,
+            language: state.language === "auto" ? "en" : state.language,
+            speed: 1.0
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Voice request failed");
+        }
+
+        const audioBlob = await response.blob();
+        audioUrl = URL.createObjectURL(audioBlob);
+        if (speechText.length <= TTS_CACHE_MAX_CHARS) {
+          ttsCache.set(cacheKey, audioUrl);
+        }
       }
 
-      const audioBlob = await response.blob();
       stopCurrentAudio();
-      state.currentAudioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(state.currentAudioUrl);
+      state.currentAudioUrl = audioUrl;
+      const audio = new Audio(audioUrl);
       state.currentAudio = audio;
 
       // Route through an analyser so the orb flows with the actual words.
@@ -3048,7 +3073,7 @@ async function handleImageFiles(files, options = {}) {
   renderMemory();
   if (activate) noteUploadContext(added);
   addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
-  added.forEach((item) => enrichImageMemory(item));
+  if (state.enrichImages) added.forEach((item) => enrichImageMemory(item));
   return added;
 }
 
@@ -3109,6 +3134,8 @@ async function checkBackend() {
     state.backendOnline = Boolean(response.ok && data.xaiConfigured);
     state.backendModel = data.model || "";
     state.realtimeModel = data.realtimeModel || "";
+    state.enrichImages = Boolean(data.enrichImages);
+    state.browserTts = Boolean(data.browserTts);
     if (state.backendOnline) {
       addActivity("Voice engine connected", "Natural live voice is ready.");
     } else if (response.ok) {
@@ -3756,7 +3783,7 @@ function memoryForChat(item, query) {
     name: item.name,
     type: item.type,
     summary: item.summary,
-    excerpt: item.content ? relevantExcerpt(item.content, query, item.type === "image" ? 300 : 1200) : "",
+    excerpt: item.content ? relevantExcerpt(item.content, query, item.type === "image" ? 200 : 600) : "",
     active: uploadContextItems().some((ctx) => ctx.id === item.id)
   };
 }
