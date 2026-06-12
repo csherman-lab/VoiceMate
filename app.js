@@ -535,6 +535,7 @@ function stopCurrentAudio() {
     URL.revokeObjectURL(state.currentAudioUrl);
     state.currentAudioUrl = "";
   }
+  stopTtsReaction();
 }
 
 // ---------------------------------------------------------------------------
@@ -1020,16 +1021,37 @@ async function speak(text) {
       state.currentAudioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(state.currentAudioUrl);
       state.currentAudio = audio;
+
+      // Route through an analyser so the orb flows with the actual words.
+      let analyser = null;
+      const ctx = getAudioCtx();
+      if (ctx) {
+        try {
+          const srcNode = ctx.createMediaElementSource(audio);
+          analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          srcNode.connect(analyser);
+          analyser.connect(ctx.destination);
+        } catch (error) {
+          analyser = null;
+        }
+      }
+
       audio.onended = () => {
         state.currentAudio = null;
+        stopTtsReaction();
         setSpeechStatus("Ready", false, false);
         startListeningAfterSpeech();
       };
       audio.onerror = () => {
         state.currentAudio = null;
+        stopTtsReaction();
         setSpeechStatus("Ready", false, false);
         startListeningAfterSpeech();
       };
+
+      if (analyser) startTtsReaction(analyser);
+      else setSpeechStatus("Speaking", false, true);
       await audio.play();
       return;
     } catch (error) {
@@ -1266,27 +1288,71 @@ function startMicStreaming(live) {
   };
 }
 
+function analyserRms(analyser, buffer) {
+  analyser.getByteTimeDomainData(buffer);
+  let sum = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    const v = (buffer[i] - 128) / 128;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / buffer.length);
+}
+
 function startOrbReaction(live) {
   if (!els.voiceOrb) return;
   els.voiceOrb.classList.add("reacting");
   const inData = new Uint8Array(live.inAnalyser.fftSize);
   const outData = new Uint8Array(live.outAnalyser.fftSize);
-  const rms = (analyser, buffer) => {
-    analyser.getByteTimeDomainData(buffer);
-    let sum = 0;
-    for (let i = 0; i < buffer.length; i++) {
-      const v = (buffer[i] - 128) / 128;
-      sum += v * v;
-    }
-    return Math.sqrt(sum / buffer.length);
-  };
+  live.smooth = 0;
   const loop = () => {
     if (state.live !== live) return;
-    const level = Math.min(1, Math.max(rms(live.inAnalyser, inData), rms(live.outAnalyser, outData)) * 2.6);
-    els.voiceOrb.style.setProperty("--level", level.toFixed(3));
+    const raw = Math.min(1, Math.max(analyserRms(live.inAnalyser, inData), analyserRms(live.outAnalyser, outData)) * 2.8);
+    // Smooth the level so the orb flows instead of jittering.
+    live.smooth += (raw - live.smooth) * 0.3;
+    els.voiceOrb.style.setProperty("--level", live.smooth.toFixed(3));
     live.raf = requestAnimationFrame(loop);
   };
   live.raf = requestAnimationFrame(loop);
+}
+
+// Shared audio context for typed-reply playback analysis (warmed on first gesture).
+let sharedAudioCtx = null;
+function getAudioCtx() {
+  try {
+    if (!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (sharedAudioCtx.state === "suspended") sharedAudioCtx.resume();
+    return sharedAudioCtx;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Drive the orb from the spoken audio of a typed reply, smoothed so it flows.
+function startTtsReaction(analyser) {
+  setSpeechStatus("Speaking", false, true);
+  if (!els.voiceOrb) return;
+  els.voiceOrb.classList.add("reacting");
+  const data = new Uint8Array(analyser.fftSize);
+  state.smoothLevel = 0;
+  const loop = () => {
+    const raw = Math.min(1, analyserRms(analyser, data) * 3.4);
+    state.smoothLevel += (raw - state.smoothLevel) * 0.3;
+    els.voiceOrb.style.setProperty("--level", state.smoothLevel.toFixed(3));
+    state.ttsRaf = requestAnimationFrame(loop);
+  };
+  state.ttsRaf = requestAnimationFrame(loop);
+}
+
+function stopTtsReaction() {
+  if (state.ttsRaf) {
+    cancelAnimationFrame(state.ttsRaf);
+    state.ttsRaf = null;
+  }
+  state.smoothLevel = 0;
+  if (els.voiceOrb) {
+    els.voiceOrb.classList.remove("reacting");
+    els.voiceOrb.style.removeProperty("--level");
+  }
 }
 
 function handleRealtimeMessage(live, raw) {
@@ -2234,6 +2300,8 @@ function hexToSoft(hex, alpha = 0.14) {
 
 // Track whether the user has used the mic so we don't auto-listen unexpectedly.
 document.addEventListener("click", (event) => {
+  // Warm the audio context on a user gesture so playback analysis works.
+  getAudioCtx();
   if (event.target.closest && event.target.closest("#micButton")) {
     state.autoListen = true;
   }
