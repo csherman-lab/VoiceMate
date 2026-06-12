@@ -8,7 +8,7 @@ const STARTER_MEMORY = [
     type: "brief",
     name: "VoiceMate product brief",
     summary:
-      "VoiceMate is a human-sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
+      "VoiceMate is a human sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
     content:
       "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
     createdAt: new Date().toISOString()
@@ -143,7 +143,7 @@ const TOOL_DEFS = [
   },
   {
     name: "add_reminder",
-    description: "Add a reminder or to-do for the user.",
+    description: "Add a reminder or task for the user.",
     parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] }
   },
   {
@@ -1103,14 +1103,29 @@ function humanizeForSpeech(text) {
     .replace(/https?:\/\/\S+/g, "that link")
     .replace(/^[\s>#-]*[-*]\s+/gm, "")
     .replace(/[*_#>]+/g, "")
+    .replace(/[—–―−]+/g, ", ")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
 function stripSpeechTags(text) {
+  return noDashes(
+    String(text || "")
+      .replace(/<\/?[a-z-]+>/gi, "")
+      .replace(/\[[a-z-]+\]/gi, "")
+  );
+}
+
+// VoiceMate never shows or says a dash. Em/en dashes become a comma pause,
+// hyphens become a space (so "co-founder" reads as "co founder").
+function noDashes(text) {
   return String(text || "")
-    .replace(/<\/?[a-z-]+>/gi, "")
-    .replace(/\[[a-z-]+\]/gi, "")
+    .replace(/[—–―−]+/g, ", ")
+    .replace(/(\w)-(\w)/g, "$1 $2")
+    .replace(/\s-\s/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\s+,/g, ",")
+    .replace(/,(\s*,)+/g, ",")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -1209,7 +1224,7 @@ async function startLiveCall() {
       setLiveButton(true, "End call");
       setSpeechStatus("Live", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
-      if (els.voiceHint) els.voiceHint.textContent = "Listening — just talk";
+      if (els.voiceHint) els.voiceHint.textContent = "Listening, just talk";
       addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
       addMessage("agent", "I'm live. Just start talking whenever you're ready.");
     });
@@ -1575,7 +1590,7 @@ function setSpeechStatus(label, listening, speaking = false) {
 function addMessage(role, text) {
   const message = document.createElement("div");
   message.className = `message ${role}`;
-  message.textContent = text;
+  message.textContent = role === "user" ? text : noDashes(text);
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
   return message;
