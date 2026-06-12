@@ -175,6 +175,26 @@ const TOOL_DEFS = [
       },
       required: ["skill"]
     }
+  },
+  {
+    name: "get_current_time",
+    description: "Get the current local date and time.",
+    parameters: { type: "object", properties: {} }
+  },
+  {
+    name: "calculate",
+    description: "Evaluate a basic arithmetic expression.",
+    parameters: { type: "object", properties: { expression: { type: "string" } }, required: ["expression"] }
+  },
+  {
+    name: "get_weather",
+    description: "Get the current weather for a place.",
+    parameters: { type: "object", properties: { location: { type: "string" } }, required: ["location"] }
+  },
+  {
+    name: "open_link",
+    description: "Open a web URL in the browser.",
+    parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] }
   }
 ];
 
@@ -187,6 +207,7 @@ const state = {
   reminders: [],
   persona: "ara",
   mode: "companion",
+  language: "auto",
   recognition: null,
   recognizing: false,
   backendOnline: false,
@@ -194,11 +215,34 @@ const state = {
   realtimeModel: "",
   talkStarted: false,
   history: [],
+  conversations: [],
+  currentConvo: null,
+  wakeEnabled: false,
+  wakeRec: null,
   currentAudioUrl: "",
   currentAudio: null,
   streaming: false,
   live: null
 };
+
+const LANGUAGES = [
+  { id: "auto", name: "Auto-detect" },
+  { id: "en", name: "English" },
+  { id: "es-ES", name: "Spanish" },
+  { id: "fr", name: "French" },
+  { id: "de", name: "German" },
+  { id: "it", name: "Italian" },
+  { id: "pt-BR", name: "Portuguese" },
+  { id: "hi", name: "Hindi" },
+  { id: "zh", name: "Chinese" },
+  { id: "ja", name: "Japanese" },
+  { id: "ko", name: "Korean" },
+  { id: "ru", name: "Russian" },
+  { id: "ar-SA", name: "Arabic" },
+  { id: "tr", name: "Turkish" },
+  { id: "vi", name: "Vietnamese" },
+  { id: "id", name: "Indonesian" }
+];
 
 const els = {};
 
@@ -249,7 +293,15 @@ function cacheEls() {
     reminderInput: document.querySelector("#reminderInput"),
     addReminder: document.querySelector("#addReminder"),
     exportData: document.querySelector("#exportData"),
-    importData: document.querySelector("#importData")
+    importData: document.querySelector("#importData"),
+    historyButton: document.querySelector("#historyButton"),
+    historyModal: document.querySelector("#historyModal"),
+    historyList: document.querySelector("#historyList"),
+    historySearch: document.querySelector("#historySearch"),
+    historyClose: document.querySelector("#historyClose"),
+    cameraButton: document.querySelector("#cameraButton"),
+    langSelect: document.querySelector("#langSelect"),
+    wakeToggle: document.querySelector("#wakeToggle")
   });
 }
 
@@ -265,7 +317,9 @@ function init() {
   renderQuickPrompts();
   renderMemory();
   renderReminders();
+  renderLanguages();
   if (els.agentMode) els.agentMode.value = state.mode;
+  if (els.wakeToggle) els.wakeToggle.checked = state.wakeEnabled;
   updateModeCaption();
   updateGrokStatus();
   setLiveButton(false, "Start call");
@@ -406,13 +460,40 @@ function wireEvents() {
 
   els.clearTranscript.addEventListener("click", () => {
     els.transcript.innerHTML = "";
-    state.history = [];
+    newConversation();
     state.talkStarted = false;
-    addActivity("Started new chat", "Transcript cleared.");
+    addActivity("Started new chat", "Saved the last one and started fresh.");
     if (document.body.classList.contains("talk-session")) {
       startTalkSession();
     }
   });
+
+  if (els.historyButton) els.historyButton.addEventListener("click", openHistory);
+  if (els.historyClose) els.historyClose.addEventListener("click", closeHistory);
+  if (els.historyModal) {
+    els.historyModal.addEventListener("click", (event) => {
+      if (event.target === els.historyModal) closeHistory();
+    });
+  }
+  if (els.historySearch) {
+    els.historySearch.addEventListener("input", () => renderConversations(els.historySearch.value));
+  }
+  if (els.cameraButton) els.cameraButton.addEventListener("click", handleCamera);
+  if (els.langSelect) {
+    els.langSelect.addEventListener("change", (event) => {
+      state.language = event.target.value;
+      saveState();
+      addActivity("Language set", `Voice language is ${event.target.options[event.target.selectedIndex].text}.`);
+    });
+  }
+  if (els.wakeToggle) {
+    els.wakeToggle.addEventListener("change", (event) => {
+      state.wakeEnabled = event.target.checked;
+      saveState();
+      updateWake();
+      toast(state.wakeEnabled ? "Wake phrase on" : "Wake phrase off");
+    });
+  }
 
   els.copyTranscript.addEventListener("click", async () => {
     const text = getTranscriptText();
@@ -497,6 +578,7 @@ function showPage(page) {
   }
 
   addActivity("Opened page", `${titleCase(page)} is active.`);
+  updateWake();
   if (window.location.hash.replace("#", "") !== page) {
     window.history.replaceState(null, "", `#${page}`);
   }
@@ -513,7 +595,7 @@ function startTalkSession() {
 
   addActivity("Started talk session", `${persona.name} voice is active.`);
   addMessage("agent", stripSpeechTags(greeting));
-  state.history.push({ role: "assistant", content: stripSpeechTags(greeting) });
+  pushHistory("assistant", stripSpeechTags(greeting));
   speak(greeting);
 }
 
@@ -627,6 +709,18 @@ function updateModeCaption() {
   els.modeCaption.textContent = modeLabel();
 }
 
+function renderLanguages() {
+  if (!els.langSelect) return;
+  els.langSelect.innerHTML = "";
+  LANGUAGES.forEach((lang) => {
+    const option = document.createElement("option");
+    option.value = lang.id;
+    option.textContent = lang.name;
+    els.langSelect.appendChild(option);
+  });
+  els.langSelect.value = state.language;
+}
+
 function renderQuickPrompts() {
   els.quickPrompts.innerHTML = "";
   SUGGESTED_PROMPTS.forEach((prompt) => {
@@ -720,7 +814,7 @@ async function handlePrompt(prompt) {
 
   showPage("talk");
   addMessage("user", cleaned);
-  state.history.push({ role: "user", content: cleaned });
+  pushHistory("user", cleaned);
   els.promptInput.value = "";
 
   const detected = detectSkill(cleaned);
@@ -766,7 +860,8 @@ async function respond(prompt) {
   bubble.classList.remove("typing");
   bubble.textContent = stripSpeechTags(spoken);
   if (citations.length) renderCitations(bubble, citations);
-  state.history.push({ role: "assistant", content: stripSpeechTags(spoken) });
+  pushHistory("assistant", stripSpeechTags(spoken));
+  setExpression(detectExpression(spoken));
 
   state.streaming = false;
   speak(spoken);
@@ -779,8 +874,9 @@ async function chatAgent(prompt, images) {
     message: prompt,
     persona: getPersona().id,
     mode: state.mode,
+    language: state.language,
     history: state.history.slice(0, -1).slice(-10),
-    memory: state.memory.map(memoryForContext)
+    memory: state.memory.map((item) => memoryForChat(item, prompt))
   };
 
   let toolMessages = [];
@@ -815,7 +911,7 @@ async function chatAgent(prompt, images) {
         args = {};
       }
       addReasoning("action", `Using ${prettyTool(call.function?.name)}.`);
-      const result = executeTool(call.function?.name, args);
+      const result = await executeTool(call.function?.name, args);
       toolMessages.push({ role: "tool", tool_call_id: call.id, content: String(result) });
     }
   }
@@ -844,9 +940,56 @@ function collectImagesForPrompt(prompt) {
 // Tools — what VoiceMate can actually do
 // ---------------------------------------------------------------------------
 
-function executeTool(name, args) {
+async function executeTool(name, args) {
   args = args || {};
   switch (name) {
+    case "get_current_time": {
+      return new Date().toLocaleString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+    case "calculate": {
+      const expr = String(args.expression || "").trim();
+      if (!/^[0-9+\-*/().%\s]+$/.test(expr)) return "I can only do basic arithmetic.";
+      try {
+        const value = Function('"use strict";return (' + expr + ")")();
+        if (!Number.isFinite(value)) return "That doesn't work out to a number.";
+        return `${expr} is ${Math.round(value * 1e6) / 1e6}`;
+      } catch (error) {
+        return "I couldn't work that out.";
+      }
+    }
+    case "get_weather": {
+      const loc = String(args.location || "").trim();
+      if (!loc) return "Which place?";
+      try {
+        const geo = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(loc)}&count=1`
+        ).then((r) => r.json());
+        const place = geo.results && geo.results[0];
+        if (!place) return `I couldn't find ${loc}.`;
+        const data = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,weather_code&temperature_unit=fahrenheit`
+        ).then((r) => r.json());
+        const c = data.current || {};
+        toast(`Weather in ${place.name}`);
+        return `In ${place.name} it's about ${Math.round(c.temperature_2m)} degrees, ${weatherDesc(c.weather_code)}, feels like ${Math.round(c.apparent_temperature)}.`;
+      } catch (error) {
+        return "I couldn't get the weather right now.";
+      }
+    }
+    case "open_link": {
+      let url = String(args.url || "").trim();
+      if (!url) return "No link given.";
+      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      window.open(url, "_blank", "noopener");
+      toast("Opening link");
+      return `Opening ${url}.`;
+    }
     case "remember_fact": {
       const text = String(args.text || "").trim();
       if (!text) return "Nothing to remember.";
@@ -919,9 +1062,40 @@ function prettyTool(name) {
     list_reminders: "reminders (list)",
     complete_reminder: "reminders (complete)",
     set_voice: "voice settings",
-    set_skill: "skill switch"
+    set_skill: "skill switch",
+    get_current_time: "the clock",
+    calculate: "the calculator",
+    get_weather: "the weather",
+    open_link: "your browser"
   };
   return labels[name] || name || "a tool";
+}
+
+function weatherDesc(code) {
+  const map = {
+    0: "clear",
+    1: "mostly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "foggy",
+    48: "foggy",
+    51: "drizzly",
+    53: "drizzly",
+    55: "drizzly",
+    61: "rainy",
+    63: "rainy",
+    65: "heavy rain",
+    71: "snowy",
+    73: "snowy",
+    75: "heavy snow",
+    80: "rain showers",
+    81: "rain showers",
+    82: "heavy showers",
+    95: "stormy",
+    96: "stormy",
+    99: "stormy"
+  };
+  return map[code] || "mixed";
 }
 
 function renderCitations(bubble, citations) {
@@ -1008,6 +1182,7 @@ async function speak(text) {
         body: JSON.stringify({
           text: speechText,
           voiceId: getPersona().id,
+          language: state.language === "auto" ? "en" : state.language,
           speed: 1.0
         })
       });
@@ -1169,6 +1344,7 @@ async function startLiveCall() {
   }
 
   showPage("talk");
+  stopWake();
   setLiveButton(true, "Connecting...");
   addActivity("Starting call", "Requesting a secure voice session.");
 
@@ -1211,6 +1387,7 @@ async function startLiveCall() {
       body: JSON.stringify({
         voice: getPersona().id,
         mode: state.mode,
+        language: state.language,
         memory: state.memory.map(memoryForContext)
       })
     });
@@ -1395,7 +1572,7 @@ function handleRealtimeMessage(live, raw) {
         addMessage("user", text);
       }
       if (text) {
-        state.history.push({ role: "user", content: text });
+        pushHistory("user", text);
         live.lastUserFinal = text;
       }
       live.curUser = null;
@@ -1425,7 +1602,10 @@ function handleRealtimeMessage(live, raw) {
       } else if (finalText) {
         addMessage("agent", finalText);
       }
-      if (finalText) state.history.push({ role: "assistant", content: finalText });
+      if (finalText) {
+        pushHistory("assistant", finalText);
+        setExpression(detectExpression(finalText));
+      }
       live.curAsst = null;
       live.curAsstText = "";
       break;
@@ -1444,16 +1624,17 @@ function handleRealtimeMessage(live, raw) {
         args = {};
       }
       addReasoning("action", `Using ${prettyTool(msg.name)}.`);
-      const result = executeTool(msg.name, args);
-      if (live.ws && live.ws.readyState === WebSocket.OPEN) {
-        live.ws.send(
-          JSON.stringify({
-            type: "conversation.item.create",
-            item: { type: "function_call_output", call_id: msg.call_id, output: String(result) }
-          })
-        );
-        live.ws.send(JSON.stringify({ type: "response.create" }));
-      }
+      Promise.resolve(executeTool(msg.name, args)).then((result) => {
+        if (live.ws && live.ws.readyState === WebSocket.OPEN) {
+          live.ws.send(
+            JSON.stringify({
+              type: "conversation.item.create",
+              item: { type: "function_call_output", call_id: msg.call_id, output: String(result) }
+            })
+          );
+          live.ws.send(JSON.stringify({ type: "response.create" }));
+        }
+      });
       break;
     }
 
@@ -1536,6 +1717,7 @@ function endLiveCall(note) {
   setLiveButton(false, "Start call");
   setSpeechStatus("Ready", false, false);
   updateGrokStatus();
+  updateWake();
   if (note) {
     addActivity("Call ended", note);
     addMessage("agent", note);
@@ -1752,7 +1934,9 @@ function eyeLoop() {
 
   eyes.gx += (eyes.tx - eyes.gx) * 0.12;
   eyes.gy += (eyes.ty - eyes.gy) * 0.12;
-  const transform = `translate(${(eyes.gx * 8).toFixed(2)}%, ${(eyes.gy * 6).toFixed(2)}%)`;
+  const rotTarget = eyes.expr === "curious" ? 7 : 0;
+  eyes.rot = (eyes.rot || 0) + (rotTarget - (eyes.rot || 0)) * 0.15;
+  const transform = `translate(${(eyes.gx * 8).toFixed(2)}%, ${(eyes.gy * 6).toFixed(2)}%) rotate(${eyes.rot.toFixed(2)}deg)`;
   for (const el of eyes.els) el.style.transform = transform;
 
   requestAnimationFrame(eyeLoop);
@@ -2171,7 +2355,11 @@ const ICONS = {
   home: '<path d="m3 9.5 9-7 9 7V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
   archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/>',
   gear:
-    '<circle cx="12" cy="12" r="3"/><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/>'
+    '<circle cx="12" cy="12" r="3"/><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/>',
+  camera:
+    '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.7-2.5h7.6L17.5 6H21a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/>',
+  history:
+    '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.6-6.4L3 8"/><path d="M12 7v5l3.5 2"/>'
 };
 
 function svgIcon(name) {
@@ -2223,6 +2411,9 @@ function loadState() {
     if (Array.isArray(data.reminders)) state.reminders = data.reminders;
     if (data.persona && GROK_VOICES.find((persona) => persona.id === data.persona)) state.persona = data.persona;
     if (data.mode && SKILLS.find((skill) => skill.id === data.mode)) state.mode = data.mode;
+    if (data.language && LANGUAGES.find((lang) => lang.id === data.language)) state.language = data.language;
+    if (Array.isArray(data.conversations)) state.conversations = data.conversations;
+    if (typeof data.wakeEnabled === "boolean") state.wakeEnabled = data.wakeEnabled;
   } catch (error) {
     // ignore storage errors
   }
@@ -2236,7 +2427,10 @@ function saveState() {
         memory: state.memory,
         reminders: state.reminders,
         persona: state.persona,
-        mode: state.mode
+        mode: state.mode,
+        language: state.language,
+        wakeEnabled: state.wakeEnabled,
+        conversations: state.conversations.slice(0, 40)
       })
     );
   } catch (error) {
@@ -2269,6 +2463,309 @@ async function importData(file) {
     toast("Imported memory");
   } catch (error) {
     toast("Couldn't read that file");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Saved conversations
+// ---------------------------------------------------------------------------
+
+function ensureConversation() {
+  if (!state.currentConvo) {
+    state.currentConvo = {
+      id: "c" + Date.now() + Math.random().toString(36).slice(2, 6),
+      title: "New conversation",
+      titled: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: []
+    };
+    state.conversations.unshift(state.currentConvo);
+  }
+  return state.currentConvo;
+}
+
+function pushHistory(role, content) {
+  state.history.push({ role, content });
+  const convo = ensureConversation();
+  convo.messages.push({ role, content });
+  convo.updatedAt = Date.now();
+  if (role === "user" && !convo.titled) {
+    convo.title = truncate(content, 46);
+    convo.titled = true;
+  }
+  saveState();
+}
+
+function newConversation() {
+  if (state.currentConvo && !state.currentConvo.titled) {
+    state.conversations = state.conversations.filter((c) => c.id !== state.currentConvo.id);
+  }
+  state.currentConvo = null;
+  state.history = [];
+  saveState();
+}
+
+function resumeConversation(id) {
+  const convo = state.conversations.find((c) => c.id === id);
+  if (!convo) return;
+  if (state.currentConvo && !state.currentConvo.titled && state.currentConvo.id !== id) {
+    state.conversations = state.conversations.filter((c) => c.id !== state.currentConvo.id);
+  }
+  state.currentConvo = convo;
+  state.history = convo.messages.map((m) => ({ role: m.role, content: m.content }));
+  els.transcript.innerHTML = "";
+  convo.messages.forEach((m) => addMessage(m.role === "user" ? "user" : "agent", m.content));
+  state.talkStarted = true;
+  closeHistory();
+  showPage("talk");
+  toast("Resumed conversation");
+}
+
+function deleteConversation(id) {
+  state.conversations = state.conversations.filter((c) => c.id !== id);
+  if (state.currentConvo && state.currentConvo.id === id) {
+    state.currentConvo = null;
+    state.history = [];
+  }
+  saveState();
+  renderConversations(els.historySearch ? els.historySearch.value : "");
+}
+
+function openHistory() {
+  renderConversations("");
+  if (els.historyModal) {
+    els.historyModal.hidden = false;
+    if (els.historySearch) {
+      els.historySearch.value = "";
+      els.historySearch.focus();
+    }
+  }
+}
+
+function closeHistory() {
+  if (els.historyModal) els.historyModal.hidden = true;
+}
+
+function renderConversations(filter) {
+  if (!els.historyList) return;
+  const q = (filter || "").toLowerCase();
+  const list = state.conversations
+    .filter((c) => c.titled)
+    .filter((c) => {
+      if (!q) return true;
+      const hay = (c.title + " " + c.messages.map((m) => m.content).join(" ")).toLowerCase();
+      return hay.includes(q);
+    });
+  els.historyList.innerHTML = "";
+  if (!list.length) {
+    const empty = document.createElement("p");
+    empty.className = "reminder-empty";
+    empty.textContent = q ? "No matches." : "No saved conversations yet.";
+    els.historyList.appendChild(empty);
+    return;
+  }
+  list.forEach((c) => {
+    const last = c.messages[c.messages.length - 1];
+    const row = document.createElement("div");
+    row.className = "convo-item";
+    row.innerHTML = `
+      <button class="convo-open" type="button">
+        <strong>${escapeHtml(c.title)}</strong>
+        <span>${escapeHtml(noDashes(last ? last.content : "").slice(0, 72))}</span>
+      </button>
+      <button class="convo-del" type="button" aria-label="Delete conversation">${svgIcon("trash")}</button>
+    `;
+    row.querySelector(".convo-open").addEventListener("click", () => resumeConversation(c.id));
+    row.querySelector(".convo-del").addEventListener("click", () => deleteConversation(c.id));
+    els.historyList.appendChild(row);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Document Q&A: retrieve the most relevant excerpt for the question
+// ---------------------------------------------------------------------------
+
+function relevantExcerpt(content, query, max = 900) {
+  const text = String(content || "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const chunks = [];
+  let cur = "";
+  for (const s of sentences) {
+    if ((cur + s).length > 320) {
+      if (cur) chunks.push(cur.trim());
+      cur = s;
+    } else {
+      cur += s;
+    }
+  }
+  if (cur) chunks.push(cur.trim());
+  const qWords = new Set(query.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
+  const scored = chunks.map((ch) => {
+    const hay = ch.toLowerCase();
+    let score = 0;
+    qWords.forEach((w) => {
+      if (hay.includes(w)) score++;
+    });
+    return { ch, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 4).filter((s, i) => s.score > 0 || i < 1);
+  let out = "";
+  for (const s of top) {
+    if ((out + s.ch).length > max) break;
+    out += s.ch + " ";
+  }
+  return out.trim() || text.slice(0, max);
+}
+
+function memoryForChat(item, query) {
+  return {
+    name: item.name,
+    type: item.type,
+    summary: item.summary,
+    excerpt: item.content ? relevantExcerpt(item.content, query) : ""
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Orb expressions: smile on upbeat, tilt on a question
+// ---------------------------------------------------------------------------
+
+let exprTimer = null;
+
+function detectExpression(text) {
+  const t = String(text || "");
+  if (/[!]|\b(great|awesome|nice|love|glad|happy|congrats|amazing|perfect|yay|excited|wonderful|haha)\b/i.test(t)) {
+    return "happy";
+  }
+  if (t.trim().endsWith("?")) return "curious";
+  return null;
+}
+
+function setExpression(type) {
+  clearTimeout(exprTimer);
+  eyes.expr = type;
+  eyes.els.forEach((el) => el.classList.toggle("happy", type === "happy"));
+  if (type) {
+    exprTimer = setTimeout(() => {
+      eyes.expr = null;
+      eyes.els.forEach((el) => el.classList.remove("happy"));
+    }, 2600);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wake phrase ("Hey VoiceMate") — optional, listens only on the Talk page
+// ---------------------------------------------------------------------------
+
+function updateWake() {
+  const onTalk = document.body.classList.contains("talk-session");
+  if (state.wakeEnabled && onTalk && !state.live) startWake();
+  else stopWake();
+}
+
+function startWake() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition || state.wakeRec || state.live || !state.wakeEnabled) return;
+  try {
+    const rec = new Recognition();
+    rec.lang = "en-US";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (event) => {
+      const text = Array.from(event.results)
+        .map((r) => r[0].transcript)
+        .join(" ")
+        .toLowerCase();
+      if (/hey,?\s*voice\s*mate|hey,?\s*voicemate/.test(text)) {
+        stopWake();
+        startLiveCall();
+      }
+    };
+    rec.onend = () => {
+      state.wakeRec = null;
+      updateWake();
+    };
+    rec.onerror = () => {};
+    state.wakeRec = rec;
+    rec.start();
+  } catch (error) {
+    state.wakeRec = null;
+  }
+}
+
+function stopWake() {
+  if (state.wakeRec) {
+    try {
+      state.wakeRec.onend = null;
+      state.wakeRec.stop();
+    } catch (error) {
+      // ignore
+    }
+    state.wakeRec = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Camera: show VoiceMate something live
+// ---------------------------------------------------------------------------
+
+async function capturePhoto() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+    await video.play();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    stream.getTracks().forEach((t) => t.stop());
+    return canvas.toDataURL("image/jpeg", 0.8);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function handleCamera() {
+  toast("Opening camera");
+  const dataUrl = await capturePhoto();
+  if (!dataUrl) {
+    addMessage("agent", "I couldn't open the camera. Check the browser permission.");
+    return;
+  }
+  state.memory.push({
+    type: "image",
+    name: `Photo ${new Date().toLocaleTimeString()}`,
+    summary: "Photo captured during the session.",
+    preview: dataUrl,
+    content: "A photo the user captured with the camera.",
+    createdAt: new Date().toISOString()
+  });
+  renderMemory();
+  if (state.live && state.live.ws && state.live.ws.readyState === WebSocket.OPEN) {
+    state.live.ws.send(
+      JSON.stringify({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            { type: "input_text", text: "Here is something I'm showing you." },
+            { type: "input_image", image_url: dataUrl }
+          ]
+        }
+      })
+    );
+    state.live.ws.send(JSON.stringify({ type: "response.create" }));
+    toast("Shared with VoiceMate");
+  } else {
+    addMessage("agent", "Got it, I can see the photo. Ask me anything about it.");
   }
 }
 
@@ -2352,6 +2849,11 @@ function setupShortcuts() {
       event.preventDefault();
       showPage("talk");
       els.promptInput.focus();
+    }
+    // Space starts a call (hands-free) when on Talk and not typing.
+    if (event.code === "Space" && !typing && !event.repeat && document.body.classList.contains("talk-session")) {
+      event.preventDefault();
+      if (!state.live) startLiveCall();
     }
   });
 }
