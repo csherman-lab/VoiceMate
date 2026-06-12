@@ -3239,7 +3239,7 @@ function playOrbSquint(orb) {
   eyeEl.classList.remove("squinting");
   void eyeEl.offsetWidth;
   eyeEl.classList.add("squinting");
-  window.setTimeout(() => eyeEl.classList.remove("squinting"), 1000);
+  window.setTimeout(() => eyeEl.classList.remove("squinting"), 500);
 }
 
 function setEyeMode(mode) {

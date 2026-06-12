@@ -1,7 +1,7 @@
 // VoiceMate service worker — offline app shell.
 // API calls always hit the network; static assets are cache-first.
 
-const CACHE = "voicemate-v11";
+const CACHE = "voicemate-v12";
 const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
