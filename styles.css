@@ -477,9 +477,19 @@ h3 {
   transform: scaleY(0.5);
 }
 
-/* Blink (wins over smile while it fires) */
+/* Tap squint — casual one-second narrow */
+.orb-eyes.squinting i {
+  transform: scaleY(0.4);
+}
+
+/* Blink (wins over smile / squint while it fires) */
 .orb-eyes.blinking i {
   transform: scaleY(0.08);
+}
+
+.orb.tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hero-orb {

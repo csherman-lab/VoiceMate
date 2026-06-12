@@ -326,6 +326,7 @@ function init() {
   setupSpeechRecognition();
   setupShortcuts();
   setupEyes();
+  setupOrbTap();
   registerServiceWorker();
   wireEvents();
 
@@ -1870,6 +1871,29 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function setupOrbTap() {
+  const squint = () => squintOnce(1000);
+  [els.heroOrb, els.voiceOrb].forEach((orb) => {
+    if (!orb) return;
+    orb.classList.add("tappable");
+    orb.addEventListener("click", squint);
+  });
+  const brand = document.querySelector(".brand.page-link");
+  if (brand) brand.addEventListener("click", squint);
+}
+
+let squintTimer = null;
+
+function squintOnce(durationMs = 1000) {
+  if (!eyes.els.length) return;
+  clearTimeout(squintTimer);
+  eyes.els.forEach((el) => el.classList.add("squinting"));
+  squintTimer = window.setTimeout(() => {
+    eyes.els.forEach((el) => el.classList.remove("squinting"));
+    squintTimer = null;
+  }, durationMs);
 }
 
 function setEyeMode(mode) {
