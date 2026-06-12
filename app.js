@@ -283,6 +283,9 @@ function cacheEls() {
     personaList: document.querySelector("#personaList"),
     agentMode: document.querySelector("#agentMode"),
     sampleVoice: document.querySelector("#sampleVoice"),
+    talkStage: document.querySelector("#talkStage"),
+    focusOrbWrap: document.querySelector("#focusOrbWrap"),
+    talkStatus: document.querySelector("#talkStatus"),
     activePersonaName: document.querySelector("#activePersonaName"),
     modeCaption: document.querySelector("#modeCaption"),
     speechStatus: document.querySelector("#speechStatus"),
@@ -430,16 +433,12 @@ function wireEvents() {
     if (!state.recognition) {
       addMessage(
         "agent",
-        "Voice input isn't available in this browser session. You can still type, or tap Start call for the live voice."
+        "Voice input isn't available in this browser. Type a message, or start a live call when the server is connected."
       );
-      addActivity("Voice input unavailable", "This browser did not provide speech input.");
       return;
     }
-    if (state.recognizing) {
-      state.recognition.stop();
-    } else {
-      state.recognition.start();
-    }
+    if (state.recognizing) state.recognition.stop();
+    else state.recognition.start();
   });
 
   if (els.liveButton) {
@@ -627,21 +626,24 @@ function wireEvents() {
     });
   }
 
-  els.copyTranscript.addEventListener("click", async () => {
-    const text = getTranscriptText();
-    if (!text) {
-      addActivity("Nothing to copy", "The chat is empty.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      addActivity("Copied chat", "Transcript copied to clipboard.");
-    } catch (error) {
-      addActivity("Copy unavailable", "Browser clipboard access was blocked.");
-    }
-  });
+  if (els.copyTranscript) {
+    els.copyTranscript.addEventListener("click", async () => {
+      const text = getTranscriptText();
+      if (!text) {
+        addActivity("Nothing to copy", "The chat is empty.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        addActivity("Copied chat", "Transcript copied to clipboard.");
+      } catch (error) {
+        addActivity("Copy unavailable", "Browser clipboard access was blocked.");
+      }
+    });
+  }
 
-  els.saveTranscript.addEventListener("click", () => {
+  if (els.saveTranscript) {
+    els.saveTranscript.addEventListener("click", () => {
     const text = getTranscriptText();
     if (!text) {
       addActivity("Nothing to save", "The chat is empty.");
@@ -662,7 +664,8 @@ function wireEvents() {
     );
     renderMemory();
     addActivity("Saved chat", "Transcript added to memory.");
-  });
+    });
+  }
 
   els.testConnection.addEventListener("click", async () => {
     addActivity("Testing connection", "Checking the voice connection.");
@@ -870,7 +873,8 @@ function renderContextChips() {
   }
   if (els.contextPill) {
     els.contextPill.hidden = !active.length;
-    els.contextPill.textContent = active.length ? `Context (${active.length})` : "Context";
+    els.contextPill.textContent =
+      active.length === 1 ? `${active[0].name} attached` : `${active.length} files attached`;
   }
   if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length || !state.contextOpen;
   if (els.contextBackdrop) els.contextBackdrop.hidden = !active.length || !state.contextOpen;
@@ -1156,7 +1160,7 @@ function selectPersona(personaId, preview) {
 }
 
 function updatePersonaLabel() {
-  els.activePersonaName.textContent = getPersona().name;
+  if (els.activePersonaName) els.activePersonaName.textContent = getPersona().name;
 }
 
 function setMode(modeId, fromSelect) {
@@ -1174,7 +1178,8 @@ function setMode(modeId, fromSelect) {
 }
 
 function updateModeCaption() {
-  els.modeCaption.textContent = modeLabel();
+  if (els.modeCaption) els.modeCaption.textContent = modeLabel();
+  renderSkillWorkflowBanner();
 }
 
 function renderLanguages() {
@@ -2105,7 +2110,8 @@ async function startLiveCall() {
       setLiveButton(true, "End call");
       setSpeechStatus("Listening", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
-      if (els.voiceHint) els.voiceHint.textContent = "Listening, just talk";
+      if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
+      updateTalkChrome();
       addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
       addMessage("system", "Live call started. Just talk.");
     });
@@ -2509,6 +2515,7 @@ function endLiveCall(note) {
   setSpeechStatus("Ready", false, false);
   setOrbMood(state.backendOnline ? "idle" : "offline");
   updateGrokStatus();
+  updateTalkChrome();
   updateWake();
   if (note) {
     addActivity("Call ended", note);
@@ -2626,7 +2633,7 @@ function setupSpeechRecognition() {
 
   state.recognition.onstart = () => {
     state.recognizing = true;
-    els.micButton.classList.add("recording");
+    if (els.micButton) els.micButton.classList.add("recording");
     setSpeechStatus("Listening", true);
     addActivity("Listening", "Microphone input started.");
   };
@@ -2649,7 +2656,7 @@ function setupSpeechRecognition() {
 
   state.recognition.onend = () => {
     state.recognizing = false;
-    els.micButton.classList.remove("recording");
+    if (els.micButton) els.micButton.classList.remove("recording");
     setSpeechStatus("Ready", false);
   };
 }
@@ -2670,13 +2677,24 @@ function startListeningAfterSpeech() {
 // ---------------------------------------------------------------------------
 
 function setSpeechStatus(label, listening, speaking = false) {
-  els.speechStatus.textContent = label;
   const normalized = String(label || "").toLowerCase();
-  els.speechStatus.className = "status-pill";
-  if (speaking) els.speechStatus.classList.add("speaking");
-  else if (listening || normalized.includes("live") || normalized.includes("you're speaking")) els.speechStatus.classList.add("live");
-  else if (normalized.includes("thinking") || normalized.includes("connecting")) els.speechStatus.classList.add("thinking");
-  else if (normalized.includes("error") || normalized.includes("issue") || normalized.includes("interrupted")) els.speechStatus.classList.add("error");
+  if (els.talkStatus) {
+    if (state.live && state.callStartedAt && els.talkStatus.dataset.baseStatus) {
+      const timer = els.callTimer?.textContent || "";
+      els.talkStatus.textContent = timer ? `${label} · ${timer}` : label;
+    } else {
+      els.talkStatus.textContent = label;
+    }
+    els.talkStatus.className = "talk-status";
+    if (speaking) els.talkStatus.classList.add("speaking");
+    else if (listening || normalized.includes("you're speaking")) els.talkStatus.classList.add("live");
+    else if (normalized.includes("thinking") || normalized.includes("connecting")) els.talkStatus.classList.add("thinking");
+    else if (normalized.includes("error") || normalized.includes("issue") || normalized.includes("interrupted")) {
+      els.talkStatus.classList.add("error");
+    }
+    if (state.live) els.talkStatus.dataset.baseStatus = label;
+  }
+  if (els.speechStatus) els.speechStatus.textContent = label;
 
   [els.voiceOrb, els.heroOrb].forEach((orb) => {
     if (!orb) return;
@@ -2971,9 +2989,11 @@ function wordsToAnimatedHtml(text, animate) {
 }
 
 function updateTalkChrome() {
-  if (els.quickPrompts && els.transcript) {
-    const hasMessages = Boolean(els.transcript.querySelector(".message"));
-    els.quickPrompts.hidden = hasMessages;
+  const hasMessages = Boolean(els.transcript?.querySelector(".message"));
+  if (els.quickPrompts) els.quickPrompts.hidden = hasMessages;
+  if (els.talkStage) {
+    els.talkStage.classList.toggle("talk-compact", hasMessages && !state.live);
+    els.talkStage.classList.toggle("talk-live", Boolean(state.live));
   }
   if (els.thinkingDrawer && els.talkTrace && !els.talkTrace.children.length) {
     els.thinkingDrawer.hidden = true;
@@ -3296,17 +3316,21 @@ async function enrichImageMemory(item) {
 
 function updateGrokStatus() {
   if (state.backendOnline) {
-    els.grokStatus.textContent = "Connected. Natural live voice is ready.";
-    els.backendStatus.textContent = "VoiceMate voice";
-    els.backendStatus.classList.add("connected");
-    if (els.voiceHint) els.voiceHint.textContent = "Tap Start live call to talk out loud";
+    if (els.grokStatus) els.grokStatus.textContent = "Connected. Natural live voice is ready.";
+    if (els.backendStatus) {
+      els.backendStatus.textContent = "VoiceMate voice";
+      els.backendStatus.classList.add("connected");
+    }
+    if (els.voiceHint && !state.live) els.voiceHint.textContent = "Tap below to start a live call, or type a message.";
     if (!state.live) setLiveButton(false, "Start live call");
     return;
   }
-  els.backendStatus.textContent = "Browser voice";
-  els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
-  if (els.voiceHint) els.voiceHint.textContent = "Browser preview. Set up the server for live voice";
+  if (els.backendStatus) {
+    els.backendStatus.textContent = "Browser voice";
+    els.backendStatus.classList.remove("connected");
+  }
+  if (els.grokStatus) els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
+  if (els.voiceHint && !state.live) els.voiceHint.textContent = "Type a message. Connect the server in Settings for live voice.";
   if (!state.live) setLiveButton(false, "Set up live voice");
 }
 
@@ -3653,75 +3677,30 @@ function stopCallTimer() {
 }
 
 function updateCallTimer() {
-  if (!els.callTimer || !state.callStartedAt) return;
+  if (!state.callStartedAt) return;
   const seconds = Math.floor((Date.now() - state.callStartedAt) / 1000);
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
-  els.callTimer.textContent = `Live · ${mm}:${ss}`;
+  const timer = `${mm}:${ss}`;
+  if (els.callTimer) els.callTimer.textContent = timer;
+  if (els.talkStatus && state.live && els.talkStatus.dataset.baseStatus) {
+    els.talkStatus.textContent = `${els.talkStatus.dataset.baseStatus} · ${timer}`;
+  }
 }
 
 function renderSkillWorkflowBanner() {
-  if (!els.skillWorkflowBanner) return;
+  if (!els.voiceHint || state.mode === "companion" || !state.talkStarted) return;
+  const hasMessages = Boolean(els.transcript?.querySelector(".message"));
+  if (hasMessages || state.live) return;
   const copy = SKILL_WORKFLOW_COPY[state.mode];
-  if (!copy || !state.talkStarted) {
-    els.skillWorkflowBanner.hidden = true;
-    return;
-  }
-  els.skillWorkflowBanner.hidden = false;
-  els.skillWorkflowBanner.innerHTML = `<strong>${escapeHtml(modeLabel())}</strong>${escapeHtml(copy)}`;
+  if (copy) els.voiceHint.textContent = copy.split(".")[0] + ".";
 }
 
 function renderTalkUploadCards() {
-  if (!els.talkUploadCards) return;
-  const active = activeUploadItems().filter((item) => item.type !== "brief");
-  if (!active.length || !state.talkStarted) {
+  if (els.talkUploadCards) {
     els.talkUploadCards.hidden = true;
     els.talkUploadCards.innerHTML = "";
-    return;
   }
-  els.talkUploadCards.hidden = false;
-  els.talkUploadCards.innerHTML = active
-    .map((item) => {
-      const tint = memoryTint(item.type);
-      return `
-        <article class="upload-card" data-id="${escapeHtml(item.id)}">
-          <span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>
-          <div>
-            <strong>${escapeHtml(item.name)}</strong>
-            <small>${escapeHtml(memoryLabel(item.type))} · ${escapeHtml(item.summary || "Ready to discuss")}</small>
-          </div>
-          <div class="upload-card-actions">
-            <button type="button" data-action="ask">Ask</button>
-            <button type="button" data-action="summarize">Summarize</button>
-            <button type="button" data-action="compare">Compare</button>
-            <button type="button" data-action="remove">Remove</button>
-          </div>
-        </article>`;
-    })
-    .join("");
-  els.talkUploadCards.querySelectorAll(".upload-card").forEach((card) => {
-    const item = active.find((entry) => entry.id === card.dataset.id);
-    if (!item) return;
-    card.querySelector('[data-action="ask"]')?.addEventListener("click", () => {
-      handlePrompt(`Talk about ${item.name}. What should I know?`);
-    });
-    card.querySelector('[data-action="summarize"]')?.addEventListener("click", () => {
-      handlePrompt(`Summarize ${item.name} and tell me what stands out.`);
-    });
-    card.querySelector('[data-action="compare"]')?.addEventListener("click", () => {
-      const others = active.filter((entry) => entry.id !== item.id);
-      if (!others.length) {
-        toast("Add another file to compare");
-        return;
-      }
-      handlePrompt(`Compare ${item.name} with ${others[0].name}. What overlaps, what differs, and what should I do next?`);
-    });
-    card.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
-      removeFromActiveContext(item.id);
-      renderTalkUploadCards();
-      renderContextChips();
-    });
-  });
 }
 
 function memorySourceLabel(item) {

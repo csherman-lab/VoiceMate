@@ -1072,6 +1072,91 @@ h3 {
   gap: 18px;
 }
 
+.talk-top-minimal {
+  margin-bottom: 4px;
+}
+
+.talk-status {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color 180ms ease;
+}
+
+.talk-status.live,
+.talk-status.speaking {
+  color: var(--blue);
+}
+
+.talk-status.thinking {
+  color: #bf5af2;
+}
+
+.talk-status.error {
+  color: var(--red);
+}
+
+.talk-compact .focus-orb-wrap {
+  display: none;
+}
+
+.talk-live .focus-orb-wrap {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.talk-live .focus-orb {
+  width: min(140px, 34vw);
+  height: min(140px, 34vw);
+}
+
+.talk-live .voice-hint,
+.talk-live .call-cta {
+  display: none;
+}
+
+.talk-live .transcript {
+  max-height: min(48vh, 520px);
+}
+
+.voice-hint {
+  max-width: 28ch;
+  margin: 18px 0 14px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+}
+
+.context-link {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.context-link:hover {
+  text-decoration: underline;
+}
+
+.tool-button.recording {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--red);
+}
+
+.talk-compact .transcript {
+  max-height: min(52vh, 560px);
+}
+
 .session-controls {
   display: flex;
   align-items: center;
@@ -3848,48 +3933,31 @@ footer {
 
       <!-- TALK -->
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
-        <div class="talk-stage">
-          <div class="talk-top">
+        <div class="talk-stage" id="talkStage">
+          <div class="talk-top talk-top-minimal">
             <div class="session-title">
               <span class="vm-logo small" id="talkLogo" aria-hidden="true"></span>
               <div>
                 <strong>VoiceMate</strong>
-                <span id="modeCaption">Natural chat</span>
+                <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
               </div>
-            </div>
-            <div class="session-controls">
-              <span class="call-timer" id="callTimer" hidden aria-live="polite">Live · 00:00</span>
-              <span class="voice-pill" id="backendStatus">Browser voice</span>
-              <span class="status-pill" id="speechStatus">Ready</span>
-              <button class="session-button camera-button" id="cameraButton" type="button" aria-label="Show the camera">
-                <span class="dock-icon" data-icon="camera"></span>
-              </button>
-              <button class="session-button end-button page-link" type="button" data-page="home">Leave</button>
             </div>
           </div>
 
-          <div class="skill-workflow-banner" id="skillWorkflowBanner" hidden></div>
-
-          <div class="focus-orb-wrap">
+          <div class="focus-orb-wrap" id="focusOrbWrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
               <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
             </div>
-            <div class="voice-caption">
-              <strong id="activePersonaName">Ara</strong>
-              <span id="voiceHint">Tap Start live call to talk out loud</span>
-            </div>
+            <p class="voice-hint" id="voiceHint">Tap below to start a live call, or type a message.</p>
             <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
               <span class="call-icon" id="callIcon"></span>
               <span class="live-label">Start live call</span>
             </button>
           </div>
 
-          <div class="talk-upload-cards" id="talkUploadCards" hidden aria-label="Active uploads"></div>
-
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
           <form class="composer" id="promptForm">
-            <button class="context-pill" id="contextPill" type="button" hidden>Context</button>
             <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,.pdf,.doc,.docx,image/*" />
               <span class="dock-icon" data-icon="plus"></span>
@@ -3898,29 +3966,38 @@ footer {
               <input
                 id="promptInput"
                 autocomplete="off"
-                placeholder="Message"
+                placeholder="Message VoiceMate"
                 aria-label="Message VoiceMate"
               />
-              <button class="composer-mic mic-button" id="micButton" type="button" aria-label="Use microphone">
-                <span class="dock-icon" data-icon="mic"></span>
-              </button>
             </div>
             <button class="composer-send send-button" type="submit" aria-label="Send message">
               <span class="dock-icon" data-icon="arrow-up"></span>
             </button>
           </form>
 
+          <button class="context-link" id="contextPill" type="button" hidden></button>
+
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+
           <details class="talk-more">
-            <summary>More</summary>
+            <summary>Tools</summary>
             <div class="conversation-tools" aria-label="Conversation tools">
-              <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+              <button class="tool-button" id="micButton" type="button">Dictate</button>
+              <button class="tool-button subtle" id="cameraButton" type="button">Photo</button>
+              <button class="tool-button subtle" id="contextButton" type="button">Context</button>
+              <button class="tool-button subtle" id="clearTranscript" type="button">New chat</button>
               <button class="tool-button subtle" id="historyButton" type="button">History</button>
-              <button class="tool-button subtle" id="contextButton" type="button">Context sheet</button>
-              <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
-              <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
             </div>
           </details>
+
+          <!-- Hidden status hooks for scripts -->
+          <span id="speechStatus" hidden aria-hidden="true"></span>
+          <span id="backendStatus" hidden aria-hidden="true"></span>
+          <span id="callTimer" hidden aria-hidden="true"></span>
+          <span id="modeCaption" hidden aria-hidden="true"></span>
+          <strong id="activePersonaName" hidden aria-hidden="true"></strong>
+          <div id="skillWorkflowBanner" hidden aria-hidden="true"></div>
+          <div id="talkUploadCards" hidden aria-hidden="true"></div>
 
           <div class="sheet-backdrop" id="contextBackdrop" hidden></div>
           <div class="talk-context-panel bottom-sheet" id="talkContextPanel" role="dialog" aria-modal="true" aria-labelledby="contextTitle" hidden>
@@ -4663,6 +4740,9 @@ function cacheEls() {
     personaList: document.querySelector("#personaList"),
     agentMode: document.querySelector("#agentMode"),
     sampleVoice: document.querySelector("#sampleVoice"),
+    talkStage: document.querySelector("#talkStage"),
+    focusOrbWrap: document.querySelector("#focusOrbWrap"),
+    talkStatus: document.querySelector("#talkStatus"),
     activePersonaName: document.querySelector("#activePersonaName"),
     modeCaption: document.querySelector("#modeCaption"),
     speechStatus: document.querySelector("#speechStatus"),
@@ -4810,16 +4890,12 @@ function wireEvents() {
     if (!state.recognition) {
       addMessage(
         "agent",
-        "Voice input isn't available in this browser session. You can still type, or tap Start call for the live voice."
+        "Voice input isn't available in this browser. Type a message, or start a live call when the server is connected."
       );
-      addActivity("Voice input unavailable", "This browser did not provide speech input.");
       return;
     }
-    if (state.recognizing) {
-      state.recognition.stop();
-    } else {
-      state.recognition.start();
-    }
+    if (state.recognizing) state.recognition.stop();
+    else state.recognition.start();
   });
 
   if (els.liveButton) {
@@ -5007,21 +5083,24 @@ function wireEvents() {
     });
   }
 
-  els.copyTranscript.addEventListener("click", async () => {
-    const text = getTranscriptText();
-    if (!text) {
-      addActivity("Nothing to copy", "The chat is empty.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      addActivity("Copied chat", "Transcript copied to clipboard.");
-    } catch (error) {
-      addActivity("Copy unavailable", "Browser clipboard access was blocked.");
-    }
-  });
+  if (els.copyTranscript) {
+    els.copyTranscript.addEventListener("click", async () => {
+      const text = getTranscriptText();
+      if (!text) {
+        addActivity("Nothing to copy", "The chat is empty.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        addActivity("Copied chat", "Transcript copied to clipboard.");
+      } catch (error) {
+        addActivity("Copy unavailable", "Browser clipboard access was blocked.");
+      }
+    });
+  }
 
-  els.saveTranscript.addEventListener("click", () => {
+  if (els.saveTranscript) {
+    els.saveTranscript.addEventListener("click", () => {
     const text = getTranscriptText();
     if (!text) {
       addActivity("Nothing to save", "The chat is empty.");
@@ -5042,7 +5121,8 @@ function wireEvents() {
     );
     renderMemory();
     addActivity("Saved chat", "Transcript added to memory.");
-  });
+    });
+  }
 
   els.testConnection.addEventListener("click", async () => {
     addActivity("Testing connection", "Checking the voice connection.");
@@ -5250,7 +5330,8 @@ function renderContextChips() {
   }
   if (els.contextPill) {
     els.contextPill.hidden = !active.length;
-    els.contextPill.textContent = active.length ? `Context (${active.length})` : "Context";
+    els.contextPill.textContent =
+      active.length === 1 ? `${active[0].name} attached` : `${active.length} files attached`;
   }
   if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length || !state.contextOpen;
   if (els.contextBackdrop) els.contextBackdrop.hidden = !active.length || !state.contextOpen;
@@ -5536,7 +5617,7 @@ function selectPersona(personaId, preview) {
 }
 
 function updatePersonaLabel() {
-  els.activePersonaName.textContent = getPersona().name;
+  if (els.activePersonaName) els.activePersonaName.textContent = getPersona().name;
 }
 
 function setMode(modeId, fromSelect) {
@@ -5554,7 +5635,8 @@ function setMode(modeId, fromSelect) {
 }
 
 function updateModeCaption() {
-  els.modeCaption.textContent = modeLabel();
+  if (els.modeCaption) els.modeCaption.textContent = modeLabel();
+  renderSkillWorkflowBanner();
 }
 
 function renderLanguages() {
@@ -6485,7 +6567,8 @@ async function startLiveCall() {
       setLiveButton(true, "End call");
       setSpeechStatus("Listening", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
-      if (els.voiceHint) els.voiceHint.textContent = "Listening, just talk";
+      if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
+      updateTalkChrome();
       addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
       addMessage("system", "Live call started. Just talk.");
     });
@@ -6889,6 +6972,7 @@ function endLiveCall(note) {
   setSpeechStatus("Ready", false, false);
   setOrbMood(state.backendOnline ? "idle" : "offline");
   updateGrokStatus();
+  updateTalkChrome();
   updateWake();
   if (note) {
     addActivity("Call ended", note);
@@ -7006,7 +7090,7 @@ function setupSpeechRecognition() {
 
   state.recognition.onstart = () => {
     state.recognizing = true;
-    els.micButton.classList.add("recording");
+    if (els.micButton) els.micButton.classList.add("recording");
     setSpeechStatus("Listening", true);
     addActivity("Listening", "Microphone input started.");
   };
@@ -7029,7 +7113,7 @@ function setupSpeechRecognition() {
 
   state.recognition.onend = () => {
     state.recognizing = false;
-    els.micButton.classList.remove("recording");
+    if (els.micButton) els.micButton.classList.remove("recording");
     setSpeechStatus("Ready", false);
   };
 }
@@ -7050,13 +7134,24 @@ function startListeningAfterSpeech() {
 // ---------------------------------------------------------------------------
 
 function setSpeechStatus(label, listening, speaking = false) {
-  els.speechStatus.textContent = label;
   const normalized = String(label || "").toLowerCase();
-  els.speechStatus.className = "status-pill";
-  if (speaking) els.speechStatus.classList.add("speaking");
-  else if (listening || normalized.includes("live") || normalized.includes("you're speaking")) els.speechStatus.classList.add("live");
-  else if (normalized.includes("thinking") || normalized.includes("connecting")) els.speechStatus.classList.add("thinking");
-  else if (normalized.includes("error") || normalized.includes("issue") || normalized.includes("interrupted")) els.speechStatus.classList.add("error");
+  if (els.talkStatus) {
+    if (state.live && state.callStartedAt && els.talkStatus.dataset.baseStatus) {
+      const timer = els.callTimer?.textContent || "";
+      els.talkStatus.textContent = timer ? `${label} · ${timer}` : label;
+    } else {
+      els.talkStatus.textContent = label;
+    }
+    els.talkStatus.className = "talk-status";
+    if (speaking) els.talkStatus.classList.add("speaking");
+    else if (listening || normalized.includes("you're speaking")) els.talkStatus.classList.add("live");
+    else if (normalized.includes("thinking") || normalized.includes("connecting")) els.talkStatus.classList.add("thinking");
+    else if (normalized.includes("error") || normalized.includes("issue") || normalized.includes("interrupted")) {
+      els.talkStatus.classList.add("error");
+    }
+    if (state.live) els.talkStatus.dataset.baseStatus = label;
+  }
+  if (els.speechStatus) els.speechStatus.textContent = label;
 
   [els.voiceOrb, els.heroOrb].forEach((orb) => {
     if (!orb) return;
@@ -7351,9 +7446,11 @@ function wordsToAnimatedHtml(text, animate) {
 }
 
 function updateTalkChrome() {
-  if (els.quickPrompts && els.transcript) {
-    const hasMessages = Boolean(els.transcript.querySelector(".message"));
-    els.quickPrompts.hidden = hasMessages;
+  const hasMessages = Boolean(els.transcript?.querySelector(".message"));
+  if (els.quickPrompts) els.quickPrompts.hidden = hasMessages;
+  if (els.talkStage) {
+    els.talkStage.classList.toggle("talk-compact", hasMessages && !state.live);
+    els.talkStage.classList.toggle("talk-live", Boolean(state.live));
   }
   if (els.thinkingDrawer && els.talkTrace && !els.talkTrace.children.length) {
     els.thinkingDrawer.hidden = true;
@@ -7676,17 +7773,21 @@ async function enrichImageMemory(item) {
 
 function updateGrokStatus() {
   if (state.backendOnline) {
-    els.grokStatus.textContent = "Connected. Natural live voice is ready.";
-    els.backendStatus.textContent = "VoiceMate voice";
-    els.backendStatus.classList.add("connected");
-    if (els.voiceHint) els.voiceHint.textContent = "Tap Start live call to talk out loud";
+    if (els.grokStatus) els.grokStatus.textContent = "Connected. Natural live voice is ready.";
+    if (els.backendStatus) {
+      els.backendStatus.textContent = "VoiceMate voice";
+      els.backendStatus.classList.add("connected");
+    }
+    if (els.voiceHint && !state.live) els.voiceHint.textContent = "Tap below to start a live call, or type a message.";
     if (!state.live) setLiveButton(false, "Start live call");
     return;
   }
-  els.backendStatus.textContent = "Browser voice";
-  els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
-  if (els.voiceHint) els.voiceHint.textContent = "Browser preview. Set up the server for live voice";
+  if (els.backendStatus) {
+    els.backendStatus.textContent = "Browser voice";
+    els.backendStatus.classList.remove("connected");
+  }
+  if (els.grokStatus) els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
+  if (els.voiceHint && !state.live) els.voiceHint.textContent = "Type a message. Connect the server in Settings for live voice.";
   if (!state.live) setLiveButton(false, "Set up live voice");
 }
 
@@ -8033,75 +8134,30 @@ function stopCallTimer() {
 }
 
 function updateCallTimer() {
-  if (!els.callTimer || !state.callStartedAt) return;
+  if (!state.callStartedAt) return;
   const seconds = Math.floor((Date.now() - state.callStartedAt) / 1000);
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
-  els.callTimer.textContent = `Live · ${mm}:${ss}`;
+  const timer = `${mm}:${ss}`;
+  if (els.callTimer) els.callTimer.textContent = timer;
+  if (els.talkStatus && state.live && els.talkStatus.dataset.baseStatus) {
+    els.talkStatus.textContent = `${els.talkStatus.dataset.baseStatus} · ${timer}`;
+  }
 }
 
 function renderSkillWorkflowBanner() {
-  if (!els.skillWorkflowBanner) return;
+  if (!els.voiceHint || state.mode === "companion" || !state.talkStarted) return;
+  const hasMessages = Boolean(els.transcript?.querySelector(".message"));
+  if (hasMessages || state.live) return;
   const copy = SKILL_WORKFLOW_COPY[state.mode];
-  if (!copy || !state.talkStarted) {
-    els.skillWorkflowBanner.hidden = true;
-    return;
-  }
-  els.skillWorkflowBanner.hidden = false;
-  els.skillWorkflowBanner.innerHTML = `<strong>${escapeHtml(modeLabel())}</strong>${escapeHtml(copy)}`;
+  if (copy) els.voiceHint.textContent = copy.split(".")[0] + ".";
 }
 
 function renderTalkUploadCards() {
-  if (!els.talkUploadCards) return;
-  const active = activeUploadItems().filter((item) => item.type !== "brief");
-  if (!active.length || !state.talkStarted) {
+  if (els.talkUploadCards) {
     els.talkUploadCards.hidden = true;
     els.talkUploadCards.innerHTML = "";
-    return;
   }
-  els.talkUploadCards.hidden = false;
-  els.talkUploadCards.innerHTML = active
-    .map((item) => {
-      const tint = memoryTint(item.type);
-      return `
-        <article class="upload-card" data-id="${escapeHtml(item.id)}">
-          <span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>
-          <div>
-            <strong>${escapeHtml(item.name)}</strong>
-            <small>${escapeHtml(memoryLabel(item.type))} · ${escapeHtml(item.summary || "Ready to discuss")}</small>
-          </div>
-          <div class="upload-card-actions">
-            <button type="button" data-action="ask">Ask</button>
-            <button type="button" data-action="summarize">Summarize</button>
-            <button type="button" data-action="compare">Compare</button>
-            <button type="button" data-action="remove">Remove</button>
-          </div>
-        </article>`;
-    })
-    .join("");
-  els.talkUploadCards.querySelectorAll(".upload-card").forEach((card) => {
-    const item = active.find((entry) => entry.id === card.dataset.id);
-    if (!item) return;
-    card.querySelector('[data-action="ask"]')?.addEventListener("click", () => {
-      handlePrompt(`Talk about ${item.name}. What should I know?`);
-    });
-    card.querySelector('[data-action="summarize"]')?.addEventListener("click", () => {
-      handlePrompt(`Summarize ${item.name} and tell me what stands out.`);
-    });
-    card.querySelector('[data-action="compare"]')?.addEventListener("click", () => {
-      const others = active.filter((entry) => entry.id !== item.id);
-      if (!others.length) {
-        toast("Add another file to compare");
-        return;
-      }
-      handlePrompt(`Compare ${item.name} with ${others[0].name}. What overlaps, what differs, and what should I do next?`);
-    });
-    card.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
-      removeFromActiveContext(item.id);
-      renderTalkUploadCards();
-      renderContextChips();
-    });
-  });
 }
 
 function memorySourceLabel(item) {
