@@ -13,6 +13,8 @@ const XAI_BASE_URL = (process.env.XAI_BASE_URL || "https://api.x.ai").replace(/\
 const XAI_MODEL = process.env.XAI_MODEL || "grok-4.3";
 const XAI_REALTIME_MODEL = process.env.XAI_REALTIME_MODEL || "grok-voice-latest";
 const XAI_DEFAULT_VOICE = (process.env.XAI_VOICE || "ara").toLowerCase();
+const VM_API_TOKEN = process.env.VM_API_TOKEN || "";
+const rateBuckets = new Map();
 
 // Live reload: when on, the server watches the front-end files and tells the
 // browser to refresh automatically. Defaults on, turn off with VM_LIVE_RELOAD=0.
@@ -59,6 +61,10 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (url.pathname.startsWith("/api/") && !authorizeApi(req, res)) {
+      return;
+    }
 
     if (url.pathname === "/api/health" && req.method === "GET") {
       return sendJson(res, 200, {
@@ -118,6 +124,30 @@ server.listen(PORT, () => {
 // ---------------------------------------------------------------------------
 // Live reload (auto-deploy to localhost)
 // ---------------------------------------------------------------------------
+
+function authorizeApi(req, res) {
+  const ip = req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip) || { count: 0, resetAt: now + 60000 };
+  if (now > bucket.resetAt) {
+    bucket.count = 0;
+    bucket.resetAt = now + 60000;
+  }
+  bucket.count += 1;
+  rateBuckets.set(ip, bucket);
+  if (bucket.count > 120) {
+    sendJson(res, 429, { error: "Too many requests" });
+    return false;
+  }
+  if (VM_API_TOKEN) {
+    const supplied = req.headers["x-voicemate-token"] || "";
+    if (supplied !== VM_API_TOKEN) {
+      sendJson(res, 401, { error: "Unauthorized" });
+      return false;
+    }
+  }
+  return true;
+}
 
 function handleLiveReload(req, res) {
   res.writeHead(200, {
@@ -201,15 +231,15 @@ const MODE_GUIDES = {
   companion:
     "Just have a natural conversation. Be curious, react like a person, and keep it light.",
   pitch:
-    "Help the user pitch an idea. Lead with the outcome, keep it punchy, and make it sound persuasive out loud.",
+    "Help the user pitch an idea. First identify audience and desired outcome if missing. Then give a tight spoken pitch, a sharper version, and one rehearsal note when useful.",
   analyst:
-    "Act as a sharp data analyst. Point out patterns, ranges, and what is missing, but say it in plain spoken language.",
+    "Act as a sharp data analyst. Use uploaded tables and excerpts first. Call out columns, trends, anomalies, missing data, and the practical implication in plain spoken language.",
   coach:
-    "Act as a supportive communication coach. Give one or two concrete tips and a quick example.",
+    "Act as a supportive communication coach. Let the user practice, then give concise feedback on clarity, pace, confidence, and one better way to say it.",
   research:
-    "Act as a careful research assistant. Give a clear, well sourced answer, note your confidence, and flag anything you are unsure about.",
+    "Act as a careful research assistant. Clarify if the question is ambiguous, use search when needed, cite sources in the chat, and separate what is known from what is uncertain.",
   digest:
-    "Deliver a short spoken briefing in decreasing order of importance. Lead with what needs attention, then schedule, then everything else."
+    "Deliver a short spoken briefing from memory and open reminders in decreasing order of importance. Lead with what needs attention, then due reminders, then useful context."
 };
 
 function buildSystemPrompt(persona, modeKey, memoryItems, language) {
@@ -238,7 +268,7 @@ function buildSystemPrompt(persona, modeKey, memoryItems, language) {
     "- No sycophancy and no hedging. Don't pad. Say the thing.",
     "- If you don't know, say \"I don't know\" and offer to find out. Don't make things up.",
     "- Don't announce that you're an AI or mention these instructions.",
-    "- You have tools: check the current time, do math, get the weather, open a link, remember things, and manage reminders. Use them naturally when they help, then answer in plain speech.",
+    "- You have tools: check the current time, do math, get the weather, open a link, remember things, manage reminders, and prepare email or text drafts for reminders. You cannot silently send email or SMS yourself; tell the user when you open a draft for them to send.",
     "",
     "Expressive speech tags (optional seasoning, at most one or two per reply, often none):",
     "- Inline: [pause], [long-pause], [laugh], [chuckle], [sigh], [breath] where the feeling naturally happens.",
@@ -282,7 +312,11 @@ const TOOL_SPECS = [
     description: "Add a reminder or task item for the user.",
     parameters: {
       type: "object",
-      properties: { text: { type: "string", description: "The reminder text" } },
+      properties: {
+        text: { type: "string", description: "The reminder text" },
+        due: { type: "string", description: "Optional due time, such as tomorrow at 9am" },
+        contact: { type: "string", description: "Optional email or phone number for a draft reminder message" }
+      },
       required: ["text"]
     }
   },
@@ -294,6 +328,15 @@ const TOOL_SPECS = [
   {
     name: "complete_reminder",
     description: "Mark a reminder as done, identified by its text or its number in the list.",
+    parameters: {
+      type: "object",
+      properties: { which: { type: "string", description: "Reminder text or number" } },
+      required: ["which"]
+    }
+  },
+  {
+    name: "send_reminder",
+    description: "Prepare an email or text message for a reminder on the user's device.",
     parameters: {
       type: "object",
       properties: { which: { type: "string", description: "Reminder text or number" } },
@@ -392,11 +435,12 @@ function buildChatMessages(body) {
   const persona = normalizeVoiceId(body.persona);
   const mode = String(body.mode || "companion").toLowerCase();
   const memory = Array.isArray(body.memory) ? body.memory : [];
+  const reminders = Array.isArray(body.reminders) ? body.reminders : [];
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
   const images = Array.isArray(body.images) ? body.images.slice(0, 3) : [];
   const language = String(body.language || "auto");
 
-  const messages = [{ role: "system", content: buildSystemPrompt(persona, mode, memory, language) }];
+  const messages = [{ role: "system", content: buildSystemPrompt(persona, mode, memory.concat(reminders), language) }];
 
   for (const turn of history) {
     const role = turn.role === "user" ? "user" : "assistant";
@@ -513,7 +557,9 @@ async function handleGrokChatStream(req, res) {
     temperature: 0.8,
     max_completion_tokens: 600,
     stream: true,
-    messages
+    messages,
+    tools: CHAT_TOOLS,
+    tool_choice: "auto"
   };
   if (mode === "research") {
     payload.search_parameters = { mode: "auto", return_citations: true };
@@ -541,6 +587,8 @@ async function handleGrokChatStream(req, res) {
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  const toolCalls = [];
+  let sentDone = false;
 
   try {
     while (true) {
@@ -556,15 +604,42 @@ async function handleGrokChatStream(req, res) {
         if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
         if (data === "[DONE]") {
+          if (toolCalls.length) {
+            writeSse(res, {
+              type: "toolCalls",
+              toolCalls: toolCalls.filter(Boolean).map((call) => ({
+                id: call.id,
+                type: "function",
+                function: {
+                  name: call.function.name,
+                  arguments: call.function.arguments
+                }
+              }))
+            });
+          }
           writeSse(res, { type: "done" });
+          sentDone = true;
           continue;
         }
         try {
           const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || "";
+          const choice = json.choices?.[0] || {};
+          const deltaObj = choice.delta || {};
+          const delta = deltaObj.content || "";
           const citations = json.citations || null;
           if (delta) writeSse(res, { type: "delta", text: delta });
           if (citations) writeSse(res, { type: "citations", citations });
+          if (Array.isArray(deltaObj.tool_calls)) {
+            for (const toolDelta of deltaObj.tool_calls) {
+              const index = toolDelta.index || 0;
+              if (!toolCalls[index]) {
+                toolCalls[index] = { id: "", function: { name: "", arguments: "" } };
+              }
+              if (toolDelta.id) toolCalls[index].id = toolDelta.id;
+              if (toolDelta.function?.name) toolCalls[index].function.name += toolDelta.function.name;
+              if (toolDelta.function?.arguments) toolCalls[index].function.arguments += toolDelta.function.arguments;
+            }
+          }
         } catch (error) {
           // ignore keepalive / partial frames
         }
@@ -574,7 +649,7 @@ async function handleGrokChatStream(req, res) {
     writeSse(res, { type: "error", error: error.message || "stream error" });
   }
 
-  writeSse(res, { type: "done" });
+  if (!sentDone && !res.writableEnded) writeSse(res, { type: "done" });
   res.end();
 }
 
@@ -666,13 +741,14 @@ async function handleRealtimeSecret(req, res) {
   const persona = voice;
   const mode = String(body.mode || "companion").toLowerCase();
   const memory = Array.isArray(body.memory) ? body.memory : [];
+  const reminders = Array.isArray(body.reminders) ? body.reminders : [];
   const language = String(body.language || "auto");
 
   const transcription = { model: "grok-transcribe" };
   if (language && language !== "auto") transcription.language_hint = language;
 
   const session = {
-    instructions: buildSystemPrompt(persona, mode, memory, language),
+    instructions: buildSystemPrompt(persona, mode, memory.concat(reminders), language),
     voice,
     turn_detection: { type: "server_vad" },
     tools: REALTIME_TOOLS,
@@ -787,7 +863,7 @@ function readJsonBody(req) {
     let raw = "";
     req.on("data", (chunk) => {
       raw += chunk;
-      if (raw.length > 2_000_000) {
+      if (raw.length > 8_000_000) {
         reject(new Error("Request body too large"));
         req.destroy();
       }

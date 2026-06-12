@@ -50,6 +50,11 @@ button {
   color: inherit;
 }
 
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 72%, white);
+  outline-offset: 3px;
+}
+
 .ambient {
   position: fixed;
   z-index: -1;
@@ -551,6 +556,11 @@ h3 {
   box-shadow: var(--shadow);
 }
 
+.skill-card.active {
+  border-color: rgba(0, 122, 255, 0.36);
+  background: linear-gradient(180deg, rgba(0, 122, 255, 0.1), var(--surface));
+}
+
 .skill-card:active {
   transform: scale(0.985);
 }
@@ -692,7 +702,7 @@ h3 {
 .talk-stage {
   display: grid;
   min-height: calc(100vh - 142px);
-  grid-template-rows: auto 1fr minmax(120px, 190px) auto auto;
+  grid-template-rows: auto auto 1fr minmax(120px, 190px) auto auto auto;
   gap: 14px;
   padding: clamp(18px, 3vw, 28px);
   border-radius: var(--radius-xl);
@@ -834,6 +844,161 @@ h3 {
   white-space: nowrap;
 }
 
+.status-pill.thinking {
+  border-color: rgba(255, 159, 10, 0.32);
+  background: rgba(255, 159, 10, 0.14);
+  color: #a15c00;
+}
+
+.status-pill.live {
+  border-color: rgba(0, 122, 255, 0.32);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.status-pill.speaking {
+  border-color: rgba(94, 92, 230, 0.32);
+  background: rgba(94, 92, 230, 0.14);
+  color: #4b49c9;
+}
+
+.status-pill.error {
+  border-color: rgba(255, 59, 48, 0.34);
+  background: rgba(255, 59, 48, 0.12);
+  color: #d70015;
+}
+
+.talk-context-panel,
+.thinking-drawer {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(20px);
+}
+
+.context-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 8px;
+}
+
+.context-head strong {
+  display: block;
+  margin-top: 2px;
+  letter-spacing: -0.02em;
+}
+
+.context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.context-empty {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.chip-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.chip-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.chip-text {
+  min-width: 0;
+}
+
+.chip-text strong,
+.chip-text small {
+  display: block;
+  overflow: hidden;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-text small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.context-chip button {
+  min-height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.context-chip .chip-remove {
+  width: 28px;
+  color: var(--muted);
+}
+
+.thinking-drawer {
+  padding: 0;
+}
+
+.thinking-drawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.thinking-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.thinking-drawer small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talk-trace {
+  display: grid;
+  gap: 6px;
+  padding: 0 14px 14px;
+}
+
 .focus-orb-wrap {
   display: grid;
   place-items: center;
@@ -973,6 +1138,8 @@ h3 {
 .talk-session .composer,
 .talk-session .quick-prompts,
 .talk-session .transcript,
+.talk-session .talk-context-panel,
+.talk-session .thinking-drawer,
 .talk-session .conversation-tools {
   width: min(720px, calc(100vw - 32px));
   margin-right: auto;
@@ -1102,6 +1269,13 @@ h3 {
 
 .conversation-tools .tool-button.subtle {
   color: var(--muted);
+}
+
+.shortcut-help {
+  width: 100%;
+  color: var(--faint);
+  font-size: 0.76rem;
+  text-align: center;
 }
 
 .page-heading {
@@ -1533,6 +1707,10 @@ footer {
     min-height: calc(100vh - 122px);
   }
 
+  .talk-session .talk-stage {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+
   .talk-top,
   .memory-top {
     align-items: flex-start;
@@ -1567,6 +1745,57 @@ footer {
 
   .nav-link {
     padding: 0 11px;
+  }
+
+  .memory-actions,
+  .reminder-add {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-item {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .mem-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .thinking-drawer summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .context-chip {
+    width: 100%;
+  }
+
+  .chip-text strong,
+  .chip-text small {
+    max-width: 58vw;
+  }
+}
+
+@media (display-mode: standalone) {
+  footer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .orb::before,
+  .orb::after,
+  .orb {
+    animation: none !important;
   }
 }
 
@@ -1889,7 +2118,7 @@ footer {
 
 .memory-item {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
@@ -1897,6 +2126,11 @@ footer {
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--soft-shadow);
+}
+
+.memory-item.active-context {
+  border-color: rgba(0, 122, 255, 0.32);
+  background: linear-gradient(180deg, rgba(0, 122, 255, 0.08), var(--surface));
 }
 
 .mem-icon {
@@ -1954,21 +2188,40 @@ footer {
   text-transform: uppercase;
 }
 
+.mem-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.mem-use,
+.mem-ask,
 .mem-delete {
   display: grid;
-  width: 34px;
+  min-width: 34px;
   height: 34px;
+  padding: 0 10px;
   place-items: center;
   border: 0;
   border-radius: 10px;
-  background: transparent;
-  color: var(--faint);
+  background: rgba(118, 118, 128, 0.1);
+  color: var(--muted);
   cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 740;
 }
 
 .mem-delete svg {
   width: 18px;
   height: 18px;
+}
+
+.mem-use:hover,
+.mem-ask:hover {
+  background: var(--blue-soft);
+  color: var(--blue);
 }
 
 .mem-delete:hover {
@@ -2220,7 +2473,8 @@ footer {
 
 /* Reminders */
 .reminder-add {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.8fr) minmax(140px, 0.9fr) auto;
   gap: 8px;
   padding: 14px 16px;
 }
@@ -2249,6 +2503,24 @@ footer {
   border-top: 1px solid var(--line);
 }
 
+.reminder-item > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.reminder-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-item small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .reminder-check {
   display: grid;
   width: 24px;
@@ -2273,6 +2545,34 @@ footer {
   color: var(--green);
 }
 
+.reminder-send,
+.reminder-delete {
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 740;
+}
+
+.reminder-send {
+  padding: 0 10px;
+  color: var(--blue);
+}
+
+.reminder-delete {
+  display: grid;
+  width: 30px;
+  place-items: center;
+}
+
+.reminder-delete svg {
+  width: 16px;
+  height: 16px;
+}
+
 .reminder-empty {
   margin: 0;
   padding: 12px 16px 16px;
@@ -2283,7 +2583,7 @@ footer {
 /* Toasts */
 .toast-host {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
   left: 50%;
   z-index: 200;
   display: flex;
@@ -2292,6 +2592,47 @@ footer {
   gap: 8px;
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+.camera-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 350;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(8px);
+}
+
+.camera-preview-card {
+  display: grid;
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow);
+}
+
+.camera-preview-card img {
+  width: 100%;
+  max-height: 54vh;
+  border-radius: 18px;
+  object-fit: contain;
+  background: #000;
+}
+
+.camera-preview-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.camera-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .toast {

@@ -144,7 +144,15 @@ const TOOL_DEFS = [
   {
     name: "add_reminder",
     description: "Add a reminder or task for the user.",
-    parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] }
+    parameters: {
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        due: { type: "string" },
+        contact: { type: "string", description: "Optional email address or phone number to prepare a reminder message." }
+      },
+      required: ["text"]
+    }
   },
   {
     name: "list_reminders",
@@ -154,6 +162,11 @@ const TOOL_DEFS = [
   {
     name: "complete_reminder",
     description: "Mark a reminder done by its text or number.",
+    parameters: { type: "object", properties: { which: { type: "string" } }, required: ["which"] }
+  },
+  {
+    name: "send_reminder",
+    description: "Prepare an email or text message for a reminder using the user's device.",
     parameters: { type: "object", properties: { which: { type: "string" } }, required: ["which"] }
   },
   {
@@ -201,6 +214,8 @@ const TOOL_DEFS = [
 const REALTIME_TOOLS = TOOL_DEFS.map((tool) => ({ type: "function", ...tool }));
 
 const STORE_KEY = "voicemate.state.v1";
+const ASSET_DB = "voicemate.assets.v1";
+const ASSET_STORE = "assets";
 
 const state = {
   memory: [...STARTER_MEMORY],
@@ -274,6 +289,11 @@ function cacheEls() {
     heroOrb: document.querySelector("#heroOrb"),
     quickPrompts: document.querySelector("#quickPrompts"),
     activityFeed: document.querySelector("#activityFeed"),
+    talkTrace: document.querySelector("#talkTrace"),
+    thinkingSummary: document.querySelector("#thinkingSummary"),
+    contextTitle: document.querySelector("#contextTitle"),
+    contextChips: document.querySelector("#contextChips"),
+    clearActiveContext: document.querySelector("#clearActiveContext"),
     knowledgeUpload: document.querySelector("#knowledgeUpload"),
     imageUpload: document.querySelector("#imageUpload"),
     quickFileUpload: document.querySelector("#quickFileUpload"),
@@ -292,6 +312,8 @@ function cacheEls() {
     themeSeg: document.querySelector("#themeSeg"),
     reminderList: document.querySelector("#reminderList"),
     reminderInput: document.querySelector("#reminderInput"),
+    reminderDueInput: document.querySelector("#reminderDueInput"),
+    reminderContactInput: document.querySelector("#reminderContactInput"),
     addReminder: document.querySelector("#addReminder"),
     exportData: document.querySelector("#exportData"),
     importData: document.querySelector("#importData"),
@@ -318,18 +340,24 @@ function init() {
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
+  renderContextChips();
   renderReminders();
+  scheduleAllReminderNotifications();
   renderLanguages();
   if (els.agentMode) els.agentMode.value = state.mode;
   if (els.wakeToggle) els.wakeToggle.checked = state.wakeEnabled;
   updateModeCaption();
   updateGrokStatus();
-  setLiveButton(false, "Start call");
+  setLiveButton(false, "Start live call");
   setupSpeechRecognition();
   setupShortcuts();
   setupEyes();
   registerServiceWorker();
   wireEvents();
+  restoreMemoryAssets().then(() => {
+    renderMemory();
+    renderContextChips();
+  });
 
   addActivity("Started session", "Voice, skills, files, and memory are ready.");
 
@@ -432,14 +460,29 @@ function wireEvents() {
     els.addReminder.addEventListener("click", () => {
       const text = (els.reminderInput.value || "").trim();
       if (!text) return;
-      executeTool("add_reminder", { text });
+      executeTool("add_reminder", {
+        text,
+        due: (els.reminderDueInput?.value || "").trim(),
+        contact: (els.reminderContactInput?.value || "").trim()
+      });
       els.reminderInput.value = "";
+      if (els.reminderDueInput) els.reminderDueInput.value = "";
+      if (els.reminderContactInput) els.reminderContactInput.value = "";
     });
     els.reminderInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
         els.addReminder.click();
       }
+    });
+  }
+  if (els.clearActiveContext) {
+    els.clearActiveContext.addEventListener("click", () => {
+      state.uploadContext = { ids: [], createdAt: 0 };
+      saveState();
+      renderContextChips();
+      renderMemory();
+      addActivity("Context cleared", "VoiceMate will use general memory instead of a specific upload.");
     });
   }
 
@@ -454,8 +497,11 @@ function wireEvents() {
   els.saveContext.addEventListener("click", saveManualContext);
 
   els.clearMemory.addEventListener("click", () => {
+    if (!confirm("Clear all saved memory on this device? This cannot be undone.")) return;
     state.memory = [];
+    state.uploadContext = { ids: [], createdAt: 0 };
     renderMemory();
+    renderContextChips();
     addActivity("Cleared memory", "Session memory is empty.");
     addMessage("agent", "Done, I cleared everything I was remembering for this session.");
   });
@@ -484,7 +530,9 @@ function wireEvents() {
   if (els.langSelect) {
     els.langSelect.addEventListener("change", (event) => {
       state.language = event.target.value;
+      if (state.recognition) state.recognition.lang = recognitionLanguage();
       saveState();
+      updateLiveSession({ instructions: liveSessionHint() });
       addActivity("Language set", `Voice language is ${event.target.options[event.target.selectedIndex].text}.`);
     });
   }
@@ -577,6 +625,7 @@ function noteUploadContext(items, options = {}) {
   if (!ids.length) return;
   state.uploadContext = { ids, createdAt: Date.now() };
   saveState();
+  renderContextChips();
   const names = items.map((item) => item.name).filter(Boolean).join(", ");
   addActivity("Context ready", names ? `VoiceMate can use ${names} in this chat.` : "VoiceMate can use the upload now.");
   shareMemoryWithLive(items, options);
@@ -627,6 +676,63 @@ function imageForModel(item) {
   };
 }
 
+function renderContextChips() {
+  if (!els.contextChips || !els.contextTitle) return;
+  const active = uploadContextItems();
+  els.contextChips.innerHTML = "";
+  els.contextTitle.textContent = active.length
+    ? `${active.length} active item${active.length === 1 ? "" : "s"}`
+    : "Nothing active yet";
+  if (!active.length) {
+    const empty = document.createElement("span");
+    empty.className = "context-empty";
+    empty.textContent = "Upload or paste something and it appears here.";
+    els.contextChips.appendChild(empty);
+    return;
+  }
+
+  active.forEach((item) => {
+    const chip = document.createElement("span");
+    chip.className = "context-chip";
+    chip.innerHTML = `
+      <span class="chip-icon">${svgIcon(memoryIconName(item.type))}</span>
+      <span class="chip-text">
+        <strong>${escapeHtml(item.name || "Memory item")}</strong>
+        <small>${escapeHtml(memoryLabel(item.type))} · ${escapeHtml((item.summary || "").slice(0, 80))}</small>
+      </span>
+      <button type="button" aria-label="Ask about ${escapeHtml(item.name || "this item")}">Ask</button>
+      <button type="button" class="chip-remove" aria-label="Remove ${escapeHtml(item.name || "this item")} from context">&times;</button>
+    `;
+    const buttons = chip.querySelectorAll("button");
+    buttons[0].addEventListener("click", () => {
+      showPage("talk");
+      handlePrompt(`Talk about ${item.name || "this upload"}. What should I know?`);
+    });
+    buttons[1].addEventListener("click", () => removeFromActiveContext(item.id));
+    els.contextChips.appendChild(chip);
+  });
+}
+
+function removeFromActiveContext(id) {
+  state.uploadContext.ids = (state.uploadContext.ids || []).filter((itemId) => itemId !== id);
+  saveState();
+  renderContextChips();
+  renderMemory();
+  addActivity("Context updated", "Removed one item from active context.");
+}
+
+function activateMemoryItem(item) {
+  if (!item || !item.id) return;
+  const ids = new Set(state.uploadContext.ids || []);
+  ids.add(item.id);
+  state.uploadContext = { ids: [...ids], createdAt: Date.now() };
+  saveState();
+  renderContextChips();
+  renderMemory();
+  shareMemoryWithLive([item]);
+  addActivity("Context added", `${item.name || "Memory item"} is active in Talk.`);
+}
+
 // ---------------------------------------------------------------------------
 // Navigation
 // ---------------------------------------------------------------------------
@@ -638,7 +744,9 @@ function showPage(page) {
       panel.classList.toggle("active", panel.dataset.pagePanel === page);
     });
     els.navLinks.forEach((button) => {
-      button.classList.toggle("active", button.dataset.page === page);
+      const active = button.dataset.page === page;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-current", active ? "page" : "false");
     });
   };
 
@@ -654,7 +762,6 @@ function showPage(page) {
     endTalkSession();
   }
 
-  addActivity("Opened page", `${titleCase(page)} is active.`);
   updateWake();
   if (window.location.hash.replace("#", "") !== page) {
     window.history.replaceState(null, "", `#${page}`);
@@ -668,12 +775,11 @@ function startTalkSession() {
   const persona = getPersona();
   const greeting = state.backendOnline
     ? `Hey, I'm ${persona.name}. [pause] What's on your mind?`
-    : `Hey, I'm ${persona.name}. What's on your mind?`;
+    : `Hey, I'm ${persona.name}. You can type, upload something, or set up live voice in Settings.`;
 
   addActivity("Started talk session", `${persona.name} voice is active.`);
   addMessage("agent", stripSpeechTags(greeting));
   pushHistory("assistant", stripSpeechTags(greeting));
-  speak(greeting);
 }
 
 function endTalkSession() {
@@ -708,8 +814,9 @@ function renderSkills() {
   SKILLS.forEach((skill) => {
     const card = document.createElement("button");
     card.type = "button";
-    card.className = "skill-card";
+    card.className = `skill-card${skill.id === state.mode ? " active" : ""}`;
     card.dataset.skill = skill.id;
+    card.setAttribute("aria-pressed", String(skill.id === state.mode));
     const tint = skill.color || "#007aff";
     card.innerHTML = `
       <span class="skill-icon" style="--tint:${tint}">${svgIcon(skillIcon(skill.id))}</span>
@@ -762,7 +869,8 @@ function selectPersona(personaId, preview) {
   updatePersonaLabel();
   addActivity("Changed voice", `${persona.name} is selected.`);
   if (state.live) {
-    addMessage("agent", "Pick the voice before starting a live call so I switch cleanly.");
+    updateLiveSession({ voice: persona.id });
+    addMessage("agent", `I'll use ${persona.name} from here.`);
   } else if (preview) {
     speak(`I'm ${persona.name}. Ready when you are.`);
   }
@@ -779,6 +887,9 @@ function setMode(modeId, fromSelect) {
   saveState();
   if (els.agentMode && !fromSelect) els.agentMode.value = skill.id;
   updateModeCaption();
+  renderSkills();
+  renderQuickPrompts();
+  updateLiveSession({ instructions: liveSessionHint() });
   addActivity("Mode set", `${skill.name} mode is active.`);
 }
 
@@ -798,15 +909,59 @@ function renderLanguages() {
   els.langSelect.value = state.language;
 }
 
+function recognitionLanguage() {
+  if (!state.language || state.language === "auto") return "en-US";
+  const map = {
+    en: "en-US",
+    fr: "fr-FR",
+    de: "de-DE",
+    it: "it-IT",
+    zh: "zh-CN",
+    ja: "ja-JP",
+    ko: "ko-KR",
+    ru: "ru-RU",
+    tr: "tr-TR",
+    vi: "vi-VN",
+    id: "id-ID"
+  };
+  return map[state.language] || state.language;
+}
+
+function realtimeTranscriptionConfig() {
+  const config = { model: "grok-transcribe" };
+  if (state.language && state.language !== "auto") config.language_hint = state.language;
+  return config;
+}
+
 function renderQuickPrompts() {
   els.quickPrompts.innerHTML = "";
-  SUGGESTED_PROMPTS.forEach((prompt) => {
+  contextualPrompts().forEach((prompt) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = prompt;
     button.addEventListener("click", () => handlePrompt(prompt));
     els.quickPrompts.appendChild(button);
   });
+}
+
+function contextualPrompts() {
+  const active = activeUploadItems().filter((item) => item.type !== "brief");
+  if (active.length) {
+    const latest = active[active.length - 1];
+    return [
+      `Summarize ${latest.name}`,
+      "What should I notice in this upload?",
+      active.length > 1 ? "Compare these uploads" : "Turn this into action items"
+    ];
+  }
+  const byMode = {
+    research: ["Research this with sources", "What changed recently?", "Give me the short version"],
+    digest: ["Give me a briefing", "What needs attention?", "List my open reminders"],
+    pitch: ["Help me pitch this", "Make it sharper", "Rehearse a client demo"],
+    analyst: ["Analyze my data", "Find the trend", "What looks unusual?"],
+    coach: ["Practice a meeting", "Give me feedback", "Help me sound clearer"]
+  };
+  return byMode[state.mode] || SUGGESTED_PROMPTS;
 }
 
 // ---------------------------------------------------------------------------
@@ -920,7 +1075,13 @@ async function respond(prompt) {
 
   if (state.backendOnline) {
     try {
-      const result = await chatAgent(prompt, collectImagesForPrompt(prompt));
+      let streamed = "";
+      const result = await chatAgent(prompt, collectImagesForPrompt(prompt), (delta) => {
+        streamed += delta;
+        bubble.classList.remove("typing");
+        bubble.textContent = stripSpeechTags(streamed);
+        els.transcript.scrollTop = els.transcript.scrollHeight;
+      });
       answer = result.text || answer;
       citations = result.citations || [];
       addReasoning("observation", "Got a reply. Speaking it now.");
@@ -933,7 +1094,7 @@ async function respond(prompt) {
     addReasoning("observation", "Answered locally (no backend connected).");
   }
 
-  const spoken = answer || answerPrompt(prompt);
+  const spoken = answer || bubble.textContent || answerPrompt(prompt);
   bubble.classList.remove("typing");
   bubble.textContent = stripSpeechTags(spoken);
   if (citations.length) renderCitations(bubble, citations);
@@ -946,37 +1107,37 @@ async function respond(prompt) {
 
 // Tool-enabled chat: calls the backend, runs any tools VoiceMate requests
 // (remember, reminders, set voice/skill, etc.), then returns the final reply.
-async function chatAgent(prompt, images) {
+async function chatAgent(prompt, images, onDelta) {
   const baseBody = {
     message: prompt,
     persona: getPersona().id,
     mode: state.mode,
     language: state.language,
     history: state.history.slice(0, -1).slice(-10),
-    memory: state.memory.map((item) => memoryForChat(item, prompt))
+    memory: state.memory.map((item) => memoryForChat(item, prompt)),
+    reminders: remindersForContext()
   };
 
   let toolMessages = [];
   let citations = [];
+  let finalText = "";
 
   for (let round = 0; round < 4; round++) {
-    const response = await fetch("/api/grok/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await streamChatRound(
+      {
         ...baseBody,
         images: round === 0 ? images || [] : [],
         toolMessages
-      })
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Voice request failed");
+      },
+      (delta) => {
+        finalText += delta;
+        if (onDelta) onDelta(delta);
+      }
+    );
     if (data.citations && data.citations.length) citations = data.citations;
-
     const calls = data.toolCalls || [];
     if (!calls.length) {
-      return { text: data.answer || "", citations };
+      return { text: finalText || data.answer || "", citations };
     }
 
     toolMessages.push({ role: "assistant", content: data.answer || null, tool_calls: calls });
@@ -993,7 +1154,51 @@ async function chatAgent(prompt, images) {
     }
   }
 
-  return { text: "", citations };
+  return { text: finalText || "I tried those actions but didn't finish the answer. Ask me again and I'll keep going.", citations };
+}
+
+async function streamChatRound(body, onDelta) {
+  const response = await fetch("/api/grok/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok || !response.body) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Voice request failed");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let answer = "";
+  let citations = [];
+  let toolCalls = [];
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() || "";
+    for (const frame of frames) {
+      const line = frame.split("\n").find((part) => part.startsWith("data:"));
+      if (!line) continue;
+      const event = safeParse(line.slice(5).trim());
+      if (!event) continue;
+      if (event.type === "delta" && event.text) {
+        answer += event.text;
+        if (onDelta) onDelta(event.text);
+      } else if (event.type === "citations" && event.citations) {
+        citations = event.citations;
+      } else if (event.type === "toolCalls" && event.toolCalls) {
+        toolCalls = event.toolCalls;
+      } else if (event.type === "error") {
+        throw new Error(event.error || "stream error");
+      }
+    }
+  }
+
+  return { answer, toolCalls, citations };
 }
 
 // Build a context payload that includes a real excerpt of each item's content
@@ -1010,6 +1215,20 @@ function memoryForContext(item) {
     excerpt,
     active: uploadContextItems().some((ctx) => ctx.id === item.id)
   };
+}
+
+function remindersForContext() {
+  return state.reminders
+    .filter((reminder) => !reminder.done)
+    .slice(0, 12)
+    .map((reminder, index) => ({
+      id: reminder.id,
+      name: `Reminder ${index + 1}`,
+      type: "reminder",
+      summary: formatReminder(reminder),
+      excerpt: formatReminder(reminder),
+      active: false
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1062,6 +1281,7 @@ async function executeTool(name, args) {
       let url = String(args.url || "").trim();
       if (!url) return "No link given.";
       if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      if (!confirm(`Open this link?\n${url}`)) return "The user did not open the link.";
       window.open(url, "_blank", "noopener");
       toast("Opening link");
       return `Opening ${url}.`;
@@ -1069,6 +1289,7 @@ async function executeTool(name, args) {
     case "remember_fact": {
       const text = String(args.text || "").trim();
       if (!text) return "Nothing to remember.";
+      if (!confirm(`Remember this?\n${text}`)) return "The user chose not to save that memory.";
       state.memory.push({
         id: createMemoryId("note"),
         type: "note",
@@ -1091,26 +1312,30 @@ async function executeTool(name, args) {
     case "add_reminder": {
       const text = String(args.text || "").trim();
       if (!text) return "No reminder text given.";
-      state.reminders.push({ id: Date.now() + Math.random(), text, done: false, createdAt: new Date().toISOString() });
+      const reminder = createReminder(text, args.due, args.contact);
+      state.reminders.push(reminder);
       renderReminders();
+      scheduleReminderNotification(reminder);
       toast("Reminder added");
-      return `Added a reminder: ${text}.`;
+      return `Added a reminder: ${formatReminder(reminder)}.`;
     }
     case "list_reminders": {
       const open = state.reminders.filter((reminder) => !reminder.done);
-      return open.length ? open.map((reminder, index) => `${index + 1}. ${reminder.text}`).join("; ") : "No reminders right now.";
+      return open.length ? open.map((reminder, index) => `${index + 1}. ${formatReminder(reminder)}`).join("; ") : "No reminders right now.";
     }
     case "complete_reminder": {
-      const which = String(args.which || "").trim().toLowerCase();
-      const openList = state.reminders.filter((reminder) => !reminder.done);
-      const num = Number(which);
-      let target = Number.isInteger(num) && openList[num - 1] ? openList[num - 1] : null;
-      if (!target) target = openList.find((reminder) => reminder.text.toLowerCase().includes(which));
+      const target = findOpenReminder(args.which);
       if (!target) return "Couldn't find that reminder.";
+      if (!confirm(`Mark this reminder done?\n${target.text}`)) return "The user left that reminder open.";
       target.done = true;
       renderReminders();
       toast("Reminder completed");
       return `Marked done: ${target.text}.`;
+    }
+    case "send_reminder": {
+      const target = findOpenReminder(args.which);
+      if (!target) return "Couldn't find that reminder.";
+      return prepareReminderDelivery(target);
     }
     case "set_voice": {
       const voice = String(args.voice || "").toLowerCase();
@@ -1138,6 +1363,7 @@ function prettyTool(name) {
     add_reminder: "reminders (add)",
     list_reminders: "reminders (list)",
     complete_reminder: "reminders (complete)",
+    send_reminder: "reminder delivery",
     set_voice: "voice settings",
     set_skill: "skill switch",
     get_current_time: "the clock",
@@ -1234,8 +1460,14 @@ function answerPrompt(rawPrompt) {
     return images.map((image) => `${image.name}: ${image.summary}`).join(" ");
   }
   if (containsAny(prompt, ["briefing", "digest", "catch me up", "rundown", "good morning"])) {
-    if (!state.memory.length) return "Here's your briefing: nothing in memory yet, so there's not much to report. Add notes or files and I'll build a proper rundown.";
-    return `Quick briefing. ${memoryContext}. That's what I've got so far.`;
+    const openReminders = state.reminders.filter((reminder) => !reminder.done);
+    if (!state.memory.length && !openReminders.length) return "Here's your briefing: nothing in memory yet, so there's not much to report. Add notes, files, or reminders and I'll build a proper rundown.";
+    const reminderText = openReminders.length ? `Open reminders: ${openReminders.map(formatReminder).join("; ")}.` : "";
+    return `Quick briefing. ${reminderText} ${memoryContext}. That's what I've got so far.`;
+  }
+  if (containsAny(prompt, ["reminder", "reminders", "tasks", "todo", "to do"])) {
+    const openReminders = state.reminders.filter((reminder) => !reminder.done);
+    return openReminders.length ? `You have ${openReminders.length} open reminder${openReminders.length === 1 ? "" : "s"}: ${openReminders.map(formatReminder).join("; ")}.` : "No open reminders right now.";
   }
   if (containsAny(prompt, ["research", "look up", "find out", "latest", "sources"])) {
     return "I'd normally research that with live search and cite the sources, but that needs the VoiceMate server running. Start it and ask again.";
@@ -1473,6 +1705,21 @@ function shareMemoryWithLive(items, options = {}) {
   if (options.respond) live.ws.send(JSON.stringify({ type: "response.create" }));
 }
 
+function updateLiveSession(patch) {
+  const live = state.live;
+  if (!live || !live.ws || live.ws.readyState !== WebSocket.OPEN) return;
+  const session = { ...patch };
+  if (session.instructions) {
+    session.instructions = `${session.instructions}\n\nActive reminders:\n${remindersForContext().map((r) => r.summary).join("\n") || "none"}`;
+  }
+  live.ws.send(JSON.stringify({ type: "session.update", session }));
+}
+
+function liveSessionHint() {
+  const lang = state.language === "auto" ? "the user's language" : LANGUAGES.find((item) => item.id === state.language)?.name || state.language;
+  return `Continue as VoiceMate in ${modeLabel()} mode. Reply in ${lang}. Use active uploads, memory, and reminders already present in the conversation.`;
+}
+
 function liveMemoryExcerpt(item) {
   return String(item.content || item.insights || item.summary || "")
     .replace(/\s+/g, " ")
@@ -1485,9 +1732,10 @@ async function startLiveCall() {
   if (!state.backendOnline) {
     addMessage(
       "agent",
-      "The live voice needs the VoiceMate server. Start it (npm start), open localhost, and tap Start call again."
+      "The live voice needs the VoiceMate server. Start it with npm start, open localhost, and tap Start live call again."
     );
     addActivity("Live voice unavailable", "Voice server not connected.");
+    showPage("settings");
     return;
   }
 
@@ -1537,7 +1785,8 @@ async function startLiveCall() {
         voice: getPersona().id,
         mode: state.mode,
         language: state.language,
-        memory: state.memory.map(memoryForContext)
+        memory: state.memory.map(memoryForContext),
+        reminders: remindersForContext()
       })
     });
     const secret = await secretRes.json();
@@ -1563,7 +1812,7 @@ async function startLiveCall() {
             audio: {
               input: {
                 format: { type: "audio/pcm", rate: live.rate },
-                transcription: { model: "grok-transcribe" }
+                transcription: realtimeTranscriptionConfig()
               },
               output: { format: { type: "audio/pcm", rate: live.rate } }
             }
@@ -1840,7 +2089,7 @@ function stopLivePlayback(live) {
 function endLiveCall(note) {
   const live = state.live;
   if (!live) {
-    setLiveButton(false, "Start call");
+    setLiveButton(false, "Start live call");
     return;
   }
   state.live = null;
@@ -1864,7 +2113,7 @@ function endLiveCall(note) {
     // ignore teardown errors
   }
 
-  setLiveButton(false, "Start call");
+  setLiveButton(false, "Start live call");
   setSpeechStatus("Ready", false, false);
   updateGrokStatus();
   updateWake();
@@ -1934,7 +2183,7 @@ function setupSpeechRecognition() {
   }
 
   state.recognition = new Recognition();
-  state.recognition.lang = "en-US";
+  state.recognition.lang = recognitionLanguage();
   state.recognition.interimResults = false;
   state.recognition.continuous = false;
 
@@ -1981,6 +2230,12 @@ function startListeningAfterSpeech() {
 
 function setSpeechStatus(label, listening, speaking = false) {
   els.speechStatus.textContent = label;
+  const normalized = String(label || "").toLowerCase();
+  els.speechStatus.className = "status-pill";
+  if (speaking) els.speechStatus.classList.add("speaking");
+  else if (listening || normalized === "live") els.speechStatus.classList.add("live");
+  else if (normalized.includes("thinking") || normalized.includes("connecting")) els.speechStatus.classList.add("thinking");
+  else if (normalized.includes("error") || normalized.includes("issue")) els.speechStatus.classList.add("error");
   [els.voiceOrb, els.heroOrb].forEach((orb) => {
     if (!orb) return;
     orb.classList.toggle("listening", Boolean(listening));
@@ -2149,9 +2404,20 @@ function addTrace(type, title, detail) {
   const item = document.createElement("div");
   item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
-  els.activityFeed.prepend(item);
-  while (els.activityFeed.children.length > 60) {
-    els.activityFeed.removeChild(els.activityFeed.lastChild);
+  if (els.activityFeed) {
+    els.activityFeed.prepend(item.cloneNode(true));
+    while (els.activityFeed.children.length > 60) {
+      els.activityFeed.removeChild(els.activityFeed.lastChild);
+    }
+  }
+  if (els.talkTrace) {
+    els.talkTrace.prepend(item);
+    while (els.talkTrace.children.length > 8) {
+      els.talkTrace.removeChild(els.talkTrace.lastChild);
+    }
+  }
+  if (els.thinkingSummary) {
+    els.thinkingSummary.textContent = `${title}: ${detail}`;
   }
 }
 
@@ -2161,6 +2427,7 @@ function addTrace(type, title, detail) {
 
 function renderMemory() {
   saveState();
+  renderContextChips();
   els.memoryGrid.innerHTML = "";
   if (!state.memory.length) {
     const empty = document.createElement("div");
@@ -2179,7 +2446,8 @@ function renderMemory() {
     .reverse()
     .forEach(({ item, index }) => {
       const row = document.createElement("article");
-      row.className = "memory-item";
+      const active = uploadContextItems().some((ctx) => ctx.id === item.id);
+      row.className = `memory-item${active ? " active-context" : ""}`;
       const tint = memoryTint(item.type);
       const visual = item.preview
         ? `<span class="mem-thumb"><img src="${item.preview}" alt="${escapeHtml(item.name)} preview" /></span>`
@@ -2190,9 +2458,19 @@ function renderMemory() {
           <strong>${escapeHtml(item.name)}</strong>
           <p>${escapeHtml(item.summary)}</p>
         </div>
-        <span class="mem-tag" style="color:${tint};background:${hexToSoft(tint)}">${escapeHtml(memoryLabel(item.type))}</span>
-        <button class="mem-delete" type="button" aria-label="Remove ${escapeHtml(item.name)}">${svgIcon("trash")}</button>
+        <div class="mem-actions">
+          <span class="mem-tag" style="color:${tint};background:${hexToSoft(tint)}">${active ? "Active" : escapeHtml(memoryLabel(item.type))}</span>
+          <button class="mem-use" type="button">${active ? "Using" : "Use"}</button>
+          <button class="mem-ask" type="button">Ask</button>
+          <button class="mem-delete" type="button" aria-label="Remove ${escapeHtml(item.name)}">${svgIcon("trash")}</button>
+        </div>
       `;
+      row.querySelector(".mem-use").addEventListener("click", () => activateMemoryItem(item));
+      row.querySelector(".mem-ask").addEventListener("click", () => {
+        activateMemoryItem(item);
+        showPage("talk");
+        handlePrompt(`Talk about ${item.name}. What should I know?`);
+      });
       row.querySelector(".mem-delete").addEventListener("click", () => removeMemory(index));
       els.memoryGrid.appendChild(row);
     });
@@ -2200,7 +2478,9 @@ function renderMemory() {
 
 function removeMemory(index) {
   const item = state.memory[index];
+  if (!confirm(`Remove ${item ? item.name : "this item"} from memory?`)) return;
   state.memory.splice(index, 1);
+  if (item?.id) removeFromActiveContext(item.id);
   renderMemory();
   addActivity("Removed", `${item ? item.name : "Item"} removed from memory.`);
 }
@@ -2232,8 +2512,10 @@ async function handleKnowledgeFiles(files, options = {}) {
   const activate = options.activate !== false;
   const added = [];
   for (const file of files) {
-    const text = await file.text();
-    const type = file.name.toLowerCase().endsWith(".csv") ? "csv" : "note";
+    const extracted = await extractFileText(file);
+    const text = extracted.text;
+    const lowerName = file.name.toLowerCase();
+    const type = lowerName.endsWith(".csv") ? "csv" : lowerName.endsWith(".pdf") || lowerName.endsWith(".doc") || lowerName.endsWith(".docx") ? "document" : "note";
     const item =
       type === "csv"
         ? summarizeCsv(file.name, text)
@@ -2241,7 +2523,7 @@ async function handleKnowledgeFiles(files, options = {}) {
             id: createMemoryId("note"),
             type,
             name: file.name,
-            summary: summarizeText(text),
+            summary: extracted.summary || summarizeText(text),
             content: text.slice(0, 20000),
             createdAt: new Date().toISOString()
           };
@@ -2254,6 +2536,31 @@ async function handleKnowledgeFiles(files, options = {}) {
   if (activate) noteUploadContext(added);
   addMessage("agent", `Added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
   return added;
+}
+
+async function extractFileText(file) {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".pdf")) {
+    const raw = await file.text();
+    const readable = raw
+      .replace(/[^\x09\x0a\x0d\x20-\x7e]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const useful = readable.length > 240 ? readable.slice(0, 30000) : "";
+    return {
+      text: useful || `${file.name} is a PDF (${Math.round(file.size / 1024)} KB). Browser extraction could not read clean text from it yet.`,
+      summary: useful
+        ? `PDF text extracted locally. ${summarizeText(useful)}`
+        : `PDF uploaded, ${(file.size / 1024).toFixed(1)} KB. Full PDF extraction may need a server parser.`
+    };
+  }
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+    return {
+      text: `${file.name} is a Word document (${Math.round(file.size / 1024)} KB). Full document text extraction needs a document parser.`,
+      summary: `Word document uploaded, ${(file.size / 1024).toFixed(1)} KB.`
+    };
+  }
+  return { text: await file.text(), summary: "" };
 }
 
 async function handleImageFiles(files, options = {}) {
@@ -2293,13 +2600,15 @@ function updateGrokStatus() {
     els.grokStatus.textContent = "Connected. Natural live voice is ready.";
     els.backendStatus.textContent = "VoiceMate voice";
     els.backendStatus.classList.add("connected");
-    if (els.voiceHint) els.voiceHint.textContent = "Tap Start call to talk out loud";
+    if (els.voiceHint) els.voiceHint.textContent = "Tap Start live call to talk out loud";
+    if (!state.live) setLiveButton(false, "Start live call");
     return;
   }
   els.backendStatus.textContent = "Browser voice";
   els.backendStatus.classList.remove("connected");
   els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
-  if (els.voiceHint) els.voiceHint.textContent = "Run the server for the natural live voice";
+  if (els.voiceHint) els.voiceHint.textContent = "Browser preview. Set up the server for live voice";
+  if (!state.live) setLiveButton(false, "Set up live voice");
 }
 
 async function checkBackend() {
@@ -2337,6 +2646,9 @@ function memoryIconName(type) {
   if (type === "csv") return "table";
   if (type === "image") return "photo";
   if (type === "note") return "doc";
+  if (type === "document") return "doc";
+  if (type === "conversation") return "chat";
+  if (type === "reminder") return "check";
   return "sparkles";
 }
 
@@ -2344,12 +2656,15 @@ function memoryLabel(type) {
   if (type === "csv") return "Data";
   if (type === "image") return "Photo";
   if (type === "note") return "Note";
+  if (type === "document") return "Document";
   if (type === "brief") return "Brief";
+  if (type === "conversation") return "Chat";
+  if (type === "reminder") return "Reminder";
   return type;
 }
 
 function memoryTint(type) {
-  const tints = { csv: "#34c759", image: "#0a84ff", note: "#ff9f0a", brief: "#5e5ce6" };
+  const tints = { csv: "#34c759", image: "#0a84ff", note: "#ff9f0a", document: "#0a84ff", brief: "#5e5ce6", conversation: "#30b0c7", reminder: "#ff2d55" };
   return tints[type] || "#8e8e93";
 }
 
@@ -2610,23 +2925,105 @@ function loadState() {
 }
 
 function saveState() {
+  cacheMemoryAssets();
+  const payload = statePayload(state.memory);
   try {
-    localStorage.setItem(
-      STORE_KEY,
-      JSON.stringify({
-        memory: state.memory,
-        reminders: state.reminders,
-        persona: state.persona,
-        mode: state.mode,
-        language: state.language,
-        uploadContext: state.uploadContext,
-        wakeEnabled: state.wakeEnabled,
-        conversations: state.conversations.slice(0, 40)
-      })
-    );
+    localStorage.setItem(STORE_KEY, JSON.stringify(payload));
   } catch (error) {
-    // ignore storage errors (quota, private mode)
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(statePayload(stripLargeAssets(state.memory))));
+      toast("Saved memory metadata. Large previews are cached separately.");
+    } catch (innerError) {
+      toast("Storage is full. Export memory or remove large uploads.");
+    }
   }
+}
+
+function statePayload(memory) {
+  return {
+    memory,
+    reminders: state.reminders,
+    persona: state.persona,
+    mode: state.mode,
+    language: state.language,
+    uploadContext: state.uploadContext,
+    wakeEnabled: state.wakeEnabled,
+    conversations: state.conversations.slice(0, 40)
+  };
+}
+
+function stripLargeAssets(memory) {
+  return memory.map((item) => {
+    if (!item.preview || String(item.preview).length < 200000) return item;
+    return { ...item, preview: "", previewStored: true };
+  });
+}
+
+function openAssetDb() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB unavailable"));
+      return;
+    }
+    const req = indexedDB.open(ASSET_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(ASSET_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function putAsset(key, value) {
+  try {
+    const db = await openAssetDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE, "readwrite");
+      tx.objectStore(ASSET_STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (error) {
+    // IndexedDB is a best effort cache.
+  }
+}
+
+async function getAsset(key) {
+  try {
+    const db = await openAssetDb();
+    const value = await new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE, "readonly");
+      const req = tx.objectStore(ASSET_STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return value || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function cacheMemoryAssets() {
+  state.memory.forEach((item) => {
+    if (item.id && item.preview && String(item.preview).length > 50000) {
+      item.previewStored = true;
+      putAsset(`preview:${item.id}`, item.preview);
+    }
+  });
+}
+
+async function restoreMemoryAssets() {
+  let changed = false;
+  for (const item of state.memory) {
+    if (item.previewStored && !item.preview && item.id) {
+      const preview = await getAsset(`preview:${item.id}`);
+      if (preview) {
+        item.preview = preview;
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveState();
 }
 
 function exportData() {
@@ -2647,8 +3044,14 @@ async function importData(file) {
   if (!file) return;
   try {
     const data = JSON.parse(await file.text());
+    const memoryCount = Array.isArray(data.memory) ? data.memory.length : 0;
+    const reminderCount = Array.isArray(data.reminders) ? data.reminders.length : 0;
+    if (!confirm(`Import ${memoryCount} memory item${memoryCount === 1 ? "" : "s"} and ${reminderCount} reminder${reminderCount === 1 ? "" : "s"}?`)) {
+      return;
+    }
     if (Array.isArray(data.memory)) state.memory = state.memory.concat(data.memory);
     if (Array.isArray(data.reminders)) state.reminders = state.reminders.concat(data.reminders);
+    ensureMemoryIds();
     renderMemory();
     renderReminders();
     toast("Imported memory");
@@ -2685,7 +3088,30 @@ function pushHistory(role, content) {
     convo.title = truncate(content, 46);
     convo.titled = true;
   }
+  maybeSummarizeConversation(convo);
   saveState();
+}
+
+function maybeSummarizeConversation(convo) {
+  if (!convo || convo.messages.length < 10 || convo.messages.length % 8 !== 0) return;
+  const recent = convo.messages.slice(-8).map((m) => `${m.role}: ${m.content}`).join(" ");
+  const summary = summarizeText(recent);
+  const existing = state.memory.find((item) => item.type === "conversation" && item.conversationId === convo.id);
+  if (existing) {
+    existing.summary = summary;
+    existing.content = recent.slice(0, 6000);
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    state.memory.push({
+      id: createMemoryId("convo"),
+      type: "conversation",
+      conversationId: convo.id,
+      name: `Conversation summary: ${convo.title}`,
+      summary,
+      content: recent.slice(0, 6000),
+      createdAt: new Date().toISOString()
+    });
+  }
 }
 
 function newConversation() {
@@ -2726,6 +3152,7 @@ function deleteConversation(id) {
 function openHistory() {
   renderConversations("");
   if (els.historyModal) {
+    state.lastFocus = document.activeElement;
     els.historyModal.hidden = false;
     if (els.historySearch) {
       els.historySearch.value = "";
@@ -2736,6 +3163,7 @@ function openHistory() {
 
 function closeHistory() {
   if (els.historyModal) els.historyModal.hidden = true;
+  if (state.lastFocus && typeof state.lastFocus.focus === "function") state.lastFocus.focus();
 }
 
 function renderConversations(filter) {
@@ -2864,7 +3292,7 @@ function startWake() {
   if (!Recognition || state.wakeRec || state.live || !state.wakeEnabled) return;
   try {
     const rec = new Recognition();
-    rec.lang = "en-US";
+    rec.lang = recognitionLanguage();
     rec.continuous = true;
     rec.interimResults = true;
     rec.onresult = (event) => {
@@ -2932,6 +3360,11 @@ async function handleCamera() {
     addMessage("agent", "I couldn't open the camera. Check the browser permission.");
     return;
   }
+  const approved = await confirmCapturedPhoto(dataUrl);
+  if (!approved) {
+    toast("Photo discarded");
+    return;
+  }
   const preview = await prepareImagePreview(dataUrl);
   const dimensions = await getImageDimensions(preview);
   const item = {
@@ -2954,9 +3387,141 @@ async function handleCamera() {
   }
 }
 
+function confirmCapturedPhoto(dataUrl) {
+  return new Promise((resolve) => {
+    const modal = document.createElement("div");
+    modal.className = "camera-preview-modal";
+    modal.innerHTML = `
+      <div class="camera-preview-card" role="dialog" aria-modal="true" aria-label="Camera preview">
+        <img src="${dataUrl}" alt="Camera capture preview" />
+        <div>
+          <strong>Use this photo?</strong>
+          <p>Send it to VoiceMate as active context.</p>
+        </div>
+        <div class="camera-preview-actions">
+          <button class="button secondary" type="button" data-action="retake">Discard</button>
+          <button class="button primary" type="button" data-action="use">Use photo</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('[data-action="use"]').focus();
+    modal.addEventListener("click", (event) => {
+      const action = event.target?.dataset?.action;
+      if (!action && event.target !== modal) return;
+      modal.remove();
+      resolve(action === "use");
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Reminders
 // ---------------------------------------------------------------------------
+
+function createReminder(text, due, contact) {
+  const parsedDue = parseDueTime(due || text);
+  return {
+    id: "r" + Date.now() + Math.random().toString(36).slice(2, 6),
+    text: String(text || "").trim(),
+    dueText: String(due || "").trim(),
+    dueAt: parsedDue ? parsedDue.toISOString() : "",
+    contact: String(contact || "").trim(),
+    done: false,
+    notified: false,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function parseDueTime(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return null;
+  const now = new Date();
+  const explicit = Date.parse(value);
+  if (Number.isFinite(explicit)) return new Date(explicit);
+
+  let base = new Date(now);
+  if (/\btomorrow\b/.test(text)) base.setDate(base.getDate() + 1);
+  if (/\btonight\b/.test(text)) base.setHours(19, 0, 0, 0);
+  const inMatch = text.match(/\bin\s+(\d+)\s*(minute|minutes|hour|hours|day|days)\b/);
+  if (inMatch) {
+    const n = Number(inMatch[1]);
+    const unit = inMatch[2];
+    if (unit.startsWith("minute")) base.setMinutes(base.getMinutes() + n);
+    else if (unit.startsWith("hour")) base.setHours(base.getHours() + n);
+    else base.setDate(base.getDate() + n);
+    return base;
+  }
+  const time = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (time && (text.includes("at ") || /\b(am|pm)\b/.test(text))) {
+    let hour = Number(time[1]);
+    const minute = Number(time[2] || 0);
+    const meridiem = time[3];
+    if (meridiem === "pm" && hour < 12) hour += 12;
+    if (meridiem === "am" && hour === 12) hour = 0;
+    base.setHours(hour, minute, 0, 0);
+    if (base < now && !/\btomorrow\b/.test(text)) base.setDate(base.getDate() + 1);
+    return base;
+  }
+  return null;
+}
+
+function formatReminder(reminder) {
+  const bits = [reminder.text];
+  if (reminder.dueAt) bits.push(`due ${new Date(reminder.dueAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`);
+  else if (reminder.dueText) bits.push(`due ${reminder.dueText}`);
+  if (reminder.contact) bits.push(`contact ${reminder.contact}`);
+  return bits.join(", ");
+}
+
+function findOpenReminder(which) {
+  const openList = state.reminders.filter((reminder) => !reminder.done);
+  const needle = String(which || "").trim().toLowerCase();
+  const num = Number(needle);
+  let target = Number.isInteger(num) && openList[num - 1] ? openList[num - 1] : null;
+  if (!target && needle) target = openList.find((reminder) => reminder.text.toLowerCase().includes(needle));
+  return target || null;
+}
+
+function prepareReminderDelivery(reminder) {
+  const message = encodeURIComponent(`Reminder from VoiceMate: ${formatReminder(reminder)}`);
+  const contact = String(reminder.contact || "").trim();
+  if (!contact) {
+    toast("Add an email or phone first");
+    return "That reminder does not have an email or phone number yet.";
+  }
+  const href = contact.includes("@")
+    ? `mailto:${encodeURIComponent(contact)}?subject=${encodeURIComponent("VoiceMate reminder")}&body=${message}`
+    : `sms:${encodeURIComponent(contact)}?&body=${message}`;
+  window.open(href, "_blank", "noopener");
+  toast(contact.includes("@") ? "Opening email" : "Opening text");
+  return contact.includes("@") ? "I opened an email draft for that reminder." : "I opened a text draft for that reminder.";
+}
+
+function scheduleReminderNotification(reminder) {
+  if (!reminder.dueAt || !("Notification" in window)) return;
+  const due = new Date(reminder.dueAt).getTime();
+  const delay = due - Date.now();
+  if (delay <= 0 || delay > 2147483647) return;
+  const arm = () => {
+    setTimeout(() => {
+      if (reminder.done || reminder.notified) return;
+      reminder.notified = true;
+      saveState();
+      new Notification("VoiceMate reminder", { body: reminder.text });
+    }, delay);
+  };
+  if (Notification.permission === "granted") arm();
+  else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") arm();
+    });
+  }
+}
+
+function scheduleAllReminderNotifications() {
+  state.reminders.filter((reminder) => !reminder.done && reminder.dueAt).forEach(scheduleReminderNotification);
+}
 
 function renderReminders() {
   saveState();
@@ -2978,12 +3543,28 @@ function renderReminders() {
       row.className = "reminder-item";
       row.innerHTML = `
         <button class="reminder-check" type="button" aria-label="Complete">${svgIcon("check")}</button>
-        <span>${escapeHtml(reminder.text)}</span>
+        <span><strong>${escapeHtml(reminder.text)}</strong><small>${escapeHtml(formatReminder(reminder).replace(reminder.text, "").replace(/^,\s*/, ""))}</small></span>
+        <button class="reminder-send" type="button">${reminder.contact ? "Send" : "Add contact"}</button>
+        <button class="reminder-delete" type="button" aria-label="Delete reminder">${svgIcon("trash")}</button>
       `;
       row.querySelector(".reminder-check").addEventListener("click", () => {
         reminder.done = true;
         renderReminders();
         toast("Reminder completed");
+      });
+      row.querySelector(".reminder-send").addEventListener("click", () => {
+        if (!reminder.contact) {
+          const contact = prompt("Email or phone number for this reminder?");
+          if (!contact) return;
+          reminder.contact = contact.trim();
+          renderReminders();
+        }
+        prepareReminderDelivery(reminder);
+      });
+      row.querySelector(".reminder-delete").addEventListener("click", () => {
+        if (!confirm("Delete this reminder?")) return;
+        state.reminders = state.reminders.filter((item) => item.id !== reminder.id);
+        renderReminders();
       });
       els.reminderList.appendChild(row);
     });
@@ -2999,6 +3580,8 @@ function toast(message) {
   if (!toastHost) {
     toastHost = document.createElement("div");
     toastHost.className = "toast-host";
+    toastHost.setAttribute("role", "status");
+    toastHost.setAttribute("aria-live", "polite");
     document.body.appendChild(toastHost);
   }
   const item = document.createElement("div");
@@ -3021,6 +3604,10 @@ function setupShortcuts() {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "");
 
     if (event.key === "Escape") {
+      if (els.historyModal && !els.historyModal.hidden) {
+        closeHistory();
+        return;
+      }
       if (state.live) endLiveCall("Call ended.");
       return;
     }

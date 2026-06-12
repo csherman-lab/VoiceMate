@@ -93,8 +93,19 @@
               <button class="session-button camera-button" id="cameraButton" type="button" aria-label="Show the camera">
                 <span class="dock-icon" data-icon="camera"></span>
               </button>
-              <button class="session-button end-button page-link" type="button" data-page="home">End</button>
+              <button class="session-button end-button page-link" type="button" data-page="home">Leave</button>
             </div>
+          </div>
+
+          <div class="talk-context-panel" aria-label="Current VoiceMate context">
+            <div class="context-head">
+              <div>
+                <span class="eyebrow">Context</span>
+                <strong id="contextTitle">Nothing active yet</strong>
+              </div>
+              <button class="tool-button subtle" id="clearActiveContext" type="button">Clear context</button>
+            </div>
+            <div class="context-chips" id="contextChips"></div>
           </div>
 
           <div class="focus-orb-wrap">
@@ -103,19 +114,27 @@
             </div>
             <div class="voice-caption">
               <strong id="activePersonaName">Ara</strong>
-              <span id="voiceHint">Tap Start call to talk out loud</span>
+              <span id="voiceHint">Tap Start live call to talk out loud</span>
             </div>
             <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
               <span class="call-icon" id="callIcon"></span>
-              <span class="live-label">Start call</span>
+              <span class="live-label">Start live call</span>
             </button>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
+          <details class="thinking-drawer" id="thinkingDrawer" open>
+            <summary>
+              <span>Thinking and actions</span>
+              <small id="thinkingSummary">VoiceMate will show context, sources, and tools here.</small>
+            </summary>
+            <div class="talk-trace" id="talkTrace"></div>
+          </details>
+
           <form class="composer" id="promptForm">
             <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
-              <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,image/*" />
+              <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,.pdf,.doc,.docx,image/*" />
               <span class="dock-icon" data-icon="plus"></span>
             </label>
             <div class="composer-field">
@@ -140,6 +159,7 @@
             <button class="tool-button subtle" id="historyButton" type="button">History</button>
             <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
             <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
+            <span class="shortcut-help">Esc ends call · ⌘K focuses message · Space starts live call</span>
           </div>
         </div>
       </section>
@@ -149,15 +169,15 @@
         <div class="page-heading">
           <p class="eyebrow">Memory</p>
           <h2>What VoiceMate remembers</h2>
-          <p class="small-copy">Add files, photos, or notes and VoiceMate will use them in this session.</p>
+          <p class="small-copy">Saved on this device. Add files, photos, or notes and choose what VoiceMate should use in conversation.</p>
         </div>
 
         <div class="memory-actions" aria-label="Add to memory">
           <label class="add-tile" for="knowledgeUpload">
             <span class="add-icon" data-icon="doc" data-tint="#0a84ff"></span>
             <strong>Upload files</strong>
-            <small>Notes, CSV, briefs, logs</small>
-            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log" />
+            <small>Notes, CSV, PDFs, docs, logs</small>
+            <input id="knowledgeUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,.pdf,.doc,.docx" />
           </label>
           <label class="add-tile" for="imageUpload">
             <span class="add-icon" data-icon="photo" data-tint="#34c759"></span>
@@ -272,11 +292,13 @@
             <div class="group-card">
               <div class="reminder-add">
                 <input id="reminderInput" type="text" placeholder="Add a reminder" aria-label="Add a reminder" />
+                <input id="reminderDueInput" type="text" placeholder="Due, optional" aria-label="Reminder due time" />
+                <input id="reminderContactInput" type="text" placeholder="Email or phone, optional" aria-label="Reminder email or phone" />
                 <button class="row-button" id="addReminder" type="button">Add</button>
               </div>
               <div class="reminder-list" id="reminderList"></div>
             </div>
-            <p class="group-foot">Ask VoiceMate to remind you out loud, or add one here.</p>
+            <p class="group-foot">Ask VoiceMate to remind you, or add a due time and email or phone. VoiceMate can prepare mail or text links from your device.</p>
           </section>
 
           <section class="settings-group">
@@ -341,10 +363,10 @@
       </section>
     </main>
 
-    <div class="modal" id="historyModal" hidden>
-      <div class="modal-card">
+    <div class="modal" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyTitle" hidden>
+      <div class="modal-card" role="document">
         <div class="modal-head">
-          <h3>Conversations</h3>
+          <h3 id="historyTitle">Conversations</h3>
           <button class="modal-close" id="historyClose" type="button" aria-label="Close">&times;</button>
         </div>
         <input id="historySearch" type="search" placeholder="Search conversations" aria-label="Search conversations" />
