@@ -1047,6 +1047,91 @@ h3 {
   gap: 18px;
 }
 
+.talk-top-minimal {
+  margin-bottom: 4px;
+}
+
+.talk-status {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color 180ms ease;
+}
+
+.talk-status.live,
+.talk-status.speaking {
+  color: var(--blue);
+}
+
+.talk-status.thinking {
+  color: #bf5af2;
+}
+
+.talk-status.error {
+  color: var(--red);
+}
+
+.talk-compact .focus-orb-wrap {
+  display: none;
+}
+
+.talk-live .focus-orb-wrap {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.talk-live .focus-orb {
+  width: min(140px, 34vw);
+  height: min(140px, 34vw);
+}
+
+.talk-live .voice-hint,
+.talk-live .call-cta {
+  display: none;
+}
+
+.talk-live .transcript {
+  max-height: min(48vh, 520px);
+}
+
+.voice-hint {
+  max-width: 28ch;
+  margin: 18px 0 14px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+}
+
+.context-link {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.context-link:hover {
+  text-decoration: underline;
+}
+
+.tool-button.recording {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--red);
+}
+
+.talk-compact .transcript {
+  max-height: min(52vh, 560px);
+}
+
 .session-controls {
   display: flex;
   align-items: center;

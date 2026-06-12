@@ -119,48 +119,31 @@
 
       <!-- TALK -->
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
-        <div class="talk-stage">
-          <div class="talk-top">
+        <div class="talk-stage" id="talkStage">
+          <div class="talk-top talk-top-minimal">
             <div class="session-title">
               <span class="vm-logo small" id="talkLogo" aria-hidden="true"></span>
               <div>
                 <strong>VoiceMate</strong>
-                <span id="modeCaption">Natural chat</span>
+                <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
               </div>
-            </div>
-            <div class="session-controls">
-              <span class="call-timer" id="callTimer" hidden aria-live="polite">Live · 00:00</span>
-              <span class="voice-pill" id="backendStatus">Browser voice</span>
-              <span class="status-pill" id="speechStatus">Ready</span>
-              <button class="session-button camera-button" id="cameraButton" type="button" aria-label="Show the camera">
-                <span class="dock-icon" data-icon="camera"></span>
-              </button>
-              <button class="session-button end-button page-link" type="button" data-page="home">Leave</button>
             </div>
           </div>
 
-          <div class="skill-workflow-banner" id="skillWorkflowBanner" hidden></div>
-
-          <div class="focus-orb-wrap">
+          <div class="focus-orb-wrap" id="focusOrbWrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
               <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
             </div>
-            <div class="voice-caption">
-              <strong id="activePersonaName">Ara</strong>
-              <span id="voiceHint">Tap Start live call to talk out loud</span>
-            </div>
+            <p class="voice-hint" id="voiceHint">Tap below to start a live call, or type a message.</p>
             <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
               <span class="call-icon" id="callIcon"></span>
               <span class="live-label">Start live call</span>
             </button>
           </div>
 
-          <div class="talk-upload-cards" id="talkUploadCards" hidden aria-label="Active uploads"></div>
-
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
           <form class="composer" id="promptForm">
-            <button class="context-pill" id="contextPill" type="button" hidden>Context</button>
             <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,.pdf,.doc,.docx,image/*" />
               <span class="dock-icon" data-icon="plus"></span>
@@ -169,29 +152,38 @@
               <input
                 id="promptInput"
                 autocomplete="off"
-                placeholder="Message"
+                placeholder="Message VoiceMate"
                 aria-label="Message VoiceMate"
               />
-              <button class="composer-mic mic-button" id="micButton" type="button" aria-label="Use microphone">
-                <span class="dock-icon" data-icon="mic"></span>
-              </button>
             </div>
             <button class="composer-send send-button" type="submit" aria-label="Send message">
               <span class="dock-icon" data-icon="arrow-up"></span>
             </button>
           </form>
 
+          <button class="context-link" id="contextPill" type="button" hidden></button>
+
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
+
           <details class="talk-more">
-            <summary>More</summary>
+            <summary>Tools</summary>
             <div class="conversation-tools" aria-label="Conversation tools">
-              <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+              <button class="tool-button" id="micButton" type="button">Dictate</button>
+              <button class="tool-button subtle" id="cameraButton" type="button">Photo</button>
+              <button class="tool-button subtle" id="contextButton" type="button">Context</button>
+              <button class="tool-button subtle" id="clearTranscript" type="button">New chat</button>
               <button class="tool-button subtle" id="historyButton" type="button">History</button>
-              <button class="tool-button subtle" id="contextButton" type="button">Context sheet</button>
-              <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
-              <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
             </div>
           </details>
+
+          <!-- Hidden status hooks for scripts -->
+          <span id="speechStatus" hidden aria-hidden="true"></span>
+          <span id="backendStatus" hidden aria-hidden="true"></span>
+          <span id="callTimer" hidden aria-hidden="true"></span>
+          <span id="modeCaption" hidden aria-hidden="true"></span>
+          <strong id="activePersonaName" hidden aria-hidden="true"></strong>
+          <div id="skillWorkflowBanner" hidden aria-hidden="true"></div>
+          <div id="talkUploadCards" hidden aria-hidden="true"></div>
 
           <div class="sheet-backdrop" id="contextBackdrop" hidden></div>
           <div class="talk-context-panel bottom-sheet" id="talkContextPanel" role="dialog" aria-modal="true" aria-labelledby="contextTitle" hidden>
