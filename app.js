@@ -65,6 +65,7 @@ const SKILLS = [
     id: "companion",
     name: "Natural chat",
     tag: "Talk",
+    color: "#007aff",
     blurb: "Just talk. VoiceMate listens and replies like a real person.",
     keywords: []
   },
@@ -72,6 +73,7 @@ const SKILLS = [
     id: "research",
     name: "Deep research",
     tag: "Research",
+    color: "#5e5ce6",
     blurb: "Looks things up and gives a clear, sourced answer with citations.",
     keywords: [
       "research",
@@ -90,6 +92,7 @@ const SKILLS = [
     id: "digest",
     name: "Daily briefing",
     tag: "Briefing",
+    color: "#ff9f0a",
     blurb: "A short spoken briefing from your saved notes and files.",
     keywords: ["briefing", "digest", "catch me up", "good morning", "what's on", "rundown"]
   },
@@ -97,6 +100,7 @@ const SKILLS = [
     id: "pitch",
     name: "Pitch builder",
     tag: "Pitch",
+    color: "#ff2d55",
     blurb: "Turns rough ideas into a sharp, persuasive spoken pitch.",
     keywords: ["pitch", "sell", "client", "investor", "persuade", "demo this"]
   },
@@ -104,6 +108,7 @@ const SKILLS = [
     id: "analyst",
     name: "Data analyst",
     tag: "Data",
+    color: "#34c759",
     blurb: "Summarizes your CSVs and calls out the patterns that matter.",
     keywords: ["data", "csv", "numbers", "trend", "analyze", "spreadsheet", "average", "stats"]
   },
@@ -111,6 +116,7 @@ const SKILLS = [
     id: "coach",
     name: "Meeting coach",
     tag: "Coach",
+    color: "#30b0c7",
     blurb: "Coaches you to sound clearer, calmer, and more confident.",
     keywords: ["coach", "practice", "feedback", "interview", "present", "rehearse"]
   }
@@ -434,9 +440,10 @@ function renderSkills() {
     card.type = "button";
     card.className = "skill-card";
     card.dataset.skill = skill.id;
+    const tint = skill.color || "#007aff";
     card.innerHTML = `
-      <span class="skill-icon">${skillGlyph(skill.id)}</span>
-      <span class="skill-tag">${escapeHtml(skill.tag)}</span>
+      <span class="skill-icon" style="--tint:${tint}">${skillGlyph(skill.id)}</span>
+      <span class="skill-tag" style="color:${tint};background:${hexToSoft(tint)}">${escapeHtml(skill.tag)}</span>
       <strong>${escapeHtml(skill.name)}</strong>
       <p>${escapeHtml(skill.blurb)}</p>
     `;
@@ -1580,6 +1587,15 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function hexToSoft(hex, alpha = 0.14) {
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!match) return "rgba(0, 122, 255, 0.12)";
+  const r = parseInt(match[1], 16);
+  const g = parseInt(match[2], 16);
+  const b = parseInt(match[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Track whether the user has used the mic so we don't auto-listen unexpectedly.
