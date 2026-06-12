@@ -129,6 +129,12 @@ server.listen(PORT, () => {
   console.log(`VoiceMate running at http://localhost:${PORT}`);
   console.log(`xAI key configured: ${Boolean(XAI_API_KEY)}`);
   console.log(`Chat model: ${XAI_MODEL} | Realtime voice model: ${XAI_REALTIME_MODEL}`);
+  if (!XAI_API_KEY) {
+    console.warn("\n⚠️  No xAI API key found — VoiceMate will use browser TTS instead of Grok voice.");
+    console.warn("   1. cp .env.local.example .env.local");
+    console.warn("   2. Add your key: XAI_API_KEY=your_key_here");
+    console.warn("   3. Restart: npm start\n");
+  }
   if (LIVE_RELOAD) {
     startFileWatcher();
     console.log("Live reload: ON — saved changes refresh the browser automatically.");

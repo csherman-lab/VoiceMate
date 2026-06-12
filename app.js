@@ -2696,12 +2696,12 @@ function setupEyes() {
   if (els.heroOrb) {
     els.heroOrb.setAttribute("tabindex", "0");
     els.heroOrb.setAttribute("role", "button");
-    els.heroOrb.setAttribute("aria-label", "Make VoiceMate react");
-    els.heroOrb.addEventListener("click", () => playOrbHappy(els.heroOrb));
+    els.heroOrb.setAttribute("aria-label", "VoiceMate");
+    els.heroOrb.addEventListener("click", () => playOrbSquint());
     els.heroOrb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        playOrbHappy(els.heroOrb);
+        playOrbSquint();
       }
     });
   }
@@ -2714,19 +2714,15 @@ function setupEyes() {
   requestAnimationFrame(eyeLoop);
 }
 
-function playOrbHappy(orb) {
-  if (!orb) return;
-  const eyeEl = orb.querySelector(".orb-eyes");
-  if (!eyeEl) return;
-  eyeEl.classList.remove("tapped");
-  orb.classList.remove("orb-tapped");
-  void orb.offsetWidth;
-  eyeEl.classList.add("tapped");
-  orb.classList.add("orb-tapped");
-  window.setTimeout(() => {
-    eyeEl.classList.remove("tapped");
-    orb.classList.remove("orb-tapped");
-  }, 920);
+let squintTimer = null;
+
+function playOrbSquint() {
+  if (squintTimer) clearTimeout(squintTimer);
+  eyes.els.forEach((el) => el.classList.add("squint"));
+  squintTimer = window.setTimeout(() => {
+    eyes.els.forEach((el) => el.classList.remove("squint"));
+    squintTimer = null;
+  }, 420);
 }
 
 function setEyeMode(mode) {
