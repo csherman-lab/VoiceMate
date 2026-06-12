@@ -15,6 +15,8 @@ VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a
 - Local file summaries
 - Visible activity feed and Talk-screen thinking drawer
 - Active context chips for uploaded files, photos, and notes
+- Home dashboard for live status, active context, reminders, and recent conversations
+- First-run onboarding for Talk, uploads, and skills
 - Pitch mode
 - Data analyst mode
 - Meeting coach mode
@@ -32,8 +34,10 @@ VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a
 - Show an activity feed and Talk-screen trace for each response
 - Use active upload context from files, pasted notes, photos, camera captures, and saved chats
 - Stream typed Grok replies while preserving tool calls
+- Render live captions progressively and keep transcript corrections in-place
 - Prepare mailto or SMS drafts for reminders from the user's device
 - Cache large image previews in IndexedDB when localStorage is tight
+- Use AudioWorklet for live microphone capture when available, with a compatibility fallback
 
 ## What production should add
 

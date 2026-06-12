@@ -23,6 +23,9 @@ what we studied and what we borrowed.
   for genuine prosody instead of a flat robotic read.
 - **Streaming typed turns.** When you type, replies stream into the transcript,
   can call tools, and are spoken with the Grok voice you picked.
+- **Live captions that feel spoken.** In live calls, user transcription updates
+  in place and VoiceMate's words reveal progressively so the transcript tracks
+  the conversation instead of dumping blocks of text.
 - **Graceful fallback.** With no backend, VoiceMate still runs in a local
   preview using the browser voice.
 
@@ -40,6 +43,12 @@ what we studied and what we borrowed.
 - **Shows what it is using.** Talk has active context chips and a thinking/actions
   drawer so you can see uploads, tools, sources, and decisions without leaving
   the conversation.
+- **Useful Home dashboard + onboarding.** Home now surfaces live voice status,
+  active context, reminders, and recent conversations, while first-run onboarding
+  helps users try Talk, uploads, and skills.
+- **Understands images when connected.** Uploaded image metadata works locally;
+  with the backend online, VoiceMate quietly asks the model for a better image
+  description and saves that summary back to memory.
 - **Safer local storage.** Large image previews are cached in IndexedDB when
   possible, with metadata kept in localStorage as a fallback.
 - **Installable + offline.** It's a PWA — install it like a native app; the

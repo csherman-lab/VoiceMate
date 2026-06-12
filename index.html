@@ -66,6 +66,8 @@
           </div>
         </div>
 
+        <div class="home-dashboard" id="homeDashboard" aria-label="Today in VoiceMate"></div>
+
         <div class="home-section">
           <div class="section-head">
             <p class="eyebrow">Skills</p>
@@ -143,13 +145,17 @@
             <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
           </div>
 
-          <div class="talk-context-panel" id="talkContextPanel" aria-label="Current VoiceMate context" hidden>
+          <div class="sheet-backdrop" id="contextBackdrop" hidden></div>
+          <div class="talk-context-panel bottom-sheet" id="talkContextPanel" role="dialog" aria-modal="true" aria-labelledby="contextTitle" hidden>
             <div class="context-head">
               <div>
                 <span class="eyebrow">Context</span>
                 <strong id="contextTitle">Nothing active yet</strong>
               </div>
-              <button class="tool-button subtle" id="clearActiveContext" type="button">Clear context</button>
+              <div class="sheet-actions">
+                <button class="tool-button subtle" id="clearActiveContext" type="button">Clear</button>
+                <button class="tool-button subtle" id="closeContextSheet" type="button">Done</button>
+              </div>
             </div>
             <div class="context-chips" id="contextChips"></div>
           </div>
@@ -362,7 +368,7 @@
                   <strong>VoiceMate</strong>
                   <span>Voice companion with skills, memory, uploads, and live voice.</span>
                 </div>
-                <span class="row-value">0.3.0</span>
+                <span class="row-value">0.4.0</span>
               </div>
             </div>
           </section>
@@ -378,6 +384,36 @@
         </div>
         <input id="historySearch" type="search" placeholder="Search conversations" aria-label="Search conversations" />
         <div class="convo-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <div class="modal onboarding-modal" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" hidden>
+      <div class="modal-card onboarding-card" role="document">
+        <div class="modal-head">
+          <h3 id="onboardingTitle">Set up VoiceMate</h3>
+          <button class="modal-close" id="onboardingSkip" type="button" aria-label="Skip onboarding">&times;</button>
+        </div>
+        <div class="onboarding-steps">
+          <article>
+            <span class="row-icon" data-icon="waveform" data-tint="#0a84ff"></span>
+            <strong>Talk naturally</strong>
+            <p>Start with text, browser voice, or a live call when your server is connected.</p>
+          </article>
+          <article>
+            <span class="row-icon" data-icon="photo" data-tint="#34c759"></span>
+            <strong>Add context</strong>
+            <p>Upload a file, screenshot, note, or photo and ask VoiceMate about it.</p>
+          </article>
+          <article>
+            <span class="row-icon" data-icon="check" data-tint="#ff2d55"></span>
+            <strong>Let it help</strong>
+            <p>Use skills for research, pitch practice, data analysis, reminders, and coaching.</p>
+          </article>
+        </div>
+        <div class="onboarding-actions">
+          <button class="button secondary" id="onboardingLater" type="button">Maybe later</button>
+          <button class="button primary" id="onboardingStart" type="button">Start with Talk</button>
+        </div>
       </div>
     </div>
 

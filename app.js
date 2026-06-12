@@ -216,6 +216,7 @@ const REALTIME_TOOLS = TOOL_DEFS.map((tool) => ({ type: "function", ...tool }));
 const STORE_KEY = "voicemate.state.v1";
 const ASSET_DB = "voicemate.assets.v1";
 const ASSET_STORE = "assets";
+const ONBOARDING_KEY = "voicemate.onboarding.v1";
 
 const state = {
   memory: [...STARTER_MEMORY],
@@ -288,6 +289,7 @@ function cacheEls() {
     callIcon: document.querySelector("#callIcon"),
     voiceOrb: document.querySelector("#voiceOrb"),
     heroOrb: document.querySelector("#heroOrb"),
+    homeDashboard: document.querySelector("#homeDashboard"),
     quickPrompts: document.querySelector("#quickPrompts"),
     activityFeed: document.querySelector("#activityFeed"),
     talkContextPanel: document.querySelector("#talkContextPanel"),
@@ -297,6 +299,8 @@ function cacheEls() {
     contextTitle: document.querySelector("#contextTitle"),
     contextChips: document.querySelector("#contextChips"),
     contextButton: document.querySelector("#contextButton"),
+    contextBackdrop: document.querySelector("#contextBackdrop"),
+    closeContextSheet: document.querySelector("#closeContextSheet"),
     clearActiveContext: document.querySelector("#clearActiveContext"),
     knowledgeUpload: document.querySelector("#knowledgeUpload"),
     imageUpload: document.querySelector("#imageUpload"),
@@ -328,7 +332,11 @@ function cacheEls() {
     historyClose: document.querySelector("#historyClose"),
     cameraButton: document.querySelector("#cameraButton"),
     langSelect: document.querySelector("#langSelect"),
-    wakeToggle: document.querySelector("#wakeToggle")
+    wakeToggle: document.querySelector("#wakeToggle"),
+    onboardingModal: document.querySelector("#onboardingModal"),
+    onboardingSkip: document.querySelector("#onboardingSkip"),
+    onboardingLater: document.querySelector("#onboardingLater"),
+    onboardingStart: document.querySelector("#onboardingStart")
   });
 }
 
@@ -341,6 +349,7 @@ function init() {
   if (els.talkLogo) els.talkLogo.innerHTML = logoSvg("vmlogo2");
   renderIcons();
   renderSkills();
+  renderHomeDashboard();
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
@@ -372,6 +381,7 @@ function init() {
       showPage(initialPage);
     }
     window.requestAnimationFrame(() => document.body.classList.add("ui-ready"));
+    maybeShowOnboarding();
   });
 }
 
@@ -492,8 +502,20 @@ function wireEvents() {
   }
   if (els.contextButton) {
     els.contextButton.addEventListener("click", () => {
-      state.contextOpen = !state.contextOpen;
-      renderContextChips();
+      if (state.contextOpen) closeContextSheet();
+      else openContextSheet();
+    });
+  }
+  if (els.contextBackdrop) els.contextBackdrop.addEventListener("click", closeContextSheet);
+  if (els.closeContextSheet) els.closeContextSheet.addEventListener("click", closeContextSheet);
+  [els.onboardingSkip, els.onboardingLater].forEach((button) => {
+    if (button) button.addEventListener("click", dismissOnboarding);
+  });
+  if (els.onboardingStart) {
+    els.onboardingStart.addEventListener("click", () => {
+      dismissOnboarding();
+      showPage("talk");
+      if (els.promptInput) els.promptInput.focus();
     });
   }
 
@@ -690,6 +712,77 @@ function imageForModel(item) {
   };
 }
 
+function renderHomeDashboard() {
+  if (!els.homeDashboard) return;
+  const active = activeUploadItems().filter((item) => item.type !== "brief");
+  const openReminders = state.reminders.filter((reminder) => !reminder.done);
+  const lastConvo = state.conversations.find((convo) => convo.titled);
+  const cards = [
+    {
+      icon: "waveform",
+      tint: "#0a84ff",
+      title: state.backendOnline ? "Live voice ready" : "Browser preview",
+      body: state.backendOnline ? "Start a natural live call." : "Run the server for natural live voice.",
+      action: "Talk",
+      onClick: () => showPage("talk")
+    },
+    {
+      icon: active.length ? memoryIconName(active[active.length - 1].type) : "archive",
+      tint: "#34c759",
+      title: active.length ? `${active.length} active context item${active.length === 1 ? "" : "s"}` : "No active context",
+      body: active.length ? active.map((item) => item.name).slice(-2).join(", ") : "Upload a file, note, or photo.",
+      action: active.length ? "Review" : "Add",
+      onClick: () => (active.length ? openContextSheet() : showPage("memory"))
+    },
+    {
+      icon: "check",
+      tint: "#ff2d55",
+      title: openReminders.length ? `${openReminders.length} open reminder${openReminders.length === 1 ? "" : "s"}` : "No reminders",
+      body: openReminders[0] ? formatReminder(openReminders[0]) : "Ask VoiceMate to remind you.",
+      action: "Reminders",
+      onClick: () => showPage("settings")
+    },
+    {
+      icon: "history",
+      tint: "#5e5ce6",
+      title: lastConvo ? "Continue" : "Start fresh",
+      body: lastConvo ? lastConvo.title : "Begin a new chat or live call.",
+      action: lastConvo ? "Resume" : "Start",
+      onClick: () => (lastConvo ? resumeConversation(lastConvo.id) : showPage("talk"))
+    }
+  ];
+
+  els.homeDashboard.innerHTML = cards
+    .map(
+      (card, index) => `
+        <button class="dashboard-card" type="button" data-card="${index}">
+          <span class="dash-icon" style="--tint:${card.tint}">${svgIcon(card.icon)}</span>
+          <span><strong>${escapeHtml(card.title)}</strong><small>${escapeHtml(card.body)}</small></span>
+          <em>${escapeHtml(card.action)}</em>
+        </button>
+      `
+    )
+    .join("");
+  els.homeDashboard.querySelectorAll(".dashboard-card").forEach((button) => {
+    const card = cards[Number(button.dataset.card)];
+    button.addEventListener("click", card.onClick);
+  });
+}
+
+function maybeShowOnboarding() {
+  if (!els.onboardingModal) return;
+  if (localStorage.getItem(ONBOARDING_KEY) === "done") return;
+  window.setTimeout(() => {
+    els.onboardingModal.hidden = false;
+    els.onboardingStart?.focus();
+  }, 500);
+}
+
+function dismissOnboarding() {
+  localStorage.setItem(ONBOARDING_KEY, "done");
+  if (els.onboardingModal) els.onboardingModal.hidden = true;
+}
+
 function renderContextChips() {
   if (!els.contextChips || !els.contextTitle) return;
   const active = uploadContextItems();
@@ -699,11 +792,14 @@ function renderContextChips() {
     els.contextButton.disabled = !active.length;
   }
   if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length || !state.contextOpen;
+  if (els.contextBackdrop) els.contextBackdrop.hidden = !active.length || !state.contextOpen;
   els.contextTitle.textContent = active.length
     ? `${active.length} active item${active.length === 1 ? "" : "s"}`
     : "Nothing active yet";
   if (!active.length) {
+    if (els.contextBackdrop) els.contextBackdrop.hidden = true;
     updateTalkChrome();
+    renderHomeDashboard();
     return;
   }
 
@@ -728,6 +824,19 @@ function renderContextChips() {
     els.contextChips.appendChild(chip);
   });
   updateTalkChrome();
+  renderHomeDashboard();
+}
+
+function openContextSheet() {
+  const active = uploadContextItems();
+  if (!active.length) return;
+  state.contextOpen = true;
+  renderContextChips();
+}
+
+function closeContextSheet() {
+  state.contextOpen = false;
+  renderContextChips();
 }
 
 function removeFromActiveContext(id) {
@@ -1933,12 +2042,9 @@ async function startLiveCall() {
   }
 }
 
-function startMicStreaming(live) {
+async function startMicStreaming(live) {
   const ctx = live.ctx;
   live.source = ctx.createMediaStreamSource(live.stream);
-  live.processor = ctx.createScriptProcessor(4096, 1, 1);
-  live.source.connect(live.processor);
-  live.processor.connect(ctx.destination);
 
   // Analysers drive the audio-reactive orb.
   live.inAnalyser = ctx.createAnalyser();
@@ -1948,12 +2054,63 @@ function startMicStreaming(live) {
   live.outAnalyser.fftSize = 256;
   startOrbReaction(live);
 
+  if (ctx.audioWorklet) {
+    try {
+      const workletUrl = URL.createObjectURL(
+        new Blob(
+          [
+            `class VoiceMateMicProcessor extends AudioWorkletProcessor {
+              constructor() {
+                super();
+                this.buffer = new Float32Array(4096);
+                this.offset = 0;
+              }
+              process(inputs) {
+                const input = inputs[0] && inputs[0][0];
+                if (input) {
+                  for (let i = 0; i < input.length; i++) {
+                    this.buffer[this.offset++] = input[i];
+                    if (this.offset >= this.buffer.length) {
+                      this.port.postMessage(this.buffer.slice(0));
+                      this.offset = 0;
+                    }
+                  }
+                }
+                return true;
+              }
+            }
+            registerProcessor("voicemate-mic", VoiceMateMicProcessor);`
+          ],
+          { type: "text/javascript" }
+        )
+      );
+      await ctx.audioWorklet.addModule(workletUrl);
+      URL.revokeObjectURL(workletUrl);
+      live.worklet = new AudioWorkletNode(ctx, "voicemate-mic");
+      live.worklet.port.onmessage = (event) => {
+        sendLiveAudioFrame(live, event.data);
+      };
+      live.source.connect(live.worklet);
+      live.worklet.connect(ctx.destination);
+      addActivity("Mic capture", "Using AudioWorklet for live voice.");
+      return;
+    } catch (error) {
+      addActivity("Mic fallback", "AudioWorklet unavailable, using compatibility capture.");
+    }
+  }
+
+  live.processor = ctx.createScriptProcessor(4096, 1, 1);
+  live.source.connect(live.processor);
+  live.processor.connect(ctx.destination);
   live.processor.onaudioprocess = (event) => {
+    sendLiveAudioFrame(live, event.inputBuffer.getChannelData(0));
+  };
+}
+
+function sendLiveAudioFrame(live, input) {
     if (!live.ws || live.ws.readyState !== WebSocket.OPEN) return;
-    const input = event.inputBuffer.getChannelData(0);
     const b64 = float32ToBase64PCM16(input);
     live.ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
-  };
 }
 
 function analyserRms(analyser, buffer) {
@@ -2228,6 +2385,10 @@ function endLiveCall(note) {
     if (live.processor) {
       live.processor.disconnect();
       live.processor.onaudioprocess = null;
+    }
+    if (live.worklet) {
+      live.worklet.port.onmessage = null;
+      live.worklet.disconnect();
     }
     if (live.source) live.source.disconnect();
     if (live.stream) live.stream.getTracks().forEach((track) => track.stop());
@@ -2634,15 +2795,21 @@ function setLiveText(message, text, animateNew = true) {
 
 function appendAnimatedText(message, text) {
   const parts = String(text || "").match(/\s+|[^\s]+/g) || [];
+  message.querySelectorAll(".current-word").forEach((node) => node.classList.remove("current-word"));
+  let latestWord = null;
   for (const part of parts) {
     if (/^\s+$/.test(part)) {
       message.appendChild(document.createTextNode(part));
     } else {
       const span = document.createElement("span");
-      span.className = "word-pop";
+      span.className = "word-pop current-word";
       span.textContent = part;
       message.appendChild(span);
+      latestWord = span;
     }
+  }
+  if (latestWord) {
+    window.setTimeout(() => latestWord.classList.remove("current-word"), 420);
   }
 }
 
@@ -2881,7 +3048,38 @@ async function handleImageFiles(files, options = {}) {
   renderMemory();
   if (activate) noteUploadContext(added);
   addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
+  added.forEach((item) => enrichImageMemory(item));
   return added;
+}
+
+async function enrichImageMemory(item) {
+  if (!state.backendOnline || !item?.preview) return;
+  try {
+    addActivity("Reading image", `${item.name} is being understood.`);
+    const response = await fetch("/api/grok/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Describe this image in one concise sentence, then name two useful questions the user might ask about it. No markdown.",
+        persona: getPersona().id,
+        mode: "analyst",
+        language: state.language,
+        memory: state.memory.map((memoryItem) => memoryForChat(memoryItem, item.name)),
+        reminders: remindersForContext(),
+        images: [imageForModel(item)]
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.answer) return;
+    item.summary = data.answer.slice(0, 280);
+    item.content = `${item.name}. ${item.summary}`;
+    item.understoodAt = new Date().toISOString();
+    renderMemory();
+    renderContextChips();
+    addActivity("Image understood", item.summary);
+  } catch (error) {
+    // Vision enrichment is best effort; uploaded image metadata still works.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2920,6 +3118,7 @@ async function checkBackend() {
     state.backendOnline = false;
   }
   updateGrokStatus();
+  renderHomeDashboard();
 }
 
 // ---------------------------------------------------------------------------
@@ -3837,6 +4036,7 @@ function scheduleAllReminderNotifications() {
 
 function renderReminders() {
   saveState();
+  renderHomeDashboard();
   if (!els.reminderList) return;
   els.reminderList.innerHTML = "";
   const open = state.reminders.filter((reminder) => !reminder.done);
