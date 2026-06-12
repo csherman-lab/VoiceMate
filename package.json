@@ -1,5 +1,9 @@
 {
+  "name": "voicemate",
+  "version": "0.2.0",
+  "description": "VoiceMate — a human-sounding voice companion powered by real Grok voice, with skills, memory, and a visible reasoning trace.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node build-singlefile.js"
   }
 }
