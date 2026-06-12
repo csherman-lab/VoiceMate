@@ -3828,6 +3828,17 @@ footer {
   margin-bottom: 12px;
 }
 
+.connector-setup {
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted, #6e6e73);
+}
+
+.connector-setup code {
+  font-size: 0.82em;
+}
+
 .connector-add {
   display: grid;
   grid-template-columns: 120px 1fr 1.4fr auto;

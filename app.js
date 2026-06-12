@@ -229,6 +229,8 @@ const state = {
   backendOnline: false,
   backendModel: "",
   realtimeModel: "",
+  slackConfigured: false,
+  gmailConfigured: false,
   talkStarted: false,
   history: [],
   conversations: [],
@@ -800,19 +802,29 @@ function imageForModel(item) {
 const FEED_KIND_LABELS = {
   remind: "Remind later",
   tomorrow: "Tomorrow",
-  explain: "Explain"
+  explain: "Explain",
+  update: "Today's updates"
 };
 
 const FEED_KIND_ICONS = {
   remind: "check",
   tomorrow: "sun",
-  explain: "doc"
+  explain: "doc",
+  update: "waveform"
 };
 
 const FEED_KIND_TINTS = {
   remind: "#ff2d55",
   tomorrow: "#ff9f0a",
-  explain: "#0a84ff"
+  explain: "#0a84ff",
+  update: "#5e5ce6"
+};
+
+const CONNECTOR_TYPE_LABELS = {
+  url: "Web page",
+  note: "Text note",
+  slack: "Slack channel",
+  gmail: "Gmail inbox"
 };
 
 function createConnectorId() {
@@ -821,16 +833,42 @@ function createConnectorId() {
 
 function updateConnectorFormPlaceholder() {
   if (!els.connectorTarget || !els.connectorType) return;
-  els.connectorTarget.placeholder =
-    els.connectorType.value === "note" ? "Paste text VoiceMate should explain later" : "https://example.com/page";
+  const type = els.connectorType.value;
+  if (type === "note") {
+    els.connectorTarget.placeholder = "Paste text VoiceMate should explain later";
+  } else if (type === "slack") {
+    els.connectorTarget.placeholder = "Slack channel (e.g. #general or C0123456789)";
+  } else if (type === "gmail") {
+    els.connectorTarget.placeholder = "Gmail search (optional — default: today's inbox)";
+  } else {
+    els.connectorTarget.placeholder = "https://example.com/page";
+  }
 }
 
 function addConnectorFromForm() {
   const type = els.connectorType?.value || "url";
   const name = (els.connectorName?.value || "").trim();
   const target = (els.connectorTarget?.value || "").trim();
-  if (!name || !target) {
-    toast("Add a name and URL or note");
+  if (!name) {
+    toast("Add a connector name");
+    return;
+  }
+  if (type === "gmail") {
+    if (!state.gmailConfigured) {
+      toast("Add Gmail credentials to .env.local first");
+      return;
+    }
+  } else if (type === "slack") {
+    if (!state.slackConfigured) {
+      toast("Add SLACK_BOT_TOKEN to .env.local first");
+      return;
+    }
+    if (!target) {
+      toast("Add a Slack channel (e.g. #general)");
+      return;
+    }
+  } else if (!target) {
+    toast("Add a URL or note");
     return;
   }
   if (type === "url" && !/^https?:\/\//i.test(target)) {
@@ -841,7 +879,7 @@ function addConnectorFromForm() {
     id: createConnectorId(),
     type,
     name,
-    url: type === "url" ? target : "",
+    url: type === "note" ? "" : target,
     note: type === "note" ? target : "",
     enabled: true,
     items: [],
@@ -922,6 +960,56 @@ function extractFeedItemsFromText(text, sourceName, sourceUrl = "") {
   return items.slice(0, 12);
 }
 
+function extractFeedItemsFromUpdates(messages, sourceName, summary = "") {
+  const items = [];
+  const list = Array.isArray(messages) ? messages : [];
+
+  if (!list.length) {
+    items.push({
+      id: "feed-" + Date.now() + "-empty",
+      kind: "update",
+      title: `No updates today · ${sourceName}`,
+      summary: summary || "Nothing new since midnight.",
+      content: summary || "No updates found for today.",
+      source: sourceName
+    });
+    return items;
+  }
+
+  const digest = list
+    .map((entry) => {
+      const label = entry.subject || entry.text || entry.snippet || "";
+      const from = entry.from ? `${entry.from}: ` : "";
+      return `${from}${label}`.trim();
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  items.push({
+    id: "feed-" + Date.now() + "-digest",
+    kind: "update",
+    title: `Today's updates · ${sourceName}`,
+    summary: summary || `${list.length} update(s) today`,
+    content: digest.slice(0, 12000),
+    source: sourceName
+  });
+
+  list.slice(0, 10).forEach((entry, index) => {
+    const title = entry.subject || entry.text?.slice(0, 96) || `Update ${index + 1}`;
+    const line = entry.from ? `${entry.from}: ${entry.text || entry.snippet || title}` : entry.text || entry.snippet || title;
+    items.push({
+      id: "feed-" + Date.now() + "-u" + index,
+      kind: "update",
+      title: title.slice(0, 96),
+      summary: line.slice(0, 180),
+      content: line,
+      source: sourceName
+    });
+  });
+
+  return items.slice(0, 12);
+}
+
 async function syncConnector(id) {
   const connector = state.connectors.find((c) => c.id === id);
   if (!connector || !connector.enabled) return;
@@ -929,6 +1017,24 @@ async function syncConnector(id) {
   try {
     if (connector.type === "note") {
       connector.items = extractFeedItemsFromText(connector.note, connector.name);
+    } else if (connector.type === "slack") {
+      const response = await fetch("/api/connector/slack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: connector.url })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Slack sync failed");
+      connector.items = extractFeedItemsFromUpdates(data.messages || [], connector.name, data.summary || "");
+    } else if (connector.type === "gmail") {
+      const response = await fetch("/api/connector/gmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: connector.url || "in:inbox newer_than:1d" })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Gmail sync failed");
+      connector.items = extractFeedItemsFromUpdates(data.messages || [], connector.name, data.summary || "");
     } else {
       const response = await fetch("/api/connector/scrape", {
         method: "POST",
@@ -1008,6 +1114,9 @@ function agentFeedItems() {
 function feedPromptForItem(item) {
   if (item.kind === "tomorrow") return `Help me plan for tomorrow. Focus on: ${item.title}`;
   if (item.kind === "remind") return `Remind me about this and when I should follow up: ${item.title}`;
+  if (item.kind === "update") {
+    return `Give me today's updates from ${item.source}. Summarize what matters and what I should respond to: ${item.title}. ${item.summary || ""}`;
+  }
   return `Explain this so I don't have to read it: ${item.title}. ${item.summary || ""}`;
 }
 
@@ -1020,7 +1129,7 @@ function connectorsForContext() {
 function renderConnectors() {
   if (!els.connectorList) return;
   if (!state.connectors.length) {
-    els.connectorList.innerHTML = `<p class="connector-empty">No connectors yet. Add a web page or note above — VoiceMate will scrape it and pull items onto Home.</p>`;
+    els.connectorList.innerHTML = `<p class="connector-empty">No connectors yet. Add a web page, Slack channel, Gmail inbox, or note above — VoiceMate pulls today's updates onto Home.</p>`;
     return;
   }
   els.connectorList.innerHTML = state.connectors
@@ -1028,12 +1137,17 @@ function renderConnectors() {
       const synced = connector.lastSyncedAt
         ? `Synced ${new Date(connector.lastSyncedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`
         : "Not synced yet";
-      const target = connector.type === "url" ? connector.url : truncate(connector.note || "", 64);
+      const target =
+        connector.type === "url" || connector.type === "slack"
+          ? connector.url
+          : connector.type === "gmail"
+            ? connector.url || "Today's inbox"
+            : truncate(connector.note || "", 64);
       return `
         <article class="connector-row ${connector.enabled ? "" : "disabled"}" data-id="${escapeHtml(connector.id)}">
           <div class="connector-row-main">
             <strong>${escapeHtml(connector.name)}</strong>
-            <small>${escapeHtml(connector.type === "url" ? "Web page" : "Text note")} · ${escapeHtml(synced)}</small>
+            <small>${escapeHtml(CONNECTOR_TYPE_LABELS[connector.type] || connector.type)} · ${escapeHtml(synced)}</small>
             <small class="connector-target">${escapeHtml(target)}</small>
             <small>${(connector.items || []).length} item(s) on Home</small>
           </div>
@@ -1103,6 +1217,7 @@ function renderHomeDashboard() {
   const tomorrow = feed.filter((i) => i.kind === "tomorrow").length;
   const explain = feed.filter((i) => i.kind === "explain").length;
   const remind = feed.filter((i) => i.kind === "remind").length;
+  const updates = feed.filter((i) => i.kind === "update").length;
   const lastConvo = state.conversations.find((convo) => convo.titled);
 
   const cards = [
@@ -1113,6 +1228,16 @@ function renderHomeDashboard() {
       body: state.backendOnline ? "Live voice or type — ask about anything on Home." : "Type a message or connect the server for live voice.",
       action: "Talk",
       onClick: () => showPage("talk")
+    },
+    {
+      icon: "waveform",
+      tint: "#5e5ce6",
+      title: updates ? `${updates} update${updates === 1 ? "" : "s"} today` : "Today's updates",
+      body: updates
+        ? "Slack and Gmail items from today — tap to hear the briefing."
+        : "Connect Slack or Gmail in Settings for a spoken daily catch-up.",
+      action: "Updates",
+      onClick: () => document.getElementById("agentFeed")?.scrollIntoView({ behavior: "smooth" })
     },
     {
       icon: "sun",
@@ -1142,7 +1267,7 @@ function renderHomeDashboard() {
       icon: "link",
       tint: "#5e5ce6",
       title: state.connectors.length ? `${state.connectors.length} connector${state.connectors.length === 1 ? "" : "s"}` : "Connectors",
-      body: state.connectors.length ? "Sync pages and notes in Settings." : "Add URLs or notes VoiceMate can scrape.",
+      body: state.connectors.length ? "Sync pages, Slack, Gmail, and notes in Settings." : "Add URLs, Slack channels, Gmail, or notes VoiceMate can pull from.",
       action: "Connect",
       onClick: () => showPage("settings", { focus: "connectors" })
     },
@@ -3682,6 +3807,8 @@ async function checkBackend() {
     state.backendOnline = Boolean(response.ok && data.xaiConfigured);
     state.backendModel = data.model || "";
     state.realtimeModel = data.realtimeModel || "";
+    state.slackConfigured = Boolean(data.slackConfigured);
+    state.gmailConfigured = Boolean(data.gmailConfigured);
     if (state.backendOnline) {
       addActivity("Voice engine connected", "Natural live voice is ready.");
     } else if (response.ok) {
@@ -3689,6 +3816,8 @@ async function checkBackend() {
     }
   } catch (error) {
     state.backendOnline = false;
+    state.slackConfigured = false;
+    state.gmailConfigured = false;
   }
   updateGrokStatus();
   renderHomeDashboard();
@@ -4145,6 +4274,8 @@ function renderConnectionDiagnostics() {
   const rows = [
     { label: "Backend", value: state.backendOnline ? "Connected" : "Offline", ok: state.backendOnline },
     { label: "API key", value: state.backendOnline ? "Configured" : "Missing", ok: state.backendOnline },
+    { label: "Slack connector", value: state.slackConfigured ? "Configured" : "Not set up", ok: state.slackConfigured },
+    { label: "Gmail connector", value: state.gmailConfigured ? "Configured" : "Not set up", ok: state.gmailConfigured },
     { label: "Realtime voice", value: state.realtimeModel || "Unavailable", ok: Boolean(state.backendOnline && state.realtimeModel) },
     { label: "Browser mic", value: mic ? "Available" : "Unavailable", ok: mic },
     { label: "Notifications", value: notify, ok: notify === "Allowed" },

@@ -49,7 +49,7 @@
             <p class="eyebrow">Personal voice agent</p>
             <h1>Talk. Don't read.</h1>
             <p class="lede">
-              Add connectors in Settings — VoiceMate pulls what to remember, what's due tomorrow, and pages you want explained out loud.
+              Add connectors in Settings — VoiceMate pulls today's updates from Slack and Gmail, plus reminders, tomorrow's tasks, and pages to explain out loud.
             </p>
             <div class="hero-actions">
               <button class="button primary page-link" type="button" data-page="talk">Talk to VoiceMate</button>
@@ -62,7 +62,7 @@
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <p class="device-label">Your agent, out loud</p>
-            <p class="device-subtitle">Reminders, tomorrow, and explainers — from the connectors you choose.</p>
+            <p class="device-subtitle">Today's updates, reminders, and explainers — from the connectors you choose.</p>
           </div>
         </div>
 
@@ -71,8 +71,8 @@
         <div class="home-section agent-feed-section">
           <div class="section-head">
             <p class="eyebrow">From your connectors</p>
-            <h2>Remind · Tomorrow · Explain</h2>
-            <p class="small-copy">Tap anything to talk it through with VoiceMate — no need to open the original page.</p>
+            <h2>Updates · Remind · Tomorrow · Explain</h2>
+            <p class="small-copy">Tap anything to talk it through with VoiceMate — Slack, Gmail, pages, and notes included.</p>
           </div>
           <div class="agent-feed" id="agentFeed" aria-live="polite"></div>
         </div>
@@ -99,7 +99,7 @@
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="voice-hint" id="voiceHint">Ask about reminders, tomorrow, or anything your connectors pulled in.</p>
+            <p class="voice-hint" id="voiceHint">Ask about today's updates, reminders, tomorrow, or anything your connectors pulled in.</p>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
@@ -225,16 +225,22 @@
           <section class="settings-group connector-panel" id="connectorPanel">
             <p class="group-label">Connectors</p>
             <p class="group-foot connector-intro">
-              Add web pages or notes. VoiceMate scrapes them and surfaces <strong>remind later</strong>, <strong>tomorrow</strong>, and <strong>explain</strong> items on Home — so you can talk through them instead of reading.
+              Add web pages, Slack channels, Gmail, or notes. VoiceMate syncs them and surfaces <strong>today's updates</strong>, <strong>remind later</strong>, <strong>tomorrow</strong>, and <strong>explain</strong> items on Home — so you can talk through them instead of reading.
+            </p>
+            <p class="group-foot connector-setup">
+              <strong>Slack:</strong> create a bot at <a href="https://api.slack.com/apps" target="_blank" rel="noopener">api.slack.com/apps</a>, add <code>channels:history</code> and <code>channels:read</code>, invite the bot to your channel, then set <code>SLACK_BOT_TOKEN</code> in <code>.env.local</code>.
+              <strong>Gmail:</strong> OAuth desktop credentials with readonly scope, then set <code>GMAIL_CLIENT_ID</code>, <code>GMAIL_CLIENT_SECRET</code>, and <code>GMAIL_REFRESH_TOKEN</code> in <code>.env.local</code>.
             </p>
             <div class="group-card connector-add-card">
               <div class="connector-add">
                 <select id="connectorType" class="row-control" aria-label="Connector type">
                   <option value="url">Web page</option>
+                  <option value="slack">Slack channel</option>
+                  <option value="gmail">Gmail inbox</option>
                   <option value="note">Text note</option>
                 </select>
-                <input id="connectorName" type="text" placeholder="Name (e.g. Team wiki)" aria-label="Connector name" />
-                <input id="connectorTarget" type="text" placeholder="URL or paste text" aria-label="URL or note text" />
+                <input id="connectorName" type="text" placeholder="Name (e.g. Team Slack)" aria-label="Connector name" />
+                <input id="connectorTarget" type="text" placeholder="URL, channel, or note" aria-label="Connector target" />
                 <button class="row-button" id="addConnector" type="button">Add</button>
               </div>
               <div class="connector-actions">

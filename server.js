@@ -14,6 +14,12 @@ const XAI_MODEL = process.env.XAI_MODEL || "grok-4.3";
 const XAI_REALTIME_MODEL = process.env.XAI_REALTIME_MODEL || "grok-voice-latest";
 const XAI_DEFAULT_VOICE = (process.env.XAI_VOICE || "ara").toLowerCase();
 const VM_API_TOKEN = process.env.VM_API_TOKEN || "";
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN || "";
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
+const gmailTokenCache = { accessToken: "", expiresAt: 0 };
+const slackUserCache = new Map();
 const rateBuckets = new Map();
 
 // Live reload: when on, the server watches the front-end files and tells the
@@ -70,6 +76,8 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         ok: true,
         xaiConfigured: Boolean(XAI_API_KEY),
+        slackConfigured: Boolean(SLACK_BOT_TOKEN),
+        gmailConfigured: gmailConfigured(),
         model: XAI_MODEL,
         realtimeModel: XAI_REALTIME_MODEL,
         defaultVoice: XAI_DEFAULT_VOICE
@@ -104,6 +112,14 @@ const server = http.createServer(async (req, res) => {
       return handleConnectorScrape(req, res);
     }
 
+    if (url.pathname === "/api/connector/slack" && req.method === "POST") {
+      return handleConnectorSlack(req, res);
+    }
+
+    if (url.pathname === "/api/connector/gmail" && req.method === "POST") {
+      return handleConnectorGmail(req, res);
+    }
+
     if (url.pathname === "/api/livereload" && req.method === "GET") {
       return handleLiveReload(req, res);
     }
@@ -132,6 +148,8 @@ server.on("error", (error) => {
 server.listen(PORT, () => {
   console.log(`VoiceMate running at http://localhost:${PORT}`);
   console.log(`xAI key configured: ${Boolean(XAI_API_KEY)}`);
+  console.log(`Slack configured: ${Boolean(SLACK_BOT_TOKEN)}`);
+  console.log(`Gmail configured: ${gmailConfigured()}`);
   console.log(`Chat model: ${XAI_MODEL} | Realtime voice model: ${XAI_REALTIME_MODEL}`);
   if (LIVE_RELOAD) {
     startFileWatcher();
@@ -959,6 +977,212 @@ function extractDocxText(buf) {
     }
   }
   return "";
+}
+
+function gmailConfigured() {
+  return Boolean(GMAIL_CLIENT_ID && GMAIL_CLIENT_SECRET && GMAIL_REFRESH_TOKEN);
+}
+
+function startOfTodayUnix() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return (start.getTime() / 1000).toString();
+}
+
+async function slackApi(method, params = {}) {
+  const url = new URL(`https://slack.com/api/${method}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
+  });
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}` }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Slack request failed (${response.status}).`);
+  if (!data.ok) throw new Error(data.error || "Slack API error.");
+  return data;
+}
+
+async function resolveSlackChannelId(channelInput) {
+  const input = String(channelInput || "").trim();
+  if (/^[CGD][A-Z0-9]{8,}$/i.test(input)) return input.toUpperCase();
+
+  const name = input.replace(/^#/, "").toLowerCase();
+  if (!name) throw new Error("A Slack channel name or ID is required.");
+
+  let cursor = "";
+  for (let page = 0; page < 6; page++) {
+    const params = {
+      types: "public_channel,private_channel",
+      exclude_archived: "true",
+      limit: "200"
+    };
+    if (cursor) params.cursor = cursor;
+    const data = await slackApi("conversations.list", params);
+    const match = (data.channels || []).find((channel) => channel.name === name);
+    if (match) return match.id;
+    cursor = data.response_metadata?.next_cursor || "";
+    if (!cursor) break;
+  }
+
+  throw new Error(`Slack channel #${name} not found. Invite the bot to that channel first.`);
+}
+
+async function slackUserName(userId) {
+  if (!userId) return "Someone";
+  if (slackUserCache.has(userId)) return slackUserCache.get(userId);
+  try {
+    const data = await slackApi("users.info", { user: userId });
+    const name = data.user?.real_name || data.user?.name || userId;
+    slackUserCache.set(userId, name);
+    return name;
+  } catch (error) {
+    return userId;
+  }
+}
+
+async function handleConnectorSlack(req, res) {
+  try {
+    if (!SLACK_BOT_TOKEN) {
+      return sendJson(res, 503, { error: "Slack is not configured. Add SLACK_BOT_TOKEN to .env.local." });
+    }
+
+    const body = await readJsonBody(req);
+    const channelInput = String(body.channel || "").trim();
+    if (!channelInput) return sendJson(res, 400, { error: "A Slack channel name or ID is required." });
+
+    const channelId = await resolveSlackChannelId(channelInput);
+    const oldest = startOfTodayUnix();
+    const history = await slackApi("conversations.history", {
+      channel: channelId,
+      oldest,
+      limit: "100",
+      inclusive: "true"
+    });
+
+    const rawMessages = (history.messages || [])
+      .filter((message) => message.text && message.subtype !== "channel_join" && message.subtype !== "channel_leave")
+      .sort((a, b) => Number(a.ts) - Number(b.ts));
+
+    const messages = [];
+    for (const message of rawMessages.slice(-40)) {
+      const userName = await slackUserName(message.user);
+      const time = new Date(Number(message.ts) * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      messages.push({
+        id: message.ts,
+        from: userName,
+        text: String(message.text || "").replace(/<@[A-Z0-9]+>/g, "").trim(),
+        subject: "",
+        snippet: `${userName} at ${time}`,
+        time
+      });
+    }
+
+    return sendJson(res, 200, {
+      channel: channelInput,
+      count: messages.length,
+      messages,
+      summary: messages.length
+        ? `${messages.length} Slack message(s) today in ${channelInput}.`
+        : `No new messages today in ${channelInput}.`
+    });
+  } catch (error) {
+    return sendJson(res, 500, { error: error.message || "Slack sync failed." });
+  }
+}
+
+async function getGmailAccessToken() {
+  if (!gmailConfigured()) throw new Error("Gmail is not configured.");
+  if (gmailTokenCache.accessToken && Date.now() < gmailTokenCache.expiresAt - 60000) {
+    return gmailTokenCache.accessToken;
+  }
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: GMAIL_CLIENT_ID,
+      client_secret: GMAIL_CLIENT_SECRET,
+      refresh_token: GMAIL_REFRESH_TOKEN,
+      grant_type: "refresh_token"
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error || "Could not refresh Gmail access token.");
+  }
+
+  gmailTokenCache.accessToken = data.access_token;
+  gmailTokenCache.expiresAt = Date.now() + Number(data.expires_in || 3600) * 1000;
+  return gmailTokenCache.accessToken;
+}
+
+async function gmailApi(path, params = {}) {
+  const token = await getGmailAccessToken();
+  const url = new URL(`https://gmail.googleapis.com/gmail/v1/users/me${path}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
+  });
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || `Gmail request failed (${response.status}).`);
+  return data;
+}
+
+function headerValue(headers, name) {
+  const entry = (headers || []).find((row) => String(row.name || "").toLowerCase() === name.toLowerCase());
+  return entry?.value || "";
+}
+
+async function handleConnectorGmail(req, res) {
+  try {
+    if (!gmailConfigured()) {
+      return sendJson(res, 503, {
+        error: "Gmail is not configured. Add GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN to .env.local."
+      });
+    }
+
+    const body = await readJsonBody(req);
+    const query = String(body.query || "in:inbox newer_than:1d").trim() || "in:inbox newer_than:1d";
+    const list = await gmailApi("/messages", { q: query, maxResults: "25" });
+    const ids = (list.messages || []).map((entry) => entry.id).filter(Boolean);
+
+    const messages = [];
+    for (const id of ids.slice(0, 25)) {
+      const token = await getGmailAccessToken();
+      const detailUrl = new URL(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}`);
+      detailUrl.searchParams.set("format", "metadata");
+      ["From", "Subject", "Date"].forEach((header) => detailUrl.searchParams.append("metadataHeaders", header));
+      const detailResponse = await fetch(detailUrl, { headers: { Authorization: `Bearer ${token}` } });
+      const detail = await detailResponse.json().catch(() => ({}));
+      if (!detailResponse.ok) {
+        throw new Error(detail.error?.message || `Gmail message fetch failed (${detailResponse.status}).`);
+      }
+      const headers = detail.payload?.headers || [];
+      const from = headerValue(headers, "From");
+      const subject = headerValue(headers, "Subject") || "(No subject)";
+      const snippet = String(detail.snippet || "").trim();
+      messages.push({
+        id,
+        from,
+        subject,
+        text: snippet,
+        snippet: `${from}: ${snippet}`.slice(0, 180),
+        time: headerValue(headers, "Date")
+      });
+    }
+
+    return sendJson(res, 200, {
+      query,
+      count: messages.length,
+      messages,
+      summary: messages.length
+        ? `${messages.length} email(s) matched "${query}" today.`
+        : `No emails matched "${query}" today.`
+    });
+  } catch (error) {
+    return sendJson(res, 500, { error: error.message || "Gmail sync failed." });
+  }
 }
 
 async function handleConnectorScrape(req, res) {
