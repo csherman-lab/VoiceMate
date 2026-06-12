@@ -5,6 +5,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "stop": "sh -c 'lsof -ti :${PORT:-3000} | xargs kill -9 2>/dev/null || true'",
+    "restart": "npm run stop && npm start",
+    "dev:clean": "npm run stop && npm run dev",
     "build": "node build-singlefile.js"
   }
 }

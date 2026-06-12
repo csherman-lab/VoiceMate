@@ -240,7 +240,13 @@ const state = {
   currentAudioUrl: "",
   currentAudio: null,
   streaming: false,
-  live: null
+  live: null,
+  lastUserActivity: Date.now(),
+  callStartedAt: 0,
+  callTimerId: null,
+  memoryFilterQuery: "",
+  pendingRemember: null,
+  pauseCuriousAt: 0
 };
 
 const LANGUAGES = [
@@ -336,7 +342,20 @@ function cacheEls() {
     onboardingModal: document.querySelector("#onboardingModal"),
     onboardingSkip: document.querySelector("#onboardingSkip"),
     onboardingLater: document.querySelector("#onboardingLater"),
-    onboardingStart: document.querySelector("#onboardingStart")
+    onboardingStart: document.querySelector("#onboardingStart"),
+    callTimer: document.querySelector("#callTimer"),
+    skillWorkflowBanner: document.querySelector("#skillWorkflowBanner"),
+    talkUploadCards: document.querySelector("#talkUploadCards"),
+    contextPill: document.querySelector("#contextPill"),
+    memorySearch: document.querySelector("#memorySearch"),
+    diagnosticsList: document.querySelector("#diagnosticsList"),
+    reminderCenterList: document.querySelector("#reminderCenterList"),
+    rememberModal: document.querySelector("#rememberModal"),
+    rememberBody: document.querySelector("#rememberBody"),
+    rememberEdit: document.querySelector("#rememberEdit"),
+    rememberLater: document.querySelector("#rememberLater"),
+    rememberEditBtn: document.querySelector("#rememberEditBtn"),
+    rememberSave: document.querySelector("#rememberSave")
   });
 }
 
@@ -355,6 +374,8 @@ function init() {
   renderMemory();
   renderContextChips();
   renderReminders();
+  renderReminderCenter();
+  renderConnectionDiagnostics();
   scheduleAllReminderNotifications();
   renderLanguages();
   if (els.agentMode) els.agentMode.value = state.mode;
@@ -472,12 +493,13 @@ function wireEvents() {
 
   if (els.addReminder) {
     els.addReminder.addEventListener("click", () => {
-      const text = (els.reminderInput.value || "").trim();
-      if (!text) return;
+      const raw = (els.reminderInput.value || "").trim();
+      if (!raw) return;
+      const parsed = parseReminderInput(raw);
       executeTool("add_reminder", {
-        text,
-        due: (els.reminderDueInput?.value || "").trim(),
-        contact: (els.reminderContactInput?.value || "").trim()
+        text: parsed.text || raw,
+        due: (els.reminderDueInput?.value || parsed.due || "").trim(),
+        contact: (els.reminderContactInput?.value || parsed.contact || "").trim()
       });
       els.reminderInput.value = "";
       if (els.reminderDueInput) els.reminderDueInput.value = "";
@@ -504,6 +526,30 @@ function wireEvents() {
     els.contextButton.addEventListener("click", () => {
       if (state.contextOpen) closeContextSheet();
       else openContextSheet();
+    });
+  }
+  if (els.contextPill) {
+    els.contextPill.addEventListener("click", () => {
+      if (state.contextOpen) closeContextSheet();
+      else openContextSheet();
+    });
+  }
+  if (els.memorySearch) {
+    els.memorySearch.addEventListener("input", (event) => {
+      state.memoryFilterQuery = event.target.value.trim().toLowerCase();
+      renderMemory();
+    });
+  }
+  if (els.rememberLater) els.rememberLater.addEventListener("click", closeRememberPrompt);
+  if (els.rememberSave) els.rememberSave.addEventListener("click", saveRememberPrompt);
+  if (els.rememberEditBtn) {
+    els.rememberEditBtn.addEventListener("click", () => {
+      if (!els.rememberEdit || !state.pendingRemember) return;
+      els.rememberEdit.hidden = !els.rememberEdit.hidden;
+      if (!els.rememberEdit.hidden) {
+        els.rememberEdit.value = state.pendingRemember.text;
+        els.rememberEdit.focus();
+      }
     });
   }
   if (els.contextBackdrop) els.contextBackdrop.addEventListener("click", closeContextSheet);
@@ -601,14 +647,19 @@ function wireEvents() {
       addActivity("Nothing to save", "The chat is empty.");
       return;
     }
-    state.memory.push({
-      id: createMemoryId("note"),
-      type: "note",
-      name: `Saved chat ${state.memory.length + 1}`,
-      summary: summarizeText(text),
-      content: text,
-      createdAt: new Date().toISOString()
-    });
+    state.memory.push(
+      stampMemorySource(
+        {
+          id: createMemoryId("note"),
+          type: "conversation",
+          name: `Saved chat ${state.memory.length + 1}`,
+          summary: summarizeText(text),
+          content: text,
+          createdAt: new Date().toISOString()
+        },
+        "chat"
+      )
+    );
     renderMemory();
     addActivity("Saved chat", "Transcript added to memory.");
   });
@@ -631,6 +682,7 @@ function wireEvents() {
 }
 
 async function routeFiles(files) {
+  state.lastUserActivity = Date.now();
   const images = files.filter((file) => file.type.startsWith("image/"));
   const docs = files.filter((file) => !file.type.startsWith("image/"));
   const added = [];
@@ -749,6 +801,31 @@ function renderHomeDashboard() {
       body: lastConvo ? lastConvo.title : "Begin a new chat or live call.",
       action: lastConvo ? "Resume" : "Start",
       onClick: () => (lastConvo ? resumeConversation(lastConvo.id) : showPage("talk"))
+    },
+    {
+      icon: "sun",
+      tint: "#ff9f0a",
+      title: "Daily briefing",
+      body: state.memory.length > 1 || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
+      action: "Brief",
+      onClick: () => {
+        showPage("talk");
+        setMode("digest", false);
+        runSkillWorkflow("digest");
+      }
+    },
+    {
+      icon: "photo",
+      tint: "#34c759",
+      title: active.length ? "Recent upload" : "Add context",
+      body: active.length ? active[active.length - 1].name : "Upload a screenshot or file to discuss.",
+      action: active.length ? "Ask" : "Upload",
+      onClick: () => {
+        if (active.length) {
+          showPage("talk");
+          handlePrompt(`Summarize ${active[active.length - 1].name}.`);
+        } else showPage("memory");
+      }
     }
   ];
 
@@ -788,8 +865,12 @@ function renderContextChips() {
   const active = uploadContextItems();
   els.contextChips.innerHTML = "";
   if (els.contextButton) {
-    els.contextButton.textContent = active.length ? `Context (${active.length})` : "Context";
+    els.contextButton.textContent = active.length ? `Context sheet (${active.length})` : "Context sheet";
     els.contextButton.disabled = !active.length;
+  }
+  if (els.contextPill) {
+    els.contextPill.hidden = !active.length;
+    els.contextPill.textContent = active.length ? `Context (${active.length})` : "Context";
   }
   if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length || !state.contextOpen;
   if (els.contextBackdrop) els.contextBackdrop.hidden = !active.length || !state.contextOpen;
@@ -800,6 +881,7 @@ function renderContextChips() {
     if (els.contextBackdrop) els.contextBackdrop.hidden = true;
     updateTalkChrome();
     renderHomeDashboard();
+    renderTalkUploadCards();
     return;
   }
 
@@ -825,6 +907,7 @@ function renderContextChips() {
   });
   updateTalkChrome();
   renderHomeDashboard();
+  renderTalkUploadCards();
 }
 
 function openContextSheet() {
@@ -899,6 +982,8 @@ function showPage(page) {
 function startTalkSession() {
   if (state.talkStarted) return;
   state.talkStarted = true;
+  renderSkillWorkflowBanner();
+  renderTalkUploadCards();
   updateTalkChrome();
 }
 
@@ -1083,6 +1168,7 @@ function setMode(modeId, fromSelect) {
   updateModeCaption();
   renderSkills();
   renderQuickPrompts();
+  renderSkillWorkflowBanner();
   updateLiveSession({ instructions: liveSessionHint() });
   if (fromSelect) addActivity("Mode set", `${skill.name} mode is active.`);
 }
@@ -1239,6 +1325,7 @@ async function handlePrompt(prompt) {
   if (state.streaming) return;
 
   showPage("talk");
+  maybeReactToUserPrompt(cleaned);
   addMessage("user", cleaned);
   pushHistory("user", cleaned);
   els.promptInput.value = "";
@@ -1274,7 +1361,7 @@ async function respond(prompt) {
         streamed += delta;
         bubble.classList.remove("typing");
         bubble.textContent = stripSpeechTags(streamed);
-        els.transcript.scrollTop = els.transcript.scrollHeight;
+        scrollTranscript();
       });
       answer = result.text || answer;
       citations = result.citations || [];
@@ -1483,17 +1570,8 @@ async function executeTool(name, args) {
     case "remember_fact": {
       const text = String(args.text || "").trim();
       if (!text) return "Nothing to remember.";
-      if (!confirm(`Remember this?\n${text}`)) return "The user chose not to save that memory.";
-      state.memory.push({
-        id: createMemoryId("note"),
-        type: "note",
-        name: truncate(text, 42),
-        summary: summarizeText(text),
-        content: text,
-        createdAt: new Date().toISOString()
-      });
-      renderMemory();
-      toast("Saved to memory");
+      const saved = await showRememberPrompt(text);
+      if (!saved) return "The user chose not to save that memory.";
       return "Saved that to memory.";
     }
     case "search_memory": {
@@ -1504,12 +1582,14 @@ async function executeTool(name, args) {
       return hits.length ? hits.map((item) => `${item.name}: ${item.summary}`).join(" | ") : "No matching memory found.";
     }
     case "add_reminder": {
-      const text = String(args.text || "").trim();
-      if (!text) return "No reminder text given.";
-      const reminder = createReminder(text, args.due, args.contact);
+      const raw = String(args.text || "").trim();
+      if (!raw) return "No reminder text given.";
+      const parsed = parseReminderInput(raw);
+      const reminder = createReminder(parsed.text || raw, args.due || parsed.due, args.contact || parsed.contact);
       state.reminders.push(reminder);
       renderReminders();
       scheduleReminderNotification(reminder);
+      addToolMessage(`Reminder added: ${formatReminder(reminder)}`);
       toast("Reminder added");
       return `Added a reminder: ${formatReminder(reminder)}.`;
     }
@@ -1936,6 +2016,7 @@ async function startLiveCall() {
   showPage("talk");
   stopWake();
   setLiveButton(true, "Connecting...");
+  setSpeechStatus("Connecting", false, false);
   addActivity("Starting call", "Requesting a secure voice session.");
 
   let live = {
@@ -2020,8 +2101,9 @@ async function startLiveCall() {
       );
       startMicStreaming(live);
       shareMemoryWithLive(activeUploadItems());
+      startCallTimer();
       setLiveButton(true, "End call");
-      setSpeechStatus("Live", true, false);
+      setSpeechStatus("Listening", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
       if (els.voiceHint) els.voiceHint.textContent = "Listening, just talk";
       addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
@@ -2036,8 +2118,14 @@ async function startLiveCall() {
       if (state.live === live) endLiveCall("The call disconnected.");
     });
   } catch (error) {
-    addMessage("system", `Couldn't start the call: ${error.message || "unknown error"}.`);
-    addActivity("Live call failed", error.message || "Unknown error.");
+    const message = error.message || "unknown error";
+    if (/key|configured|session/i.test(message)) {
+      showTranscriptError("Live voice needs a server connection and API key. Check Settings → Connection diagnostics.");
+    } else {
+      showTranscriptError(`Couldn't start the call: ${message}.`);
+    }
+    addMessage("system", `Couldn't start the call: ${message}.`);
+    addActivity("Live call failed", message);
     endLiveCall();
   }
 }
@@ -2187,10 +2275,18 @@ function handleRealtimeMessage(live, raw) {
 
   switch (msg.type) {
     case "input_audio_buffer.speech_started":
-      // Barge-in: user started talking, drop any queued assistant audio.
-      stopLivePlayback(live);
-      stopAssistantReveal(live, false);
-      setSpeechStatus("Listening", true, false);
+      if (live.sources.size) {
+        stopLivePlayback(live);
+        stopAssistantReveal(live, false);
+        setSpeechStatus("Interrupted", false, false);
+        window.setTimeout(() => {
+          if (state.live === live) setSpeechStatus("You're speaking", true, false);
+        }, 650);
+      } else {
+        stopLivePlayback(live);
+        stopAssistantReveal(live, false);
+        setSpeechStatus("You're speaking", true, false);
+      }
       break;
 
     // User speech updates ONE blue bubble for the current turn (corrections
@@ -2251,6 +2347,7 @@ function handleRealtimeMessage(live, raw) {
         live.curAsstText = "";
         live.asstFullText = "";
         live.asstRevealQueue = [];
+        setSpeechStatus("VoiceMate speaking", false, true);
       }
       live.asstFullText += msg.delta || "";
       enqueueAssistantReveal(live, stripSpeechTags(msg.delta || ""));
@@ -2289,12 +2386,18 @@ function handleRealtimeMessage(live, raw) {
       live.curAsst = null;
       live.curAsstText = "";
       live.asstFullText = "";
+      if (state.live === live) setSpeechStatus("Listening", true, false);
       break;
     }
 
     case "response.output_audio.delta":
       if (msg.delta) enqueueLiveAudio(live, msg.delta);
-      setSpeechStatus("Speaking", false, true);
+      setSpeechStatus("VoiceMate speaking", false, true);
+      break;
+
+    case "input_audio_buffer.speech_stopped":
+      setSpeechStatus("Thinking", false, false);
+      setEyeMode("thinking");
       break;
 
     case "response.function_call_arguments.done": {
@@ -2325,11 +2428,12 @@ function handleRealtimeMessage(live, raw) {
         live.curAsst = null;
         live.curAsstText = "";
       }
-      setSpeechStatus("Live", true, false);
+      if (state.live === live) setSpeechStatus("Listening", true, false);
       break;
 
     case "error":
       addActivity("Realtime error", msg.error?.message || msg.message || "Unknown realtime error.");
+      showTranscriptError(msg.error?.message || msg.message || "Live connection dropped.");
       break;
 
     default:
@@ -2400,8 +2504,10 @@ function endLiveCall(note) {
     // ignore teardown errors
   }
 
+  stopCallTimer();
   setLiveButton(false, "Start live call");
   setSpeechStatus("Ready", false, false);
+  setOrbMood(state.backendOnline ? "idle" : "offline");
   updateGrokStatus();
   updateWake();
   if (note) {
@@ -2481,7 +2587,7 @@ function enqueueAssistantReveal(live, text) {
     }
     appendAnimatedText(bubble, chunk);
     bubble.dataset.liveText = (bubble.dataset.liveText || "") + chunk;
-    els.transcript.scrollTop = els.transcript.scrollHeight;
+    scrollTranscript();
     live.asstRevealTimer = window.setTimeout(tick, chunk.length > 14 ? 150 : 120);
   };
   live.asstRevealTimer = window.setTimeout(tick, 35);
@@ -2532,9 +2638,13 @@ function setupSpeechRecognition() {
     handlePrompt(transcript);
   };
 
-  state.recognition.onerror = () => {
+  state.recognition.onerror = (event) => {
     setSpeechStatus("Type ready", false);
-    addActivity("Voice input issue", "The browser blocked or skipped speech input.");
+    if (event?.error === "not-allowed") {
+      showTranscriptError("Microphone access is blocked. Check browser permissions.");
+    } else {
+      addActivity("Voice input issue", "The browser blocked or skipped speech input.");
+    }
   };
 
   state.recognition.onend = () => {
@@ -2564,19 +2674,31 @@ function setSpeechStatus(label, listening, speaking = false) {
   const normalized = String(label || "").toLowerCase();
   els.speechStatus.className = "status-pill";
   if (speaking) els.speechStatus.classList.add("speaking");
-  else if (listening || normalized === "live") els.speechStatus.classList.add("live");
+  else if (listening || normalized.includes("live") || normalized.includes("you're speaking")) els.speechStatus.classList.add("live");
   else if (normalized.includes("thinking") || normalized.includes("connecting")) els.speechStatus.classList.add("thinking");
-  else if (normalized.includes("error") || normalized.includes("issue")) els.speechStatus.classList.add("error");
+  else if (normalized.includes("error") || normalized.includes("issue") || normalized.includes("interrupted")) els.speechStatus.classList.add("error");
+
   [els.voiceOrb, els.heroOrb].forEach((orb) => {
     if (!orb) return;
     orb.classList.toggle("listening", Boolean(listening));
     orb.classList.toggle("speaking", Boolean(speaking));
   });
 
-  if (speaking) setEyeMode("speaking");
-  else if (listening) setEyeMode("listening");
-  else if (label === "Thinking") setEyeMode("thinking");
-  else setEyeMode("idle");
+  if (speaking) {
+    setEyeMode("speaking");
+    setOrbMood("speaking");
+  } else if (listening || normalized.includes("you're speaking")) {
+    setEyeMode("listening");
+    setOrbMood("listening");
+  } else if (normalized.includes("thinking") || normalized.includes("connecting")) {
+    setEyeMode("thinking");
+    setOrbMood("idle");
+  } else if (normalized.includes("error") || normalized.includes("interrupted")) {
+    setOrbMood("error");
+  } else {
+    setEyeMode("idle");
+    setOrbMood(state.backendOnline ? "idle" : "offline");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2623,15 +2745,17 @@ function setupEyes() {
 
 function playOrbHappy(orb) {
   if (!orb) return;
-  setExpression("happy");
-  orb.classList.remove("orb-happy-pop");
-  // Force a reflow so repeated taps restart the animation.
+  const eyeEl = orb.querySelector(".orb-eyes");
+  if (!eyeEl) return;
+  eyeEl.classList.remove("tapped");
+  orb.classList.remove("orb-tapped");
   void orb.offsetWidth;
-  orb.classList.add("orb-happy-pop");
-  window.setTimeout(() => orb.classList.remove("orb-happy-pop"), 760);
-  if (!state.live) {
-    setEyeMode("idle");
-  }
+  eyeEl.classList.add("tapped");
+  orb.classList.add("orb-tapped");
+  window.setTimeout(() => {
+    eyeEl.classList.remove("tapped");
+    orb.classList.remove("orb-tapped");
+  }, 920);
 }
 
 function setEyeMode(mode) {
@@ -2692,6 +2816,13 @@ function eyeLoop() {
     eyes.tx = Math.random() < 0.4 ? 0 : Math.random() * 1.2 - 0.6;
     eyes.ty = Math.random() * 0.7 - 0.35;
     eyes.nextSaccade = now + 1400 + Math.random() * 3000;
+  }
+
+  const idleMs = now - (state.lastUserActivity || 0);
+  if (!state.live && !state.streaming && eyes.mode === "idle" && idleMs > 8000 && now > (state.pauseCuriousAt || 0)) {
+    state.pauseCuriousAt = now + 14000;
+    setExpression("curious");
+    blinkOnce(null);
   }
 
   eyes.gx += (eyes.tx - eyes.gx) * 0.12;
@@ -2770,12 +2901,22 @@ function clampEye(value) {
   return Math.min(1, Math.max(-1, value));
 }
 
+function scrollTranscript(smooth = false) {
+  if (!els.transcript) return;
+  if (smooth && "scrollTo" in els.transcript) {
+    els.transcript.scrollTo({ top: els.transcript.scrollHeight, behavior: "smooth" });
+  } else {
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+  }
+}
+
 function addMessage(role, text) {
   const message = document.createElement("div");
-  message.className = `message ${role}`;
-  message.textContent = role === "user" || role === "system" ? text : noDashes(text);
+  message.className = `message ${role} message-enter`;
+  message.textContent = role === "user" || role === "system" || role === "error" || role === "tool" ? text : noDashes(text);
   els.transcript.appendChild(message);
-  els.transcript.scrollTop = els.transcript.scrollHeight;
+  scrollTranscript(true);
+  window.setTimeout(() => message.classList.remove("message-enter"), 460);
   updateTalkChrome();
   return message;
 }
@@ -2790,34 +2931,41 @@ function setLiveText(message, text, animateNew = true) {
     message.innerHTML = wordsToAnimatedHtml(clean, false);
   }
   message.dataset.liveText = clean;
-  els.transcript.scrollTop = els.transcript.scrollHeight;
+  scrollTranscript();
 }
 
 function appendAnimatedText(message, text) {
   const parts = String(text || "").match(/\s+|[^\s]+/g) || [];
   message.querySelectorAll(".current-word").forEach((node) => node.classList.remove("current-word"));
   let latestWord = null;
+  let wordIndex = 0;
   for (const part of parts) {
     if (/^\s+$/.test(part)) {
       message.appendChild(document.createTextNode(part));
     } else {
       const span = document.createElement("span");
       span.className = "word-pop current-word";
+      span.style.animationDelay = `${wordIndex * 24}ms`;
       span.textContent = part;
       message.appendChild(span);
       latestWord = span;
+      wordIndex += 1;
     }
   }
   if (latestWord) {
-    window.setTimeout(() => latestWord.classList.remove("current-word"), 420);
+    window.setTimeout(() => latestWord.classList.remove("current-word"), 520);
   }
 }
 
 function wordsToAnimatedHtml(text, animate) {
+  let wordIndex = 0;
   return (String(text || "").match(/\s+|[^\s]+/g) || [])
     .map((part) => {
       if (/^\s+$/.test(part)) return escapeHtml(part);
-      return animate ? `<span class="word-pop">${escapeHtml(part)}</span>` : escapeHtml(part);
+      if (!animate) return escapeHtml(part);
+      const delay = wordIndex * 24;
+      wordIndex += 1;
+      return `<span class="word-pop" style="animation-delay:${delay}ms">${escapeHtml(part)}</span>`;
     })
     .join("");
 }
@@ -2878,6 +3026,7 @@ function addTrace(type, title, detail) {
     if (els.thinkingSummary) {
       els.thinkingSummary.textContent = `${title}: ${detail}`;
     }
+    if (type === "action" && state.talkStarted) addToolMessage(`${title}: ${detail}`);
   }
 }
 
@@ -2889,10 +3038,20 @@ function renderMemory() {
   saveState();
   renderContextChips();
   els.memoryGrid.innerHTML = "";
-  if (!state.memory.length) {
+  const q = (state.memoryFilterQuery || "").trim().toLowerCase();
+  let entries = state.memory.map((item, index) => ({ item, index }));
+  if (q) {
+    entries = entries.filter(({ item }) => {
+      const hay = `${item.type || ""} ${item.name || ""} ${item.summary || ""} ${item.content || ""} ${item.source || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  if (!entries.length) {
     const empty = document.createElement("div");
     empty.className = "memory-empty";
-    empty.innerHTML = `
+    empty.innerHTML = q
+      ? `<span class="empty-icon">${svgIcon("search")}</span><strong>No matches</strong><p>Try a different search term.</p>`
+      : `
       <span class="empty-icon">${svgIcon("sparkles")}</span>
       <strong>Nothing saved yet</strong>
       <p>Use the buttons above to add files, photos, or a note. VoiceMate will remember them for this conversation.</p>
@@ -2901,22 +3060,39 @@ function renderMemory() {
     return;
   }
 
-  state.memory
-    .map((item, index) => ({ item, index }))
-    .reverse()
-    .forEach(({ item, index }) => {
-      const row = document.createElement("article");
-      const active = uploadContextItems().some((ctx) => ctx.id === item.id);
-      row.className = `memory-item${active ? " active-context" : ""}`;
-      const tint = memoryTint(item.type);
-      const visual = item.preview
-        ? `<span class="mem-thumb"><img src="${item.preview}" alt="${escapeHtml(item.name)} preview" /></span>`
-        : `<span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>`;
-      row.innerHTML = `
+  const groupOrder = ["brief", "document", "csv", "image", "note", "conversation", "reminder", "preference", "fact"];
+  const grouped = {};
+  entries.forEach(({ item, index }) => {
+    const type = item.type || "note";
+    if (!grouped[type]) grouped[type] = [];
+    grouped[type].push({ item, index });
+  });
+  const types = [...new Set([...groupOrder.filter((type) => grouped[type]), ...Object.keys(grouped)])];
+
+  types.forEach((type) => {
+    const label = document.createElement("div");
+    label.className = "memory-group-label";
+    label.textContent = `${memoryLabel(type)}${grouped[type].length > 1 ? ` · ${grouped[type].length}` : ""}`;
+    els.memoryGrid.appendChild(label);
+
+    grouped[type]
+      .slice()
+      .reverse()
+      .forEach(({ item, index }) => {
+        const row = document.createElement("article");
+        const active = uploadContextItems().some((ctx) => ctx.id === item.id);
+        row.className = `memory-item${active ? " active-context" : ""}`;
+        const tint = memoryTint(item.type);
+        const visual = item.preview
+          ? `<span class="mem-thumb"><img src="${item.preview}" alt="${escapeHtml(item.name)} preview" /></span>`
+          : `<span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>`;
+        const src = memorySourceLabel(item);
+        row.innerHTML = `
         ${visual}
         <div class="mem-text">
           <strong>${escapeHtml(item.name)}</strong>
           <p>${escapeHtml(item.summary)}</p>
+          ${src ? `<span class="mem-source">${escapeHtml(src)}</span>` : ""}
         </div>
         <div class="mem-actions">
           <span class="mem-tag" style="color:${tint};background:${hexToSoft(tint)}">${active ? "Active" : escapeHtml(memoryLabel(item.type))}</span>
@@ -2925,15 +3101,16 @@ function renderMemory() {
           <button class="mem-delete" type="button" aria-label="Remove ${escapeHtml(item.name)}">${svgIcon("trash")}</button>
         </div>
       `;
-      row.querySelector(".mem-use").addEventListener("click", () => activateMemoryItem(item));
-      row.querySelector(".mem-ask").addEventListener("click", () => {
-        activateMemoryItem(item);
-        showPage("talk");
-        handlePrompt(`Talk about ${item.name}. What should I know?`);
+        row.querySelector(".mem-use").addEventListener("click", () => activateMemoryItem(item));
+        row.querySelector(".mem-ask").addEventListener("click", () => {
+          activateMemoryItem(item);
+          showPage("talk");
+          handlePrompt(`Talk about ${item.name}. What should I know?`);
+        });
+        row.querySelector(".mem-delete").addEventListener("click", () => removeMemory(index));
+        els.memoryGrid.appendChild(row);
       });
-      row.querySelector(".mem-delete").addEventListener("click", () => removeMemory(index));
-      els.memoryGrid.appendChild(row);
-    });
+  });
 }
 
 function removeMemory(index) {
@@ -2951,14 +3128,17 @@ function saveManualContext() {
     addActivity("Memory not saved", "Paste text first.");
     return;
   }
-  const item = {
-    id: createMemoryId("note"),
-    type: "note",
-    name: `Pasted context ${state.memory.length + 1}`,
-    summary: summarizeText(content),
-    content,
-    createdAt: new Date().toISOString()
-  };
+  const item = stampMemorySource(
+    {
+      id: createMemoryId("note"),
+      type: "note",
+      name: `Pasted context ${state.memory.length + 1}`,
+      summary: summarizeText(content),
+      content,
+      createdAt: new Date().toISOString()
+    },
+    "manual"
+  );
   state.memory.push(item);
   els.manualContext.value = "";
   renderMemory();
@@ -2969,6 +3149,7 @@ function saveManualContext() {
 
 async function handleKnowledgeFiles(files, options = {}) {
   if (!files.length) return [];
+  pulseOrbReading();
   const activate = options.activate !== false;
   const added = [];
   for (const file of files) {
@@ -2976,7 +3157,7 @@ async function handleKnowledgeFiles(files, options = {}) {
     const text = extracted.text;
     const lowerName = file.name.toLowerCase();
     const type = lowerName.endsWith(".csv") ? "csv" : lowerName.endsWith(".pdf") || lowerName.endsWith(".doc") || lowerName.endsWith(".docx") ? "document" : "note";
-    const item =
+    const item = stampMemorySource(
       type === "csv"
         ? summarizeCsv(file.name, text)
         : {
@@ -2986,8 +3167,11 @@ async function handleKnowledgeFiles(files, options = {}) {
             summary: extracted.summary || summarizeText(text),
             content: text.slice(0, 20000),
             createdAt: new Date().toISOString()
-          };
+          },
+      "upload"
+    );
     if (!item.id) item.id = createMemoryId(memoryPrefix(item.type));
+    enrichUploadUnderstanding(item);
     state.memory.push(item);
     added.push(item);
     addActivity("Read file", `${file.name} was added.`);
@@ -3000,6 +3184,25 @@ async function handleKnowledgeFiles(files, options = {}) {
 
 async function extractFileText(file) {
   const lower = file.name.toLowerCase();
+  if (state.backendOnline && (lower.endsWith(".pdf") || lower.endsWith(".doc") || lower.endsWith(".docx"))) {
+    try {
+      const data = await readAsBase64(file);
+      const response = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, data })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload.text) {
+        return {
+          text: payload.text.slice(0, 30000),
+          summary: payload.summary || summarizeText(payload.text)
+        };
+      }
+    } catch (error) {
+      // Fall back to local extraction below.
+    }
+  }
   if (lower.endsWith(".pdf")) {
     const raw = await file.text();
     const readable = raw
@@ -3025,6 +3228,7 @@ async function extractFileText(file) {
 
 async function handleImageFiles(files, options = {}) {
   if (!files.length) return [];
+  pulseOrbReading();
   const activate = options.activate !== false;
   const added = [];
   for (const file of files) {
@@ -3032,15 +3236,19 @@ async function handleImageFiles(files, options = {}) {
     const preview = await prepareImagePreview(rawPreview);
     const dimensions = await getImageDimensions(preview);
     const summary = `Image, ${(file.size / 1024).toFixed(1)} KB, ${dimensions.width} by ${dimensions.height} pixels.`;
-    const item = {
-      id: createMemoryId("img"),
-      type: "image",
-      name: file.name,
-      summary,
-      preview,
-      content: `${file.name} ${summary}`,
-      createdAt: new Date().toISOString()
-    };
+    const item = stampMemorySource(
+      {
+        id: createMemoryId("img"),
+        type: "image",
+        name: file.name,
+        summary,
+        preview,
+        content: `${file.name} ${summary}`,
+        createdAt: new Date().toISOString()
+      },
+      "upload"
+    );
+    enrichUploadUnderstanding(item);
     state.memory.push(item);
     added.push(item);
     addActivity("Read image", `${file.name} was added.`);
@@ -3119,6 +3327,7 @@ async function checkBackend() {
   }
   updateGrokStatus();
   renderHomeDashboard();
+  renderConnectionDiagnostics();
 }
 
 // ---------------------------------------------------------------------------
@@ -3252,6 +3461,19 @@ function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || "");
+      const comma = raw.indexOf(",");
+      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
@@ -3392,6 +3614,298 @@ function logoSvg(id) {
     </g>
     <circle cx="32.5" cy="11.5" r="2.4" fill="#fff"/>
   </svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// Roadmap UI: call timer, orb moods, upload cards, diagnostics, memory trust
+// ---------------------------------------------------------------------------
+
+const SKILL_WORKFLOW_COPY = {
+  companion: "Just talk. I'll route to the right skill if needed.",
+  research: "Step 1: Tell me what to research. I'll search, cite sources, and offer a short or deep follow-up.",
+  digest: "I'll lead with what matters first — reminders, uploads, memory, and due dates.",
+  pitch: "Step 1: Your idea. Step 2: Audience & goal. Step 3: Draft pitch. Step 4: Rehearse.",
+  analyst: "Upload data or activate context. I'll summarize trends, anomalies, and next steps.",
+  coach: "Practice mode: say your piece without interruption, then I'll coach clarity and confidence."
+};
+
+function setOrbMood(mood) {
+  const moods = ["listening", "speaking", "confused", "error", "offline", "reading"];
+  [els.voiceOrb, els.heroOrb].forEach((orb) => {
+    if (!orb) return;
+    moods.forEach((name) => orb.classList.toggle(name, name === mood));
+  });
+}
+
+function startCallTimer() {
+  stopCallTimer();
+  state.callStartedAt = Date.now();
+  if (els.callTimer) els.callTimer.hidden = false;
+  updateCallTimer();
+  state.callTimerId = window.setInterval(updateCallTimer, 1000);
+}
+
+function stopCallTimer() {
+  if (state.callTimerId) clearInterval(state.callTimerId);
+  state.callTimerId = null;
+  state.callStartedAt = 0;
+  if (els.callTimer) els.callTimer.hidden = true;
+}
+
+function updateCallTimer() {
+  if (!els.callTimer || !state.callStartedAt) return;
+  const seconds = Math.floor((Date.now() - state.callStartedAt) / 1000);
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  els.callTimer.textContent = `Live · ${mm}:${ss}`;
+}
+
+function renderSkillWorkflowBanner() {
+  if (!els.skillWorkflowBanner) return;
+  const copy = SKILL_WORKFLOW_COPY[state.mode];
+  if (!copy || !state.talkStarted) {
+    els.skillWorkflowBanner.hidden = true;
+    return;
+  }
+  els.skillWorkflowBanner.hidden = false;
+  els.skillWorkflowBanner.innerHTML = `<strong>${escapeHtml(modeLabel())}</strong>${escapeHtml(copy)}`;
+}
+
+function renderTalkUploadCards() {
+  if (!els.talkUploadCards) return;
+  const active = activeUploadItems().filter((item) => item.type !== "brief");
+  if (!active.length || !state.talkStarted) {
+    els.talkUploadCards.hidden = true;
+    els.talkUploadCards.innerHTML = "";
+    return;
+  }
+  els.talkUploadCards.hidden = false;
+  els.talkUploadCards.innerHTML = active
+    .map((item) => {
+      const tint = memoryTint(item.type);
+      return `
+        <article class="upload-card" data-id="${escapeHtml(item.id)}">
+          <span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <small>${escapeHtml(memoryLabel(item.type))} · ${escapeHtml(item.summary || "Ready to discuss")}</small>
+          </div>
+          <div class="upload-card-actions">
+            <button type="button" data-action="ask">Ask</button>
+            <button type="button" data-action="summarize">Summarize</button>
+            <button type="button" data-action="compare">Compare</button>
+            <button type="button" data-action="remove">Remove</button>
+          </div>
+        </article>`;
+    })
+    .join("");
+  els.talkUploadCards.querySelectorAll(".upload-card").forEach((card) => {
+    const item = active.find((entry) => entry.id === card.dataset.id);
+    if (!item) return;
+    card.querySelector('[data-action="ask"]')?.addEventListener("click", () => {
+      handlePrompt(`Talk about ${item.name}. What should I know?`);
+    });
+    card.querySelector('[data-action="summarize"]')?.addEventListener("click", () => {
+      handlePrompt(`Summarize ${item.name} and tell me what stands out.`);
+    });
+    card.querySelector('[data-action="compare"]')?.addEventListener("click", () => {
+      const others = active.filter((entry) => entry.id !== item.id);
+      if (!others.length) {
+        toast("Add another file to compare");
+        return;
+      }
+      handlePrompt(`Compare ${item.name} with ${others[0].name}. What overlaps, what differs, and what should I do next?`);
+    });
+    card.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
+      removeFromActiveContext(item.id);
+      renderTalkUploadCards();
+      renderContextChips();
+    });
+  });
+}
+
+function memorySourceLabel(item) {
+  const source = typeof item === "string" ? item : item?.source;
+  if (!source) return "";
+  const map = {
+    upload: "Uploaded file",
+    chat: "Saved from chat",
+    call: "Voice call",
+    manual: "Manual note",
+    tool: "VoiceMate suggested",
+    conversation: "Conversation summary"
+  };
+  return map[source] || source;
+}
+
+function stampMemorySource(item, source) {
+  if (item && !item.source) item.source = source;
+  return item;
+}
+
+function showRememberPrompt(text) {
+  return new Promise((resolve) => {
+    if (!els.rememberModal || !els.rememberBody) {
+      resolve(window.confirm(`Remember this?\n${text}`));
+      return;
+    }
+    state.pendingRemember = { text, resolve };
+    els.rememberBody.textContent = text;
+    if (els.rememberEdit) {
+      els.rememberEdit.value = text;
+      els.rememberEdit.hidden = true;
+    }
+    els.rememberModal.hidden = false;
+  });
+}
+
+function closeRememberPrompt(saved = false) {
+  if (!els.rememberModal) return;
+  els.rememberModal.hidden = true;
+  if (state.pendingRemember) {
+    state.pendingRemember.resolve(saved);
+    state.pendingRemember = null;
+  }
+}
+
+function saveRememberPrompt() {
+  if (!state.pendingRemember) return;
+  const text = (els.rememberEdit && !els.rememberEdit.hidden ? els.rememberEdit.value : state.pendingRemember.text).trim();
+  if (!text) {
+    closeRememberPrompt(false);
+    return;
+  }
+  state.memory.push(
+    stampMemorySource(
+      {
+        id: createMemoryId("note"),
+        type: "note",
+        name: truncate(text, 42),
+        summary: summarizeText(text),
+        content: text,
+        createdAt: new Date().toISOString()
+      },
+      "tool"
+    )
+  );
+  renderMemory();
+  toast("Saved to memory");
+  closeRememberPrompt(true);
+}
+
+function addToolMessage(text) {
+  const message = document.createElement("div");
+  message.className = "message tool message-enter";
+  message.textContent = text;
+  els.transcript.appendChild(message);
+  scrollTranscript(true);
+  window.setTimeout(() => message.classList.remove("message-enter"), 460);
+}
+
+function showTranscriptError(text) {
+  addMessage("error", text);
+  setOrbMood("error");
+  window.setTimeout(() => setOrbMood(state.backendOnline ? "idle" : "offline"), 1800);
+}
+
+function renderConnectionDiagnostics() {
+  if (!els.diagnosticsList) return;
+  const mic = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const notify =
+    !("Notification" in window) ? "Unavailable" : Notification.permission === "granted" ? "Allowed" : Notification.permission;
+  let storage = "OK";
+  try {
+    localStorage.setItem("voicemate.probe", "1");
+    localStorage.removeItem("voicemate.probe");
+  } catch (error) {
+    storage = "Full";
+  }
+  const rows = [
+    { label: "Backend", value: state.backendOnline ? "Connected" : "Offline", ok: state.backendOnline },
+    { label: "API key", value: state.backendOnline ? "Configured" : "Missing", ok: state.backendOnline },
+    { label: "Realtime voice", value: state.realtimeModel || "Unavailable", ok: Boolean(state.backendOnline && state.realtimeModel) },
+    { label: "Browser mic", value: mic ? "Available" : "Unavailable", ok: mic },
+    { label: "Notifications", value: notify, ok: notify === "Allowed" },
+    { label: "Storage", value: storage, ok: storage === "OK" }
+  ];
+  els.diagnosticsList.innerHTML = rows
+    .map(
+      (row) =>
+        `<div class="diagnostics-row ${row.ok ? "ok" : "warn"}"><span>${escapeHtml(row.label)}</span><em>${escapeHtml(String(row.value))}</em></div>`
+    )
+    .join("");
+}
+
+function renderReminderCenter() {
+  if (!els.reminderCenterList) return;
+  const now = Date.now();
+  const upcoming = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() >= now);
+  const overdue = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() < now);
+  const completed = state.reminders.filter((r) => r.done).slice(-5).reverse();
+  const open = state.reminders.filter((r) => !r.done && !r.dueAt);
+  const section = (title, items, cls = "") => {
+    if (!items.length) return "";
+    return `<p class="memory-group-label">${escapeHtml(title)}</p>${items
+      .map((r) => `<div class="reminder-center-row ${cls}"><span>${escapeHtml(r.text)}</span><em>${escapeHtml(formatReminder(r))}</em></div>`)
+      .join("")}`;
+  };
+  els.reminderCenterList.innerHTML =
+    section("Overdue", overdue, "overdue") +
+    section("Upcoming", upcoming, "ok") +
+    section("Open", open) +
+    section("Completed", completed) ||
+    `<p class="reminder-empty">No reminders yet. Ask VoiceMate to remind you.</p>`;
+}
+
+function parseReminderInput(raw) {
+  let text = String(raw || "").trim();
+  text = text.replace(/^remind me(?: to)?\s+/i, "");
+  let due = "";
+  let contact = "";
+  const tomorrowAt = text.match(/^(tomorrow|tonight)\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s+(?:to\s+)?(.+)$/i);
+  if (tomorrowAt) {
+    due = `${tomorrowAt[1]} at ${tomorrowAt[2]}${tomorrowAt[3] ? ":" + tomorrowAt[3] : ""}${tomorrowAt[4] ? " " + tomorrowAt[4] : ""}`;
+    text = tomorrowAt[5].trim();
+  }
+  const tomorrowSimple = text.match(/^(tomorrow|tonight)\s+(?:to\s+)?(.+)$/i);
+  if (!due && tomorrowSimple) {
+    due = tomorrowSimple[1];
+    text = tomorrowSimple[2].trim();
+  }
+  const contactMatch = text.match(/\b(?:call|email|text|message)\s+([A-Za-z0-9@.+_-]+)\s*$/i);
+  if (contactMatch) {
+    contact = contactMatch[1];
+    text = text.replace(contactMatch[0], "").trim();
+  }
+  return { text, due, contact };
+}
+
+function enrichUploadUnderstanding(item) {
+  if (!item) return;
+  const basis = `${item.summary || ""} ${item.content || ""}`.trim();
+  item.entities = topKeywords(basis).slice(0, 6);
+  item.suggestedQuestions = [
+    `Summarize ${item.name} in three bullet points.`,
+    `What's most important in ${item.name}?`,
+    item.entities?.length ? `Tell me about ${item.entities[0]} in ${item.name}.` : `What should I ask about ${item.name}?`
+  ];
+}
+
+function pulseOrbReading() {
+  setOrbMood("reading");
+  window.setTimeout(() => setOrbMood("idle"), 1600);
+}
+
+function maybeReactToUserPrompt(prompt) {
+  state.lastUserActivity = Date.now();
+  const lower = String(prompt || "").toLowerCase();
+  if (/\b(thank you|thanks|thank u|appreciate it)\b/.test(lower)) {
+    setExpression("happy");
+  }
+  if (/\?\s*$/.test(prompt.trim())) {
+    setOrbMood("confused");
+    window.setTimeout(() => setOrbMood("idle"), 1200);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -3613,15 +4127,20 @@ function maybeSummarizeConversation(convo) {
     existing.content = recent.slice(0, 6000);
     existing.updatedAt = new Date().toISOString();
   } else {
-    state.memory.push({
-      id: createMemoryId("convo"),
-      type: "conversation",
-      conversationId: convo.id,
-      name: `Conversation summary: ${convo.title}`,
-      summary,
-      content: recent.slice(0, 6000),
-      createdAt: new Date().toISOString()
-    });
+    state.memory.push(
+      stampMemorySource(
+        {
+          id: createMemoryId("convo"),
+          type: "conversation",
+          conversationId: convo.id,
+          name: `Conversation summary: ${convo.title}`,
+          summary,
+          content: recent.slice(0, 6000),
+          createdAt: new Date().toISOString()
+        },
+        "conversation"
+      )
+    );
   }
 }
 
@@ -3931,13 +4450,17 @@ function confirmCapturedPhoto(dataUrl) {
 // ---------------------------------------------------------------------------
 
 function createReminder(text, due, contact) {
-  const parsedDue = parseDueTime(due || text);
+  const parsed = parseReminderInput(String(text || "").trim());
+  const reminderText = parsed.text || String(text || "").trim();
+  const dueInput = String(due || parsed.due || "").trim();
+  const contactInput = String(contact || parsed.contact || "").trim();
+  const parsedDue = parseDueTime(dueInput || reminderText);
   return {
     id: "r" + Date.now() + Math.random().toString(36).slice(2, 6),
-    text: String(text || "").trim(),
-    dueText: String(due || "").trim(),
+    text: reminderText,
+    dueText: dueInput,
     dueAt: parsedDue ? parsedDue.toISOString() : "",
-    contact: String(contact || "").trim(),
+    contact: contactInput,
     done: false,
     notified: false,
     createdAt: new Date().toISOString()
@@ -4037,6 +4560,7 @@ function scheduleAllReminderNotifications() {
 function renderReminders() {
   saveState();
   renderHomeDashboard();
+  renderReminderCenter();
   if (!els.reminderList) return;
   els.reminderList.innerHTML = "";
   const open = state.reminders.filter((reminder) => !reminder.done);

@@ -96,6 +96,10 @@ const server = http.createServer(async (req, res) => {
       return handleRealtimeSecret(req, res);
     }
 
+    if (url.pathname === "/api/extract" && req.method === "POST") {
+      return handleExtract(req, res);
+    }
+
     if (url.pathname === "/api/livereload" && req.method === "GET") {
       return handleLiveReload(req, res);
     }
@@ -109,6 +113,16 @@ const server = http.createServer(async (req, res) => {
     console.error(error);
     return sendJson(res, 500, { error: "Server error" });
   }
+});
+
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`\nPort ${PORT} is already in use — an old VoiceMate server is probably still running.`);
+    console.error(`\nFree the port (Mac/Linux):\n  lsof -ti :${PORT} | xargs kill -9\n`);
+    console.error(`Or use a different port:\n  PORT=${PORT + 1} npm run dev\n`);
+    process.exit(1);
+  }
+  throw error;
 });
 
 server.listen(PORT, () => {
@@ -877,6 +891,70 @@ function readJsonBody(req) {
     });
     req.on("error", reject);
   });
+}
+
+async function handleExtract(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const name = String(body.filename || "file.txt").toLowerCase();
+    const buf = Buffer.from(String(body.data || ""), "base64");
+    if (!buf.length) return sendJson(res, 400, { error: "No file data provided." });
+    if (buf.length > 8_000_000) return sendJson(res, 413, { error: "File too large." });
+
+    let text = "";
+    if (name.endsWith(".pdf")) {
+      text = extractPdfText(buf);
+    } else if (name.endsWith(".docx")) {
+      text = extractDocxText(buf);
+    } else if (name.endsWith(".doc")) {
+      return sendJson(res, 200, {
+        text: "",
+        summary: "Legacy .doc files need conversion to .docx or plain text."
+      });
+    } else {
+      text = buf.toString("utf8");
+    }
+
+    text = text.replace(/\s+/g, " ").trim().slice(0, 50000);
+    const summary = text
+      ? `${text.split(/\s+/).length} words extracted. Starts with: "${text.slice(0, 140)}${text.length > 140 ? "…" : ""}"`
+      : "No readable text found in this file.";
+    return sendJson(res, 200, { text, summary });
+  } catch (error) {
+    return sendJson(res, 500, { error: error.message || "Extraction failed." });
+  }
+}
+
+function extractPdfText(buf) {
+  const raw = buf.toString("latin1");
+  const parts = [];
+  const re = /\(([^()\\]{3,})\)/g;
+  let match;
+  while ((match = re.exec(raw))) {
+    const part = match[1].replace(/\\n/g, " ").replace(/\\r/g, " ").trim();
+    if (/^[\x20-\x7e]+$/.test(part) && part.length > 2) parts.push(part);
+  }
+  const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+  if (joined.length > 200) return joined;
+  return raw
+    .replace(/[^\x09\x0a\x0d\x20-\x7e]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractDocxText(buf) {
+  for (const encoding of ["utf8", "latin1"]) {
+    const raw = buf.toString(encoding);
+    const matches = [...raw.matchAll(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g)];
+    if (matches.length) {
+      return matches
+        .map((entry) => entry[1])
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+  }
+  return "";
 }
 
 function sendJson(res, status, body) {
