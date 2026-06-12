@@ -1939,13 +1939,6 @@ select,
   background: var(--blue-soft);
 }
 
-.activity-feed {
-  display: grid;
-  gap: 10px;
-  max-height: 290px;
-  overflow-y: auto;
-}
-
 .settings-disclosure {
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1987,10 +1980,6 @@ select,
 
 .settings-disclosure[open] summary em {
   color: var(--muted);
-}
-
-.settings-disclosure .activity-feed {
-  padding: 0 14px 14px;
 }
 
 .activity-item {
@@ -2376,88 +2365,6 @@ footer {
 
 .home-section {
   margin-top: 56px;
-}
-
-.release-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.release-item {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--surface);
-  box-shadow: var(--soft-shadow);
-}
-
-.release-item strong {
-  display: block;
-  letter-spacing: -0.02em;
-}
-
-.release-item p {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-
-.release-foot {
-  margin-top: 16px;
-  text-align: center;
-}
-
-.release-notes {
-  padding: 0 14px 14px;
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.48;
-}
-
-.release-notes h4 {
-  margin: 14px 0 4px;
-  color: var(--ink);
-  font-size: 0.88rem;
-  letter-spacing: -0.01em;
-}
-
-.release-notes h4:first-of-type {
-  margin-top: 4px;
-}
-
-.release-notes ul,
-.release-notes ol {
-  margin: 6px 0 0;
-  padding-left: 18px;
-}
-
-.release-notes li {
-  margin: 4px 0;
-}
-
-.release-notes code {
-  font-size: 0.78rem;
-}
-
-.release-meta {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  font-size: 0.78rem;
-}
-
-@media (max-width: 980px) {
-  .release-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .release-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .home-dashboard {
@@ -6801,13 +6708,12 @@ function setupEyes() {
   if (els.heroOrb) {
     els.heroOrb.setAttribute("tabindex", "0");
     els.heroOrb.setAttribute("role", "button");
-    els.heroOrb.setAttribute("aria-label", "Start talking");
-    const startTalk = () => showPage("talk");
-    els.heroOrb.addEventListener("click", startTalk);
+    els.heroOrb.setAttribute("aria-label", "Make VoiceMate react");
+    els.heroOrb.addEventListener("click", () => playOrbHappy(els.heroOrb));
     els.heroOrb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        startTalk();
+        playOrbHappy(els.heroOrb);
       }
     });
   }

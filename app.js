@@ -2692,13 +2692,12 @@ function setupEyes() {
   if (els.heroOrb) {
     els.heroOrb.setAttribute("tabindex", "0");
     els.heroOrb.setAttribute("role", "button");
-    els.heroOrb.setAttribute("aria-label", "Start talking");
-    const startTalk = () => showPage("talk");
-    els.heroOrb.addEventListener("click", startTalk);
+    els.heroOrb.setAttribute("aria-label", "Make VoiceMate react");
+    els.heroOrb.addEventListener("click", () => playOrbHappy(els.heroOrb));
     els.heroOrb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        startTalk();
+        playOrbHappy(els.heroOrb);
       }
     });
   }
@@ -2709,6 +2708,21 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function playOrbHappy(orb) {
+  if (!orb) return;
+  const eyeEl = orb.querySelector(".orb-eyes");
+  if (!eyeEl) return;
+  eyeEl.classList.remove("tapped");
+  orb.classList.remove("orb-tapped");
+  void orb.offsetWidth;
+  eyeEl.classList.add("tapped");
+  orb.classList.add("orb-tapped");
+  window.setTimeout(() => {
+    eyeEl.classList.remove("tapped");
+    orb.classList.remove("orb-tapped");
+  }, 920);
 }
 
 function setEyeMode(mode) {
