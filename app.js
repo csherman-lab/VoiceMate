@@ -3085,6 +3085,19 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
+  [els.voiceOrb, els.heroOrb].forEach((orb) => {
+    if (!orb) return;
+    orb.setAttribute("tabindex", "0");
+    orb.setAttribute("role", "button");
+    orb.setAttribute("aria-label", "VoiceMate");
+    orb.addEventListener("click", () => playOrbSquint(orb));
+    orb.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        playOrbSquint(orb);
+      }
+    });
+  });
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -3092,6 +3105,16 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function playOrbSquint(orb) {
+  if (!orb) return;
+  const eyeEl = orb.querySelector(".orb-eyes");
+  if (!eyeEl) return;
+  eyeEl.classList.remove("squinting");
+  void eyeEl.offsetWidth;
+  eyeEl.classList.add("squinting");
+  window.setTimeout(() => eyeEl.classList.remove("squinting"), 1000);
 }
 
 function setEyeMode(mode) {

@@ -493,6 +493,10 @@ h3 {
   animation: none;
 }
 
+.orb-eyes.squinting i {
+  transform: scale(1.12, 0.38);
+}
+
 .orb-eyes {
   position: absolute;
   inset: 0;
