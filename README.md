@@ -13,7 +13,7 @@ what we studied and what we borrowed.
 
 ## What makes the voice good
 
-- **Live Grok voice calls.** Tap **Live call** in Talk to open a real-time
+- **Live Grok voice calls.** Tap **Start live call** in Talk to open a real-time
   speech-to-speech session over the xAI Realtime API (`grok-voice-latest`),
   with server-side voice activity detection, barge-in (interrupt it mid-sentence),
   and live transcription.
@@ -21,21 +21,27 @@ what we studied and what we borrowed.
   actually *speak* — contractions, short sentences, natural reactions — and use
   Grok **speech tags** (`[pause]`, `[laugh]`, `[sigh]`, `<whisper>…</whisper>`)
   for genuine prosody instead of a flat robotic read.
-- **Grok TTS for typed turns.** When you type, replies stream in and are spoken
-  with the Grok voice you picked.
+- **Streaming typed turns.** When you type, replies stream into the transcript,
+  can call tools, and are spoken with the Grok voice you picked.
 - **Graceful fallback.** With no backend, VoiceMate still runs in a local
   preview using the browser voice.
 
 ## What it can do
 
 - **Acts, doesn't just talk.** VoiceMate has tools it can call by voice or text:
-  remember a fact, search its memory, add or complete reminders, switch its own
-  voice, and change skills. Ask "remind me to email the team" and it just does it.
+  remember a fact, search its memory, add or complete reminders, prepare email
+  or text reminder drafts, switch its own voice, change skills, check time,
+  calculate, get weather, and open links with confirmation.
 - **Remembers between sessions.** Memory, reminders, voice, and skill are saved
   locally and restored on reload. Export or import your memory from Settings.
 - **Understands uploads in conversation.** Uploaded files, notes, CSVs, photos,
   and screenshots become active context. Ask "what is this?" or keep talking in
   a live call and VoiceMate uses the latest upload instead of losing the thread.
+- **Shows what it is using.** Talk has active context chips and a thinking/actions
+  drawer so you can see uploads, tools, sources, and decisions without leaving
+  the conversation.
+- **Safer local storage.** Large image previews are cached in IndexedDB when
+  possible, with metadata kept in localStorage as a fallback.
 - **Installable + offline.** It's a PWA — install it like a native app; the
   interface works offline.
 - **Reactive voice orb, reminders, toasts, and keyboard shortcuts** (Esc ends a
@@ -85,7 +91,11 @@ key would leak. Use the backend below for the real thing.
    npm start
    ```
 
-3. Open `http://localhost:3000`, go to **Talk**, and hit **Live call**.
+3. Open `http://localhost:3000`, go to **Talk**, and hit **Start live call**.
+
+If you expose the server beyond localhost, set `VM_API_TOKEN` and put an auth
+gate in front of the app. The local prototype has lightweight API rate limits,
+but it is still designed primarily for local development.
 
 ### Develop with live reload (auto-deploy to localhost)
 
@@ -128,7 +138,8 @@ prompt the backend sends to Grok.
 ## How it's built
 
 - `index.html`, `styles.css`, `app.js` — the static front end (Apple-style UI,
-  skills grid, reasoning trace, live-call client, streaming chat).
+  skills grid, Talk context chips, reasoning trace, live-call client, streaming
+  chat, local tools, reminders, and upload memory).
 - `server.js` — a dependency-free Node backend that proxies Grok chat
   (streaming SSE), Grok TTS, the realtime ephemeral token, and the voices list.
 - `build-singlefile.js` — inlines the front end into `open-voicemate.html`
@@ -140,5 +151,6 @@ prompt the backend sends to Grok.
 - Never put a real key in `open-voicemate.html` or any client file.
 - Microphone access for live calls needs a secure context — `http://localhost`
   works; for remote hosting use HTTPS.
-- Uploaded files stay in the browser session; this prototype does not persist
-  them to a server.
+- Uploaded files stay in the browser; this prototype does not persist them to a
+  server. Reminder emails/texts open as drafts on your device unless you add a
+  real delivery provider later.

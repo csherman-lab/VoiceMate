@@ -13,11 +13,13 @@ VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a
 - Typed chat
 - Upload text, markdown, JSON, CSV, logs, and images
 - Local file summaries
-- Visible activity feed
+- Visible activity feed and Talk-screen thinking drawer
+- Active context chips for uploaded files, photos, and notes
 - Pitch mode
 - Data analyst mode
 - Meeting coach mode
 - Natural conversation mode
+- Reminder capture with due/contact metadata and email/text draft handoff
 
 ## What the prototype can do locally
 
@@ -27,8 +29,11 @@ VoiceMate is a human-like multimodal voice agent. It should feel like a mix of a
 - Read uploaded text-like files locally
 - Summarize CSV rows, columns, and simple numeric ranges
 - Preview uploaded images and read file dimensions
-- Show an activity feed for each response
-- Use session memory from uploaded files and pasted context
+- Show an activity feed and Talk-screen trace for each response
+- Use active upload context from files, pasted notes, photos, camera captures, and saved chats
+- Stream typed Grok replies while preserving tool calls
+- Prepare mailto or SMS drafts for reminders from the user's device
+- Cache large image previews in IndexedDB when localStorage is tight
 
 ## What production should add
 
@@ -64,6 +69,11 @@ Give VoiceMate permissioned actions:
 - update CRM records
 - produce call summaries
 - create tasks
+
+The prototype now has a small permission layer for risky local tools such as
+opening links, saving model-suggested memory, and marking reminders complete.
+Production should replace browser drafts with authenticated email, SMS, calendar,
+and task providers.
 
 ### Trust and visibility
 
