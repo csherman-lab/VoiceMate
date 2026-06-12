@@ -66,3 +66,21 @@ To turn VoiceMate into a real production product, connect the UI to:
 - account-level privacy controls.
 
 Do not ship a real Grok API key inside `open-voicemate.html`. A browser file can be inspected by anyone who has it. Use a backend for real keys.
+
+## Where to put your Grok xAI key
+
+Put the real key in a local file named `.env.local`.
+
+Start by copying the template:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then open `.env.local` and paste the key here:
+
+```bash
+XAI_API_KEY=your_real_grok_xai_key_here
+```
+
+`.env.local` is ignored by git, so it should not be pushed to GitHub. The file is for the future backend only. The current one file browser demo still cannot safely call Grok directly.
