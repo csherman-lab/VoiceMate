@@ -502,9 +502,19 @@ h3 {
   transform: scaleY(0.5);
 }
 
-/* Blink (wins over smile while it fires) */
+/* Tap squint — casual one-second narrow */
+.orb-eyes.squinting i {
+  transform: scaleY(0.4);
+}
+
+/* Blink (wins over smile / squint while it fires) */
 .orb-eyes.blinking i {
   transform: scaleY(0.08);
+}
+
+.orb.tappable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hero-orb {
@@ -2654,7 +2664,7 @@ footer {
           </div>
 
           <div class="phone-card">
-            <div class="orb hero-orb" id="heroOrb" aria-hidden="true">
+            <div class="orb hero-orb tappable" id="heroOrb" role="button" tabindex="0" aria-label="VoiceMate">
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <p class="device-label">Talk. It talks back.</p>
@@ -2694,7 +2704,7 @@ footer {
           </div>
 
           <div class="focus-orb-wrap">
-            <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
+            <div class="orb focus-orb tappable" id="voiceOrb" role="button" tabindex="0" aria-label="VoiceMate voice animation">
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <div class="voice-caption">
@@ -3281,6 +3291,7 @@ function init() {
   setupSpeechRecognition();
   setupShortcuts();
   setupEyes();
+  setupOrbTap();
   registerServiceWorker();
   wireEvents();
 
@@ -4825,6 +4836,29 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
+}
+
+function setupOrbTap() {
+  const squint = () => squintOnce(1000);
+  [els.heroOrb, els.voiceOrb].forEach((orb) => {
+    if (!orb) return;
+    orb.classList.add("tappable");
+    orb.addEventListener("click", squint);
+  });
+  const brand = document.querySelector(".brand.page-link");
+  if (brand) brand.addEventListener("click", squint);
+}
+
+let squintTimer = null;
+
+function squintOnce(durationMs = 1000) {
+  if (!eyes.els.length) return;
+  clearTimeout(squintTimer);
+  eyes.els.forEach((el) => el.classList.add("squinting"));
+  squintTimer = window.setTimeout(() => {
+    eyes.els.forEach((el) => el.classList.remove("squinting"));
+    squintTimer = null;
+  }, durationMs);
 }
 
 function setEyeMode(mode) {
