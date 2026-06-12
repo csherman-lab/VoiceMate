@@ -1274,7 +1274,7 @@ async function respond(prompt) {
         streamed += delta;
         bubble.classList.remove("typing");
         bubble.textContent = stripSpeechTags(streamed);
-        els.transcript.scrollTop = els.transcript.scrollHeight;
+        scrollTranscript();
       });
       answer = result.text || answer;
       citations = result.citations || [];
@@ -2481,7 +2481,7 @@ function enqueueAssistantReveal(live, text) {
     }
     appendAnimatedText(bubble, chunk);
     bubble.dataset.liveText = (bubble.dataset.liveText || "") + chunk;
-    els.transcript.scrollTop = els.transcript.scrollHeight;
+    scrollTranscript();
     live.asstRevealTimer = window.setTimeout(tick, chunk.length > 14 ? 150 : 120);
   };
   live.asstRevealTimer = window.setTimeout(tick, 35);
@@ -2772,12 +2772,22 @@ function clampEye(value) {
   return Math.min(1, Math.max(-1, value));
 }
 
+function scrollTranscript(smooth = false) {
+  if (!els.transcript) return;
+  if (smooth && "scrollTo" in els.transcript) {
+    els.transcript.scrollTo({ top: els.transcript.scrollHeight, behavior: "smooth" });
+  } else {
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+  }
+}
+
 function addMessage(role, text) {
   const message = document.createElement("div");
-  message.className = `message ${role}`;
+  message.className = `message ${role} message-enter`;
   message.textContent = role === "user" || role === "system" ? text : noDashes(text);
   els.transcript.appendChild(message);
-  els.transcript.scrollTop = els.transcript.scrollHeight;
+  scrollTranscript(true);
+  window.setTimeout(() => message.classList.remove("message-enter"), 460);
   updateTalkChrome();
   return message;
 }
@@ -2792,34 +2802,41 @@ function setLiveText(message, text, animateNew = true) {
     message.innerHTML = wordsToAnimatedHtml(clean, false);
   }
   message.dataset.liveText = clean;
-  els.transcript.scrollTop = els.transcript.scrollHeight;
+  scrollTranscript();
 }
 
 function appendAnimatedText(message, text) {
   const parts = String(text || "").match(/\s+|[^\s]+/g) || [];
   message.querySelectorAll(".current-word").forEach((node) => node.classList.remove("current-word"));
   let latestWord = null;
+  let wordIndex = 0;
   for (const part of parts) {
     if (/^\s+$/.test(part)) {
       message.appendChild(document.createTextNode(part));
     } else {
       const span = document.createElement("span");
       span.className = "word-pop current-word";
+      span.style.animationDelay = `${wordIndex * 24}ms`;
       span.textContent = part;
       message.appendChild(span);
       latestWord = span;
+      wordIndex += 1;
     }
   }
   if (latestWord) {
-    window.setTimeout(() => latestWord.classList.remove("current-word"), 420);
+    window.setTimeout(() => latestWord.classList.remove("current-word"), 520);
   }
 }
 
 function wordsToAnimatedHtml(text, animate) {
+  let wordIndex = 0;
   return (String(text || "").match(/\s+|[^\s]+/g) || [])
     .map((part) => {
       if (/^\s+$/.test(part)) return escapeHtml(part);
-      return animate ? `<span class="word-pop">${escapeHtml(part)}</span>` : escapeHtml(part);
+      if (!animate) return escapeHtml(part);
+      const delay = wordIndex * 24;
+      wordIndex += 1;
+      return `<span class="word-pop" style="animation-delay:${delay}ms">${escapeHtml(part)}</span>`;
     })
     .join("");
 }
