@@ -95,15 +95,18 @@
             </button>
           </div>
 
-          <div class="focus-orb-wrap" id="focusOrbWrap">
-            <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
-              <span class="orb-eyes"><i></i><i></i></span>
+          <div class="talk-center" id="talkCenter">
+            <div class="focus-orb-wrap" id="focusOrbWrap">
+              <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
+                <span class="orb-eyes"><i></i><i></i></span>
+              </div>
+              <p class="voice-hint" id="voiceHint">Ask about today's updates, reminders, tomorrow, or anything your connectors pulled in.</p>
             </div>
-            <p class="voice-hint" id="voiceHint">Ask about today's updates, reminders, tomorrow, or anything your connectors pulled in.</p>
+
+            <div class="transcript" id="transcript" aria-live="polite"></div>
           </div>
 
-          <div class="transcript" id="transcript" aria-live="polite"></div>
-
+          <div class="talk-bottom">
           <form class="composer" id="promptForm">
             <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,.pdf,.doc,.docx,image/*" />
@@ -136,6 +139,7 @@
               <button class="tool-button subtle" id="historyButton" type="button">History</button>
             </div>
           </details>
+          </div>
 
           <!-- Hidden status hooks for scripts -->
           <span id="speechStatus" hidden aria-hidden="true"></span>
