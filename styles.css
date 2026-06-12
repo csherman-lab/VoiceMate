@@ -397,8 +397,7 @@ h3 {
   display: none;
 }
 
-/* Dark glass voice orb: inspired by a glossy AI sphere with deep indigo
-   shadows, icy highlights, magenta refractions, and voice-reactive scale. */
+/* Classic VoiceMate orb: blue-purple-pink-orange gradient with 3D gaze tilt. */
 .orb {
   position: relative;
   border-radius: 50%;
@@ -412,17 +411,15 @@ h3 {
     scale(var(--orb-scale, 1));
   transform-style: preserve-3d;
   background:
-    radial-gradient(58% 52% at 72% 16%, rgba(218, 238, 255, 0.88) 0%, rgba(128, 157, 255, 0.54) 22%, transparent 58%),
-    radial-gradient(68% 78% at 20% 46%, rgba(2, 8, 85, 0.98) 0%, rgba(18, 13, 112, 0.88) 30%, rgba(36, 18, 130, 0.28) 62%, transparent 76%),
-    radial-gradient(46% 38% at 74% 70%, rgba(255, 44, 193, 0.72) 0%, rgba(159, 47, 232, 0.46) 38%, transparent 72%),
-    radial-gradient(95% 95% at 60% 44%, #b9d7ff 0%, #7f84ff 23%, #5a3fe5 44%, #8d37e6 63%, #d726c4 82%, #1b0d74 100%);
+    radial-gradient(135% 135% at 30% 24%,
+      #ffffff 0%, #d3e6ff 4%, #4f8bff 20%, #5b54f2 38%, #a83df0 55%, #ff4f97 71%, #ff6a2c 87%, #c0263f 100%);
   box-shadow:
-    inset 0 2px 3px rgba(255, 255, 255, 0.8),
-    inset 10px 16px 36px rgba(230, 244, 255, 0.42),
-    inset -34px 0 58px rgba(1, 4, 55, 0.82),
-    inset 0 -42px 70px rgba(91, 0, 117, 0.72),
-    inset 0 0 0 1px rgba(218, 228, 255, 0.3),
-    0 14px 32px rgba(40, 30, 140, 0.16);
+    inset 0 3px 4px rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    inset 0 -34px 60px rgba(70, 5, 50, 0.6),
+    inset 0 22px 50px rgba(255, 255, 255, 0.55),
+    inset -18px -10px 50px rgba(90, 40, 160, 0.35),
+    0 14px 32px rgba(120, 70, 220, 0.18);
   animation: orbHue 14s ease-in-out infinite;
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: filter, transform;
@@ -433,31 +430,24 @@ h3 {
   outline-offset: 8px;
 }
 
-/* Slow internal refraction: darker and less uniform than the old rainbow fill. */
+/* Swirling colored fluid inside the sphere */
 .orb::before {
   content: "";
   position: absolute;
-  inset: -30%;
+  inset: -36%;
   background:
-    conic-gradient(from 218deg at 48% 52%,
-      rgba(1, 5, 64, 0.98) 0deg,
-      rgba(18, 25, 158, 0.82) 56deg,
-      rgba(167, 216, 255, 0.68) 104deg,
-      rgba(99, 74, 242, 0.62) 160deg,
-      rgba(13, 7, 96, 0.96) 220deg,
-      rgba(226, 36, 205, 0.7) 286deg,
-      rgba(1, 5, 64, 0.98) 360deg),
-    radial-gradient(54% 58% at 18% 44%, rgba(0, 0, 56, 0.96), transparent 68%),
-    radial-gradient(48% 28% at 70% 18%, rgba(207, 242, 255, 0.76), transparent 72%);
-  filter: blur(14px) saturate(1.15);
-  mix-blend-mode: soft-light;
-  opacity: 0.72;
-  animation: orbSwirl 14s linear infinite;
+    conic-gradient(from 0deg at 50% 50%,
+      rgba(80, 130, 255, 0.1), rgba(95, 84, 242, 0.85), rgba(168, 61, 240, 0.8),
+      rgba(255, 79, 151, 0.85), rgba(255, 106, 44, 0.8), rgba(80, 130, 255, 0.1));
+  filter: blur(22px);
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  animation: orbSwirl 9s linear infinite;
   transform: translate3d(var(--orb-fluid-x, 0px), var(--orb-fluid-y, 0px), -18px) rotate(var(--orb-fluid-rot, 0deg));
   transition: transform 220ms ease-out;
 }
 
-/* Glass reflections and rim highlights. */
+/* Glossy specular highlight + soft bottom rim light */
 .orb::after {
   content: "";
   position: absolute;
@@ -465,12 +455,11 @@ h3 {
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(25% 20% at 39% 14%, rgba(246, 252, 255, 0.88), rgba(246, 252, 255, 0.08) 52%, transparent 75%),
-    radial-gradient(46% 30% at 59% 8%, rgba(187, 225, 255, 0.42), transparent 66%),
-    radial-gradient(26% 20% at 83% 39%, rgba(233, 247, 255, 0.28), transparent 70%),
-    radial-gradient(36% 16% at 69% 78%, rgba(255, 67, 211, 0.44), transparent 74%),
-    radial-gradient(118% 112% at 50% 49%, transparent 61%, rgba(214, 224, 255, 0.44) 78%, rgba(255, 255, 255, 0.1) 84%, transparent 91%),
-    linear-gradient(116deg, rgba(255, 255, 255, 0.32), transparent 22%, transparent 67%, rgba(255, 255, 255, 0.12));
+    radial-gradient(16% 13% at 33% 21%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(46% 36% at 31% 25%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 62%),
+    radial-gradient(13% 10% at 68% 70%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(100% 100% at 50% 50%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.32) 88%, rgba(255, 255, 255, 0) 93%),
+    radial-gradient(120% 80% at 50% 122%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.22) 100%);
   transform: translate3d(var(--orb-glint-x, 0px), var(--orb-glint-y, 0px), 28px) rotate(var(--orb-glint-rot, 0deg));
   transition: transform 220ms ease-out;
 }
@@ -1802,10 +1791,10 @@ footer {
 @keyframes orbHue {
   0%,
   100% {
-    filter: saturate(1.08) contrast(1.03) hue-rotate(0deg);
+    filter: saturate(1.1) hue-rotate(0deg);
   }
   50% {
-    filter: saturate(1.18) contrast(1.08) hue-rotate(8deg);
+    filter: saturate(1.3) hue-rotate(22deg);
   }
 }
 
