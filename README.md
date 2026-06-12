@@ -26,6 +26,20 @@ what we studied and what we borrowed.
 - **Graceful fallback.** With no backend, VoiceMate still runs in a local
   preview using the browser voice.
 
+## What it can do
+
+- **Acts, doesn't just talk.** VoiceMate has tools it can call by voice or text:
+  remember a fact, search its memory, add or complete reminders, switch its own
+  voice, and change skills. Ask "remind me to email the team" and it just does it.
+- **Remembers between sessions.** Memory, reminders, voice, and skill are saved
+  locally and restored on reload. Export or import your memory from Settings.
+- **Sees your images.** Uploaded photos and screenshots are sent to the model so
+  it can actually describe and reason over them.
+- **Installable + offline.** It's a PWA — install it like a native app; the
+  interface works offline.
+- **Reactive voice orb, reminders, toasts, and keyboard shortcuts** (Esc ends a
+  call, ⌘K / `/` jumps to the message box).
+
 ## Skills
 
 Pick one on the Home screen, or just start talking and VoiceMate routes to the
