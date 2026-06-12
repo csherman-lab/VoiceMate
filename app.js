@@ -64,6 +64,7 @@ const els = {
   pageLinks: document.querySelectorAll(".page-link"),
   pages: document.querySelectorAll("[data-page-panel]"),
   personaList: document.querySelector("#personaList"),
+  talkVoicePicker: document.querySelector("#talkVoicePicker"),
   systemVoice: document.querySelector("#systemVoice"),
   agentMode: document.querySelector("#agentMode"),
   sampleVoice: document.querySelector("#sampleVoice"),
@@ -87,7 +88,8 @@ const els = {
   memoryGrid: document.querySelector("#memoryGrid"),
   grokKeyInput: document.querySelector("#grokKeyInput"),
   saveGrokKey: document.querySelector("#saveGrokKey"),
-  grokStatus: document.querySelector("#grokStatus")
+  grokStatus: document.querySelector("#grokStatus"),
+  backendStatus: document.querySelector("#backendStatus")
 };
 
 function init() {
@@ -115,6 +117,10 @@ function init() {
   if (["home", "talk", "memory", "setup"].includes(pageFromHash)) {
     showPage(pageFromHash);
   }
+
+  window.requestAnimationFrame(() => {
+    document.body.classList.add("ui-ready");
+  });
 }
 
 function wireEvents() {
@@ -221,15 +227,23 @@ function wireEvents() {
 }
 
 function showPage(page) {
-  document.body.classList.toggle("talk-session", page === "talk");
+  const update = () => {
+    document.body.classList.toggle("talk-session", page === "talk");
 
-  els.pages.forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.pagePanel === page);
-  });
+    els.pages.forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.pagePanel === page);
+    });
 
-  els.navLinks.forEach((button) => {
-    button.classList.toggle("active", button.dataset.page === page);
-  });
+    els.navLinks.forEach((button) => {
+      button.classList.toggle("active", button.dataset.page === page);
+    });
+  };
+
+  if (document.startViewTransition && document.body.classList.contains("ui-ready")) {
+    document.startViewTransition(update);
+  } else {
+    update();
+  }
 
   addActivity("Opened page", `${titleCase(page)} page is active.`);
   if (window.location.hash.replace("#", "") !== page) {
@@ -240,6 +254,7 @@ function showPage(page) {
 
 function renderPersonas() {
   els.personaList.innerHTML = "";
+  els.talkVoicePicker.innerHTML = "";
 
   PERSONAS.forEach((persona) => {
     const button = document.createElement("button");
@@ -248,17 +263,31 @@ function renderPersonas() {
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", String(persona.id === state.persona));
     button.innerHTML = `<strong>${persona.name}</strong><span>${persona.style}<br>${persona.bestFor}</span>`;
-    button.addEventListener("click", () => {
-      state.persona = persona.id;
-      renderPersonas();
-      updatePersonaLabel();
-      addActivity("Changed personality", `${persona.name} is selected.`);
-      speak(`I am ${persona.name}. Ready when you are.`);
-    });
+    button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
+
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `voice-chip${persona.id === state.persona ? " active" : ""}`;
+    chip.textContent = persona.name;
+    chip.addEventListener("click", () => selectPersona(persona.id, true));
+    els.talkVoicePicker.appendChild(chip);
   });
 
   updatePersonaLabel();
+}
+
+function selectPersona(personaId, preview) {
+  const persona = PERSONAS.find((item) => item.id === personaId);
+  if (!persona) return;
+
+  state.persona = persona.id;
+  renderPersonas();
+  updatePersonaLabel();
+  addActivity("Changed voice", `${persona.name} is selected.`);
+  if (preview) {
+    speak(`I am ${persona.name}. Ready when you are.`);
+  }
 }
 
 function updatePersonaLabel() {
@@ -803,8 +832,12 @@ function updateGrokStatus() {
   const saved = window.sessionStorage.getItem("voicemateGrokKeyNote");
   if (state.backendOnline) {
     els.grokStatus.textContent = `Backend connected. Model: ${state.backendModel || "xAI"}.`;
+    els.backendStatus.textContent = "Grok on";
+    els.backendStatus.classList.add("connected");
     return;
   }
+  els.backendStatus.textContent = "Local mode";
+  els.backendStatus.classList.remove("connected");
   els.grokStatus.textContent = saved ? `Local key note saved as ${saved}.` : "No key note saved.";
 }
 

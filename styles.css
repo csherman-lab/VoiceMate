@@ -213,6 +213,16 @@ main {
   display: block;
 }
 
+.ui-ready .page.active {
+  animation: pageFloat 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 390px);
@@ -309,14 +319,25 @@ h3 {
   border-radius: 999px;
   cursor: pointer;
   font-weight: 700;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, background 180ms ease;
 }
 
 .button:hover,
 .dock-button:hover,
 .persona-option:hover,
-.nav-link:hover {
+.nav-link:hover,
+.session-button:hover,
+.voice-chip:hover {
   transform: translateY(-1px);
+}
+
+.button:active,
+.dock-button:active,
+.persona-option:active,
+.nav-link:active,
+.session-button:active,
+.voice-chip:active {
+  transform: scale(0.97);
 }
 
 .button.primary {
@@ -549,6 +570,7 @@ h3 {
   gap: 8px;
 }
 
+.backend-pill,
 .session-button {
   min-height: 32px;
   padding: 0 12px;
@@ -560,6 +582,17 @@ h3 {
   font-size: 0.82rem;
   font-weight: 700;
   backdrop-filter: blur(18px);
+}
+
+.backend-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(118, 118, 128, 0.12);
+}
+
+.backend-pill.connected {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
 }
 
 .status-pill {
@@ -605,6 +638,37 @@ h3 {
 .voice-caption span {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.talk-voice-picker {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.voice-chip {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 730;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.voice-chip.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.08);
 }
 
 .transcript {
@@ -1016,6 +1080,16 @@ footer {
   50% {
     opacity: 0.34;
     transform: scale(1.06);
+  }
+}
+
+@keyframes pageFloat {
+  from {
+    transform: translateY(10px) scale(0.995);
+  }
+
+  to {
+    transform: translateY(0) scale(1);
   }
 }
 
