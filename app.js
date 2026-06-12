@@ -1180,10 +1180,11 @@ async function startLiveCall() {
     rate: 24000,
     sources: new Set(),
     nextTime: 0,
-    userBubbles: {},
-    userText: {},
-    asstBubbles: {},
-    asstText: {}
+    curUser: null,
+    curUserText: "",
+    lastUserFinal: "",
+    curAsst: null,
+    curAsstText: ""
   };
   state.live = live;
 
@@ -1367,69 +1368,65 @@ function handleRealtimeMessage(live, raw) {
       setSpeechStatus("Listening", true, false);
       break;
 
-    // User speech transcribes live into a single blue bubble per turn.
+    // User speech updates ONE blue bubble for the current turn (corrections
+    // replace the text in place, they never add a new bubble).
     case "conversation.item.input_audio_transcription.delta":
     case "conversation.item.input_audio_transcription.updated": {
-      const id = msg.item_id || "user";
-      let bubble = live.userBubbles[id];
-      if (!bubble) {
-        bubble = addMessage("user", "");
-        bubble.classList.add("live-typing");
-        live.userBubbles[id] = bubble;
+      if (!live.curUser) {
+        live.curUser = addMessage("user", "");
+        live.curUser.classList.add("live-typing");
+        live.curUserText = "";
       }
-      const text =
-        msg.transcript != null ? msg.transcript : (live.userText[id] || "") + (msg.delta || "");
-      live.userText[id] = text;
-      bubble.textContent = text;
+      live.curUserText =
+        msg.transcript != null ? msg.transcript : live.curUserText + (msg.delta || "");
+      live.curUser.textContent = live.curUserText;
       els.transcript.scrollTop = els.transcript.scrollHeight;
       break;
     }
 
     case "conversation.item.input_audio_transcription.completed": {
-      const id = msg.item_id || "user";
-      let bubble = live.userBubbles[id];
-      const text = (msg.transcript || live.userText[id] || "").trim();
-      if (!bubble && text) bubble = addMessage("user", "");
-      if (bubble) {
-        bubble.classList.remove("live-typing");
-        if (text) bubble.textContent = text;
-        else bubble.remove();
+      const text = (msg.transcript || live.curUserText || "").trim();
+      if (live.curUser) {
+        live.curUser.classList.remove("live-typing");
+        if (text) live.curUser.textContent = text;
+        else live.curUser.remove();
+      } else if (text && text !== live.lastUserFinal) {
+        addMessage("user", text);
       }
-      if (text) state.history.push({ role: "user", content: text });
-      delete live.userBubbles[id];
-      delete live.userText[id];
+      if (text) {
+        state.history.push({ role: "user", content: text });
+        live.lastUserFinal = text;
+      }
+      live.curUser = null;
+      live.curUserText = "";
       break;
     }
 
-    // Assistant speech streams into a single bubble per response.
+    // Assistant speech streams into ONE bubble for the current response.
     case "response.output_audio_transcript.delta": {
-      const id = msg.item_id || msg.response_id || "asst";
-      let bubble = live.asstBubbles[id];
-      if (!bubble) {
-        bubble = addMessage("agent", "");
-        bubble.classList.add("typing");
-        live.asstBubbles[id] = bubble;
-        live.asstText[id] = "";
+      if (!live.curAsst) {
+        live.curAsst = addMessage("agent", "");
+        live.curAsst.classList.add("typing");
+        live.curAsstText = "";
       }
-      live.asstText[id] = (live.asstText[id] || "") + (msg.delta || "");
-      bubble.textContent = stripSpeechTags(live.asstText[id]);
+      live.curAsstText += msg.delta || "";
+      live.curAsst.textContent = stripSpeechTags(live.curAsstText);
       els.transcript.scrollTop = els.transcript.scrollHeight;
       break;
     }
 
     case "response.output_audio_transcript.done": {
-      const id = msg.item_id || msg.response_id || "asst";
-      let bubble = live.asstBubbles[id];
-      const finalText = stripSpeechTags(msg.transcript || live.asstText[id] || "");
-      if (!bubble && finalText) bubble = addMessage("agent", "");
-      if (bubble) {
-        bubble.classList.remove("typing");
-        if (finalText) bubble.textContent = finalText;
-        else bubble.remove();
+      const finalText = stripSpeechTags(msg.transcript || live.curAsstText || "");
+      if (live.curAsst) {
+        live.curAsst.classList.remove("typing");
+        if (finalText) live.curAsst.textContent = finalText;
+        else live.curAsst.remove();
+      } else if (finalText) {
+        addMessage("agent", finalText);
       }
       if (finalText) state.history.push({ role: "assistant", content: finalText });
-      delete live.asstBubbles[id];
-      delete live.asstText[id];
+      live.curAsst = null;
+      live.curAsstText = "";
       break;
     }
 
@@ -1460,6 +1457,11 @@ function handleRealtimeMessage(live, raw) {
     }
 
     case "response.done":
+      if (live.curAsst) {
+        live.curAsst.classList.remove("typing");
+        live.curAsst = null;
+        live.curAsstText = "";
+      }
       setSpeechStatus("Live", true, false);
       break;
 
