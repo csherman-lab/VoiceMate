@@ -930,10 +930,11 @@ h3 {
 }
 
 .talk-session .talk-dock,
+.talk-session .composer,
 .talk-session .quick-prompts,
 .talk-session .transcript,
 .talk-session .conversation-tools {
-  width: min(820px, calc(100vw - 32px));
+  width: min(720px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
 }
@@ -1019,21 +1020,48 @@ h3 {
   border-left: 14px solid white;
 }
 
+.quick-prompts {
+  justify-content: center;
+}
+
 .quick-prompts button {
-  padding: 8px 12px;
-  border: 1px solid var(--line);
+  padding: 7px 14px;
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(118, 118, 128, 0.1);
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 550;
+  transition: background 160ms ease;
+}
+
+.quick-prompts button:hover {
+  background: rgba(118, 118, 128, 0.18);
+  color: var(--ink);
 }
 
 .conversation-tools {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
+}
+
+.conversation-tools .tool-button {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.conversation-tools .tool-button:hover {
+  background: rgba(118, 118, 128, 0.12);
+  box-shadow: none;
+}
+
+.conversation-tools .tool-button.subtle {
+  color: var(--muted);
 }
 
 .page-heading {
@@ -1462,6 +1490,14 @@ footer {
   .session-controls {
     width: 100%;
   }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0 11px;
+  }
 }
 
 /* ===========================================================================
@@ -1507,6 +1543,140 @@ footer {
   margin-top: 56px;
 }
 
+/* --- Top nav: icons + clearer active state --- */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-ic {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  color: var(--faint);
+}
+
+.nav-ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-link.active .nav-ic {
+  color: var(--blue);
+}
+
+.nav-link.active {
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* --- iMessage-style composer --- */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer-attach {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.composer-attach:hover {
+  background: rgba(118, 118, 128, 0.2);
+}
+
+.composer-attach:active {
+  transform: scale(0.94);
+}
+
+.composer-attach input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.composer-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-height: 42px;
+  padding: 0 6px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  box-shadow: var(--soft-shadow);
+}
+
+.composer-field #promptInput {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.composer-mic {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.composer-mic.recording {
+  background: var(--red);
+  color: #fff;
+}
+
+.composer-send {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.28);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.composer-send:active {
+  transform: scale(0.92);
+}
+
+.composer .dock-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.composer-send .dock-icon {
+  width: 19px;
+  height: 19px;
+}
+
 /* Voice pill (talk header) */
 .voice-pill {
   display: inline-flex;
@@ -1546,20 +1716,11 @@ footer {
   box-shadow: 0 10px 24px rgba(255, 59, 48, 0.26);
 }
 
-/* Dock icons */
+/* Dock icons (color is set by each composer button) */
 .dock-icon {
   display: inline-flex;
   width: 22px;
   height: 22px;
-}
-
-.mic-button .dock-icon,
-.send-button .dock-icon {
-  color: #fff;
-}
-
-.file-button .dock-icon {
-  color: var(--ink);
 }
 
 /* --- Memory redesign --- */

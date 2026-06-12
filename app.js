@@ -124,11 +124,8 @@ const SKILLS = [
 
 const SUGGESTED_PROMPTS = [
   "Let's just chat",
-  "Research the latest AI news",
-  "Give me a quick briefing",
-  "Help me pitch this idea",
-  "Summarize my data",
-  "Coach me before a meeting"
+  "Summarize what I uploaded",
+  "Remind me to follow up"
 ];
 
 const REALTIME_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
@@ -781,11 +778,7 @@ async function chatAgent(prompt, images) {
     persona: getPersona().id,
     mode: state.mode,
     history: state.history.slice(0, -1).slice(-10),
-    memory: state.memory.map((item) => ({
-      name: item.name,
-      type: item.type,
-      summary: item.summary
-    }))
+    memory: state.memory.map(memoryForContext)
   };
 
   let toolMessages = [];
@@ -826,6 +819,15 @@ async function chatAgent(prompt, images) {
   }
 
   return { text: "", citations };
+}
+
+// Build a context payload that includes a real excerpt of each item's content
+// so the model actually understands what the user uploaded, not just a label.
+function memoryForContext(item) {
+  const excerpt = item.content
+    ? String(item.content).replace(/\s+/g, " ").trim().slice(0, 600)
+    : "";
+  return { name: item.name, type: item.type, summary: item.summary, excerpt };
 }
 
 function collectImagesForPrompt(prompt) {
@@ -1168,11 +1170,7 @@ async function startLiveCall() {
       body: JSON.stringify({
         voice: getPersona().id,
         mode: state.mode,
-        memory: state.memory.map((item) => ({
-          name: item.name,
-          type: item.type,
-          summary: item.summary
-        }))
+        memory: state.memory.map(memoryForContext)
       })
     });
     const secret = await secretRes.json();
@@ -1926,7 +1924,11 @@ const ICONS = {
   waveform: '<path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4"/>',
   info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 16v-4M12 8h.01"/>',
   trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M18 6l-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 6"/>',
-  check: '<path d="M20 6 9 17l-5-5"/>'
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  home: '<path d="M3 10.8 12 3.5l9 7.3"/><path d="M5.5 9.4V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.4"/>',
+  gear:
+    '<circle cx="12" cy="12" r="3.2"/><path d="M19.6 13.5a7.7 7.7 0 0 0 0-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5L14.5 2h-3.6l-.4 2.4a7.6 7.6 0 0 0-2.6 1.5l-2-.8L2.1 8.2l1.7 1.3a7.7 7.7 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8a7.6 7.6 0 0 0 2.6 1.5l.4 2.4h3.6l.4-2.4a7.6 7.6 0 0 0 2.6-1.5l2 .8 1.8-3.1z"/>'
 };
 
 function svgIcon(name) {
@@ -2143,9 +2145,9 @@ function applyStoredTheme() {
 
 function getStoredTheme() {
   try {
-    return localStorage.getItem("voicemate.theme") || "system";
+    return localStorage.getItem("voicemate.theme") || "light";
   } catch (error) {
-    return "system";
+    return "light";
   }
 }
 

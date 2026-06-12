@@ -26,10 +26,18 @@
         <span class="brand-name">VoiceMate</span>
       </button>
       <nav aria-label="Primary navigation">
-        <button class="nav-link active" type="button" data-page="home">Home</button>
-        <button class="nav-link" type="button" data-page="talk">Talk</button>
-        <button class="nav-link" type="button" data-page="memory">Memory</button>
-        <button class="nav-link" type="button" data-page="settings">Settings</button>
+        <button class="nav-link active" type="button" data-page="home">
+          <span class="nav-ic" data-icon="home"></span><span class="nav-label">Home</span>
+        </button>
+        <button class="nav-link" type="button" data-page="talk">
+          <span class="nav-ic" data-icon="waveform"></span><span class="nav-label">Talk</span>
+        </button>
+        <button class="nav-link" type="button" data-page="memory">
+          <span class="nav-ic" data-icon="sparkles"></span><span class="nav-label">Memory</span>
+        </button>
+        <button class="nav-link" type="button" data-page="settings">
+          <span class="nav-ic" data-icon="gear"></span><span class="nav-label">Settings</span>
+        </button>
       </nav>
     </header>
 
@@ -108,30 +116,32 @@
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
-          <form class="talk-dock" id="promptForm">
-            <button class="dock-button mic-button" id="micButton" type="button" aria-label="Use microphone">
-              <span class="dock-icon" data-icon="mic"></span>
-            </button>
-            <input
-              id="promptInput"
-              autocomplete="off"
-              placeholder="Type a message"
-              aria-label="Message VoiceMate"
-            />
-            <label class="dock-button file-button" for="quickFileUpload" aria-label="Attach a file">
+          <form class="composer" id="promptForm">
+            <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,image/*" />
-              <span class="dock-icon" data-icon="paperclip"></span>
+              <span class="dock-icon" data-icon="plus"></span>
             </label>
-            <button class="dock-button send-button" type="submit" aria-label="Send message">
+            <div class="composer-field">
+              <input
+                id="promptInput"
+                autocomplete="off"
+                placeholder="Message"
+                aria-label="Message VoiceMate"
+              />
+              <button class="composer-mic mic-button" id="micButton" type="button" aria-label="Use microphone">
+                <span class="dock-icon" data-icon="mic"></span>
+              </button>
+            </div>
+            <button class="composer-send send-button" type="submit" aria-label="Send message">
               <span class="dock-icon" data-icon="arrow-up"></span>
             </button>
           </form>
 
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
           <div class="conversation-tools" aria-label="Conversation tools">
-            <button class="tool-button" id="copyTranscript" type="button">Copy</button>
-            <button class="tool-button" id="saveTranscript" type="button">Save to memory</button>
             <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+            <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
+            <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
           </div>
         </div>
       </section>
@@ -245,9 +255,9 @@
                   <span>Match your device or pick one</span>
                 </div>
                 <div class="segmented" id="themeSeg" role="group" aria-label="Theme">
-                  <button type="button" data-theme="system" class="active">System</button>
-                  <button type="button" data-theme="light">Light</button>
+                  <button type="button" data-theme="light" class="active">Light</button>
                   <button type="button" data-theme="dark">Dark</button>
+                  <button type="button" data-theme="system">System</button>
                 </div>
               </div>
             </div>
