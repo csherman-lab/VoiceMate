@@ -3007,7 +3007,7 @@ footer {
           <div class="section-head">
             <p class="eyebrow">Skills</p>
             <h2>Pick what VoiceMate does.</h2>
-            <p class="small-copy">Choose a skill, or just start talking and VoiceMate routes to the right one.</p>
+            <p class="small-copy">Choose a skill to start a guided workflow, or just start talking and VoiceMate routes to the right one.</p>
           </div>
           <div class="skill-grid" id="skillGrid" aria-label="VoiceMate skills"></div>
         </div>
@@ -4142,13 +4142,85 @@ function renderSkills() {
       <strong>${escapeHtml(skill.name)}</strong>
       <p>${escapeHtml(skill.blurb)}</p>
     `;
-    card.addEventListener("click", () => {
-      setMode(skill.id, false);
-      showPage("talk");
-      addActivity("Skill selected", `${skill.name} is ready.`);
-    });
+    card.addEventListener("click", () => startSkillWorkflow(skill));
     els.skillGrid.appendChild(card);
   });
+}
+
+function startSkillWorkflow(skill) {
+  if (!skill) return;
+  setMode(skill.id, false);
+  showPage("talk");
+  addActivity("Skill launched", `${skill.name} started a guided workflow.`);
+  runSkillWorkflow(skill.id);
+}
+
+function runSkillWorkflow(skillId) {
+  const active = activeUploadItems().filter((item) => item.type !== "brief");
+  const csvs = state.memory.filter((item) => item.type === "csv");
+  const openReminders = state.reminders.filter((reminder) => !reminder.done);
+
+  switch (skillId) {
+    case "companion":
+      skillStarter(
+        "I'm in natural chat mode. Tell me what's going on, or drop in a file and I'll keep it in context.",
+        "Ask me anything"
+      );
+      break;
+    case "research":
+      skillStarter(
+        "What should I research? Give me the topic and I’ll look for sources, separate what’s known from what’s fuzzy, and keep the answer tight.",
+        "Research "
+      );
+      break;
+    case "digest":
+      if (state.memory.length > 1 || openReminders.length) {
+        handlePrompt("Give me my daily briefing from my memory, uploads, and open reminders.");
+      } else {
+        skillStarter(
+          "I can brief you once I have something to work from. Add notes, upload a file, or create a reminder and I’ll turn it into a concise rundown.",
+          "Give me a briefing"
+        );
+      }
+      break;
+    case "pitch":
+      skillStarter(
+        "Let's build a pitch. Tell me the idea, who it's for, and what you want them to do. I'll turn it into a sharper spoken pitch and help you rehearse it.",
+        "Pitch this idea: "
+      );
+      break;
+    case "analyst":
+      if (csvs.length || active.length) {
+        handlePrompt("Analyze my active uploads and data. Call out the patterns, anomalies, missing pieces, and what I should do next.");
+      } else {
+        skillStarter(
+          "Upload a CSV, screenshot, or notes and I'll analyze it. I can summarize columns, trends, anomalies, and action items.",
+          "Analyze this data"
+        );
+        if (els.quickFileUpload) els.quickFileUpload.click();
+      }
+      break;
+    case "coach":
+      skillStarter(
+        "Let's practice. Say or type what you plan to say in the meeting, pitch, or interview. I'll coach clarity, confidence, pacing, and give you a stronger version.",
+        "Coach me on this: "
+      );
+      break;
+    default:
+      skillStarter("I'm ready. What should we work on?", "");
+      break;
+  }
+}
+
+function skillStarter(message, draft) {
+  addMessage("agent", message);
+  pushHistory("assistant", message);
+  if (els.promptInput) {
+    els.promptInput.value = draft || "";
+    els.promptInput.placeholder = draft || "Message";
+    els.promptInput.focus();
+    if (draft) els.promptInput.setSelectionRange(els.promptInput.value.length, els.promptInput.value.length);
+  }
 }
 
 function skillIcon(id) {
