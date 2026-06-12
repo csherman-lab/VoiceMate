@@ -780,15 +780,28 @@ async function handleRealtimeSecret(req, res) {
   const reminders = Array.isArray(body.reminders) ? body.reminders : [];
   const language = String(body.language || "auto");
 
+  function realtimeLanguageHint(languageId) {
+    const map = {
+      "es-ES": "es-ES",
+      "es-MX": "es-MX",
+      "pt-BR": "pt-BR",
+      "pt-PT": "pt-PT",
+      "ar-SA": "ar-SA"
+    };
+    return map[languageId] || languageId;
+  }
+
   const transcription = { model: "grok-transcribe" };
-  if (language && language !== "auto") transcription.language_hint = language;
+  if (language && language !== "auto") {
+    const hint = realtimeLanguageHint(language);
+    if (hint) transcription.language_hint = hint;
+  }
 
   const session = {
     instructions: buildSystemPrompt(persona, mode, memory.concat(reminders), language),
     voice,
     turn_detection: { type: "server_vad" },
     tools: REALTIME_TOOLS,
-    tool_choice: "auto",
     audio: {
       input: {
         format: { type: "audio/pcm", rate: 24000 },

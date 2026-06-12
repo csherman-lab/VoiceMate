@@ -129,6 +129,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 const REALTIME_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
+const REALTIME_AUDIO_RATE = 24000;
 
 const TOOL_DEFS = [
   {
@@ -1669,8 +1670,58 @@ function recognitionLanguage() {
 
 function realtimeTranscriptionConfig() {
   const config = { model: "grok-transcribe" };
-  if (state.language && state.language !== "auto") config.language_hint = state.language;
+  if (state.language && state.language !== "auto") {
+    const hint = realtimeLanguageHint(state.language);
+    if (hint) config.language_hint = hint;
+  }
   return config;
+}
+
+function realtimeLanguageHint(languageId) {
+  const map = {
+    "es-ES": "es-ES",
+    "es-MX": "es-MX",
+    "pt-BR": "pt-BR",
+    "pt-PT": "pt-PT",
+    "ar-SA": "ar-SA"
+  };
+  return map[languageId] || languageId;
+}
+
+function buildLiveSessionUpdate() {
+  return {
+    voice: getPersona().id,
+    turn_detection: { type: "server_vad" },
+    audio: {
+      input: {
+        format: { type: "audio/pcm", rate: REALTIME_AUDIO_RATE },
+        transcription: realtimeTranscriptionConfig()
+      },
+      output: { format: { type: "audio/pcm", rate: REALTIME_AUDIO_RATE } }
+    }
+  };
+}
+
+function markLiveSessionReady(live) {
+  if (!live || live.sessionReady || state.live !== live) return;
+  live.sessionReady = true;
+  if (live.readyTimeout) {
+    clearTimeout(live.readyTimeout);
+    live.readyTimeout = null;
+  }
+  if (!live.micStarted) {
+    live.micStarted = true;
+    startMicStreaming(live);
+    shareMemoryWithLive(activeUploadItems());
+  }
+  startCallTimer();
+  setLiveButton(true, "End");
+  if (els.liveButton) els.liveButton.disabled = false;
+  setSpeechStatus("Listening", true, false);
+  if (els.backendStatus) els.backendStatus.textContent = "Live voice";
+  if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
+  updateTalkChrome();
+  addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
 }
 
 function renderQuickPrompts() {
@@ -2495,7 +2546,12 @@ async function startLiveCall() {
     stream: null,
     processor: null,
     source: null,
-    rate: 24000,
+    rate: REALTIME_AUDIO_RATE,
+    sessionReady: false,
+    micStarted: false,
+    readyTimeout: null,
+    lastErrorMsg: "",
+    lastErrorAt: 0,
     sources: new Set(),
     nextTime: 0,
     curUser: null,
@@ -2518,14 +2574,14 @@ async function startLiveCall() {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
 
-    let ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (!REALTIME_SAMPLE_RATES.includes(ctx.sampleRate)) {
+    let ctx = new AudioContext({ sampleRate: REALTIME_AUDIO_RATE });
+    if (ctx.sampleRate !== REALTIME_AUDIO_RATE) {
       await ctx.close();
-      ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+      ctx = new AudioContext({ sampleRate: REALTIME_AUDIO_RATE });
     }
     if (ctx.state === "suspended") await ctx.resume();
     live.ctx = ctx;
-    live.rate = ctx.sampleRate;
+    live.rate = REALTIME_AUDIO_RATE;
 
     // 2) Get an ephemeral client secret from our backend.
     const secretRes = await fetch("/api/grok/realtime-secret", {
@@ -2554,32 +2610,10 @@ async function startLiveCall() {
       ws.send(
         JSON.stringify({
           type: "session.update",
-          session: {
-            voice: getPersona().id,
-            turn_detection: { type: "server_vad" },
-            tools: REALTIME_TOOLS,
-            tool_choice: "auto",
-            audio: {
-              input: {
-                format: { type: "audio/pcm", rate: live.rate },
-                transcription: realtimeTranscriptionConfig()
-              },
-              output: { format: { type: "audio/pcm", rate: live.rate } }
-            }
-          }
+          session: buildLiveSessionUpdate()
         })
       );
-      startMicStreaming(live);
-      shareMemoryWithLive(activeUploadItems());
-      startCallTimer();
-      setLiveButton(true, "End");
-      if (els.liveButton) els.liveButton.disabled = false;
-      setSpeechStatus("Listening", true, false);
-      if (els.backendStatus) els.backendStatus.textContent = "Live voice";
-      if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
-      updateTalkChrome();
-      addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
-      addMessage("system", "Live call started. Just talk.");
+      live.readyTimeout = window.setTimeout(() => markLiveSessionReady(live), 2500);
     });
 
     ws.addEventListener("message", (event) => handleRealtimeMessage(live, event.data));
@@ -2669,9 +2703,9 @@ async function startMicStreaming(live) {
 }
 
 function sendLiveAudioFrame(live, input) {
-    if (!live.ws || live.ws.readyState !== WebSocket.OPEN) return;
-    const b64 = float32ToBase64PCM16(input);
-    live.ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
+  if (!live?.sessionReady || !live.ws || live.ws.readyState !== WebSocket.OPEN) return;
+  const b64 = float32ToBase64PCM16(input);
+  live.ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
 }
 
 function analyserRms(analyser, buffer) {
@@ -2747,6 +2781,11 @@ function handleRealtimeMessage(live, raw) {
   if (!msg) return;
 
   switch (msg.type) {
+    case "session.created":
+    case "session.updated":
+      markLiveSessionReady(live);
+      break;
+
     case "input_audio_buffer.speech_started":
       if (live.sources.size) {
         stopLivePlayback(live);
@@ -2904,10 +2943,17 @@ function handleRealtimeMessage(live, raw) {
       if (state.live === live) setSpeechStatus("Listening", true, false);
       break;
 
-    case "error":
-      addActivity("Realtime error", msg.error?.message || msg.message || "Unknown realtime error.");
-      showTranscriptError(msg.error?.message || msg.message || "Live connection dropped.");
+    case "error": {
+      const message = msg.error?.message || msg.message || "Live connection issue.";
+      addActivity("Realtime error", message);
+      const now = Date.now();
+      if (message !== live.lastErrorMsg || now - (live.lastErrorAt || 0) > 4000) {
+        live.lastErrorMsg = message;
+        live.lastErrorAt = now;
+        showTranscriptError(message);
+      }
       break;
+    }
 
     default:
       break;
@@ -2954,6 +3000,7 @@ function endLiveCall(note) {
   state.live = null;
 
   try {
+    if (live.readyTimeout) clearTimeout(live.readyTimeout);
     if (live.raf) cancelAnimationFrame(live.raf);
     if (els.voiceOrb) {
       els.voiceOrb.classList.remove("reacting");
