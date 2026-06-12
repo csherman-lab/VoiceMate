@@ -222,8 +222,9 @@ function buildSystemPrompt(persona, modeKey, memoryItems) {
     "",
     `Current mode: ${modeKey}. ${modeGuide}`,
     "",
-    `What you remember from this session: ${memory}`,
-    "Use that memory only when it's relevant. Don't recite it back."
+    "What the user has given you to work with (files, notes, reminders):",
+    memory,
+    "When the user asks about something they uploaded or told you, answer directly from the content above. Use it naturally, don't read it back word for word, and don't mention it unless it's relevant."
   ].join("\n");
 }
 
@@ -309,8 +310,13 @@ function summarizeMemory(memoryItems) {
   if (!Array.isArray(memoryItems) || !memoryItems.length) return "nothing yet";
   return memoryItems
     .slice(0, 8)
-    .map((item) => `${item.name || "note"}: ${item.summary || ""}`.trim())
-    .join(" | ");
+    .map((item) => {
+      const name = item.name || "note";
+      const excerpt = item.excerpt ? ` — "${String(item.excerpt).slice(0, 600)}"` : "";
+      const summary = item.summary ? ` (${item.summary})` : "";
+      return `${name}${summary}${excerpt}`.trim();
+    })
+    .join("\n");
 }
 
 function buildChatMessages(body) {
