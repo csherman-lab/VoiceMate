@@ -153,7 +153,29 @@ prompt the backend sends to Grok.
   (streaming SSE), Grok TTS, the realtime ephemeral token, and the voices list.
 - `build-singlefile.js` — inlines the front end into `open-voicemate.html`
   (`npm run build`).
-- `docs/` — product plan, interface inspiration, and the OpenJarvis writeup.
+- `docs/` — product plan, interface inspiration, the OpenJarvis writeup, and [`docs/v0.4-release-and-roadmap.md`](docs/v0.4-release-and-roadmap.md).
+
+## Changelog
+
+### v0.4.0
+
+Talk-first polish pass — see **What's new** on Home or **Settings → Release notes & Roadmap** in the app, and [`docs/v0.4-release-and-roadmap.md`](docs/v0.4-release-and-roadmap.md) for the full write-up.
+
+**Shipped**
+
+- Happy orb tap reaction (squint, 3D pop, glow; keyboard accessible).
+- 3D orb gaze, darker glass style, live caption polish with active-word highlight.
+- Home dashboard, first-run onboarding, context bottom sheet.
+- Backend image understanding hook, AudioWorklet mic capture.
+- Live transcript fixes, system/call status chips, cleaner Talk & Settings UI.
+
+**Next (roadmap)**
+
+- Orb emotional states and micro-moments.
+- FaceTime-style call states and timer.
+- Skill-specific workflow screens.
+- PDF/OCR/DOCX extraction, memory categories, reminder parsing.
+- E2E tests, IndexedDB uploads, deploy hardening.
 
 ## Notes & security
 

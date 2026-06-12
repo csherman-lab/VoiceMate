@@ -94,3 +94,7 @@ Every serious answer should show:
 **VoiceMate**
 
 The name is simple on purpose: it immediately communicates a friendly voice assistant without tying the project to any specific company or repo.
+
+## v0.4 status & roadmap
+
+See [`docs/v0.4-release-and-roadmap.md`](v0.4-release-and-roadmap.md) for release notes, validation history, and the full product roadmap. The in-app **Home → What's new** section and **Settings → Release notes / Roadmap** mirror the same content.
