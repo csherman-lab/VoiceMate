@@ -955,10 +955,11 @@ h3 {
 }
 
 .talk-session .talk-dock,
+.talk-session .composer,
 .talk-session .quick-prompts,
 .talk-session .transcript,
 .talk-session .conversation-tools {
-  width: min(820px, calc(100vw - 32px));
+  width: min(720px, calc(100vw - 32px));
   margin-right: auto;
   margin-left: auto;
 }
@@ -1044,21 +1045,48 @@ h3 {
   border-left: 14px solid white;
 }
 
+.quick-prompts {
+  justify-content: center;
+}
+
 .quick-prompts button {
-  padding: 8px 12px;
-  border: 1px solid var(--line);
+  padding: 7px 14px;
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(118, 118, 128, 0.1);
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 550;
+  transition: background 160ms ease;
+}
+
+.quick-prompts button:hover {
+  background: rgba(118, 118, 128, 0.18);
+  color: var(--ink);
 }
 
 .conversation-tools {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
+}
+
+.conversation-tools .tool-button {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.conversation-tools .tool-button:hover {
+  background: rgba(118, 118, 128, 0.12);
+  box-shadow: none;
+}
+
+.conversation-tools .tool-button.subtle {
+  color: var(--muted);
 }
 
 .page-heading {
@@ -1487,6 +1515,14 @@ footer {
   .session-controls {
     width: 100%;
   }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0 11px;
+  }
 }
 
 /* ===========================================================================
@@ -1532,6 +1568,140 @@ footer {
   margin-top: 56px;
 }
 
+/* --- Top nav: icons + clearer active state --- */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-ic {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  color: var(--faint);
+}
+
+.nav-ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-link.active .nav-ic {
+  color: var(--blue);
+}
+
+.nav-link.active {
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* --- iMessage-style composer --- */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.composer-attach {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.composer-attach:hover {
+  background: rgba(118, 118, 128, 0.2);
+}
+
+.composer-attach:active {
+  transform: scale(0.94);
+}
+
+.composer-attach input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.composer-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-height: 42px;
+  padding: 0 6px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  box-shadow: var(--soft-shadow);
+}
+
+.composer-field #promptInput {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.composer-mic {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.composer-mic.recording {
+  background: var(--red);
+  color: #fff;
+}
+
+.composer-send {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.28);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.composer-send:active {
+  transform: scale(0.92);
+}
+
+.composer .dock-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.composer-send .dock-icon {
+  width: 19px;
+  height: 19px;
+}
+
 /* Voice pill (talk header) */
 .voice-pill {
   display: inline-flex;
@@ -1571,20 +1741,11 @@ footer {
   box-shadow: 0 10px 24px rgba(255, 59, 48, 0.26);
 }
 
-/* Dock icons */
+/* Dock icons (color is set by each composer button) */
 .dock-icon {
   display: inline-flex;
   width: 22px;
   height: 22px;
-}
-
-.mic-button .dock-icon,
-.send-button .dock-icon {
-  color: #fff;
-}
-
-.file-button .dock-icon {
-  color: var(--ink);
 }
 
 /* --- Memory redesign --- */
@@ -2200,10 +2361,18 @@ footer {
         <span class="brand-name">VoiceMate</span>
       </button>
       <nav aria-label="Primary navigation">
-        <button class="nav-link active" type="button" data-page="home">Home</button>
-        <button class="nav-link" type="button" data-page="talk">Talk</button>
-        <button class="nav-link" type="button" data-page="memory">Memory</button>
-        <button class="nav-link" type="button" data-page="settings">Settings</button>
+        <button class="nav-link active" type="button" data-page="home">
+          <span class="nav-ic" data-icon="home"></span><span class="nav-label">Home</span>
+        </button>
+        <button class="nav-link" type="button" data-page="talk">
+          <span class="nav-ic" data-icon="waveform"></span><span class="nav-label">Talk</span>
+        </button>
+        <button class="nav-link" type="button" data-page="memory">
+          <span class="nav-ic" data-icon="sparkles"></span><span class="nav-label">Memory</span>
+        </button>
+        <button class="nav-link" type="button" data-page="settings">
+          <span class="nav-ic" data-icon="gear"></span><span class="nav-label">Settings</span>
+        </button>
       </nav>
     </header>
 
@@ -2282,30 +2451,32 @@ footer {
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
 
-          <form class="talk-dock" id="promptForm">
-            <button class="dock-button mic-button" id="micButton" type="button" aria-label="Use microphone">
-              <span class="dock-icon" data-icon="mic"></span>
-            </button>
-            <input
-              id="promptInput"
-              autocomplete="off"
-              placeholder="Type a message"
-              aria-label="Message VoiceMate"
-            />
-            <label class="dock-button file-button" for="quickFileUpload" aria-label="Attach a file">
+          <form class="composer" id="promptForm">
+            <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
               <input id="quickFileUpload" type="file" multiple accept=".txt,.md,.json,.csv,.log,image/*" />
-              <span class="dock-icon" data-icon="paperclip"></span>
+              <span class="dock-icon" data-icon="plus"></span>
             </label>
-            <button class="dock-button send-button" type="submit" aria-label="Send message">
+            <div class="composer-field">
+              <input
+                id="promptInput"
+                autocomplete="off"
+                placeholder="Message"
+                aria-label="Message VoiceMate"
+              />
+              <button class="composer-mic mic-button" id="micButton" type="button" aria-label="Use microphone">
+                <span class="dock-icon" data-icon="mic"></span>
+              </button>
+            </div>
+            <button class="composer-send send-button" type="submit" aria-label="Send message">
               <span class="dock-icon" data-icon="arrow-up"></span>
             </button>
           </form>
 
           <div class="quick-prompts" id="quickPrompts" aria-label="Suggested prompts"></div>
           <div class="conversation-tools" aria-label="Conversation tools">
-            <button class="tool-button" id="copyTranscript" type="button">Copy</button>
-            <button class="tool-button" id="saveTranscript" type="button">Save to memory</button>
             <button class="tool-button" id="clearTranscript" type="button">New chat</button>
+            <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
+            <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
           </div>
         </div>
       </section>
@@ -2419,9 +2590,9 @@ footer {
                   <span>Match your device or pick one</span>
                 </div>
                 <div class="segmented" id="themeSeg" role="group" aria-label="Theme">
-                  <button type="button" data-theme="system" class="active">System</button>
-                  <button type="button" data-theme="light">Light</button>
+                  <button type="button" data-theme="light" class="active">Light</button>
                   <button type="button" data-theme="dark">Dark</button>
+                  <button type="button" data-theme="system">System</button>
                 </div>
               </div>
             </div>
@@ -2620,11 +2791,8 @@ const SKILLS = [
 
 const SUGGESTED_PROMPTS = [
   "Let's just chat",
-  "Research the latest AI news",
-  "Give me a quick briefing",
-  "Help me pitch this idea",
-  "Summarize my data",
-  "Coach me before a meeting"
+  "Summarize what I uploaded",
+  "Remind me to follow up"
 ];
 
 const REALTIME_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
@@ -3277,11 +3445,7 @@ async function chatAgent(prompt, images) {
     persona: getPersona().id,
     mode: state.mode,
     history: state.history.slice(0, -1).slice(-10),
-    memory: state.memory.map((item) => ({
-      name: item.name,
-      type: item.type,
-      summary: item.summary
-    }))
+    memory: state.memory.map(memoryForContext)
   };
 
   let toolMessages = [];
@@ -3322,6 +3486,15 @@ async function chatAgent(prompt, images) {
   }
 
   return { text: "", citations };
+}
+
+// Build a context payload that includes a real excerpt of each item's content
+// so the model actually understands what the user uploaded, not just a label.
+function memoryForContext(item) {
+  const excerpt = item.content
+    ? String(item.content).replace(/\s+/g, " ").trim().slice(0, 600)
+    : "";
+  return { name: item.name, type: item.type, summary: item.summary, excerpt };
 }
 
 function collectImagesForPrompt(prompt) {
@@ -3664,11 +3837,7 @@ async function startLiveCall() {
       body: JSON.stringify({
         voice: getPersona().id,
         mode: state.mode,
-        memory: state.memory.map((item) => ({
-          name: item.name,
-          type: item.type,
-          summary: item.summary
-        }))
+        memory: state.memory.map(memoryForContext)
       })
     });
     const secret = await secretRes.json();
@@ -4422,7 +4591,11 @@ const ICONS = {
   waveform: '<path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4"/>',
   info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 16v-4M12 8h.01"/>',
   trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M18 6l-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 6"/>',
-  check: '<path d="M20 6 9 17l-5-5"/>'
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  home: '<path d="M3 10.8 12 3.5l9 7.3"/><path d="M5.5 9.4V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.4"/>',
+  gear:
+    '<circle cx="12" cy="12" r="3.2"/><path d="M19.6 13.5a7.7 7.7 0 0 0 0-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5L14.5 2h-3.6l-.4 2.4a7.6 7.6 0 0 0-2.6 1.5l-2-.8L2.1 8.2l1.7 1.3a7.7 7.7 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8a7.6 7.6 0 0 0 2.6 1.5l.4 2.4h3.6l.4-2.4a7.6 7.6 0 0 0 2.6-1.5l2 .8 1.8-3.1z"/>'
 };
 
 function svgIcon(name) {
@@ -4639,9 +4812,9 @@ function applyStoredTheme() {
 
 function getStoredTheme() {
   try {
-    return localStorage.getItem("voicemate.theme") || "system";
+    return localStorage.getItem("voicemate.theme") || "light";
   } catch (error) {
-    return "system";
+    return "light";
   }
 }
 
