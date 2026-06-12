@@ -100,6 +100,10 @@ const server = http.createServer(async (req, res) => {
       return handleExtract(req, res);
     }
 
+    if (url.pathname === "/api/connector/scrape" && req.method === "POST") {
+      return handleConnectorScrape(req, res);
+    }
+
     if (url.pathname === "/api/livereload" && req.method === "GET") {
       return handleLiveReload(req, res);
     }
@@ -955,6 +959,76 @@ function extractDocxText(buf) {
     }
   }
   return "";
+}
+
+async function handleConnectorScrape(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const rawUrl = String(body.url || "").trim();
+    if (!/^https?:\/\//i.test(rawUrl)) {
+      return sendJson(res, 400, { error: "A valid http(s) URL is required." });
+    }
+    const parsed = new URL(rawUrl);
+    if (/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/i.test(parsed.hostname)) {
+      return sendJson(res, 400, { error: "Local and private URLs are not allowed." });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    let html = "";
+    try {
+      const upstream = await fetch(rawUrl, {
+        signal: controller.signal,
+        headers: { "User-Agent": "VoiceMateConnector/0.5", Accept: "text/html,text/plain,*/*" },
+        redirect: "follow"
+      });
+      if (!upstream.ok) {
+        return sendJson(res, upstream.status, { error: `Could not fetch page (${upstream.status}).` });
+      }
+      html = await upstream.text();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch ? decodeHtmlEntities(titleMatch[1].trim()) : parsed.hostname;
+    const text = htmlToPlainText(html);
+    const excerpt = text.slice(0, 280) + (text.length > 280 ? "…" : "");
+
+    return sendJson(res, 200, { title, text: text.slice(0, 50000), excerpt });
+  } catch (error) {
+    const message = error.name === "AbortError" ? "Request timed out." : error.message || "Scrape failed.";
+    return sendJson(res, 500, { error: message });
+  }
+}
+
+function htmlToPlainText(html) {
+  return String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n- ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 }
 
 function sendJson(res, status, body) {

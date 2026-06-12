@@ -14,7 +14,7 @@
     <title>VoiceMate</title>
     <meta
       name="description"
-      content="VoiceMate is a human sounding voice companion with skills, memory, and a clean Apple style interface."
+      content="VoiceMate is your personal voice agent. Connect pages and notes — it reminds you later, surfaces tomorrow's tasks, and explains things so you don't have to read."
     />
     <meta name="theme-color" content="#0a84ff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -515,11 +515,7 @@ h3 {
 }
 
 .orb.orb-tapped {
-  animation: orbTapGlow 900ms ease-out;
-}
-
-.orb.orb-tapped::selection {
-  background: transparent;
+  animation: none;
 }
 
 .orb-eyes {
@@ -530,7 +526,6 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 9%;
-  /* Gaze is driven by JS (cursor-follow, saccades, look-away) */
   will-change: transform;
 }
 
@@ -552,33 +547,7 @@ h3 {
   transform: scaleY(1.18);
 }
 
-/* Smile (happy): eyes soften and a mouth appears */
-.orb-eyes.happy i,
-.orb-eyes.tapped i {
-  transform: scaleY(0.55);
-}
-
-.orb-mouth {
-  position: absolute;
-  bottom: 27%;
-  left: 50%;
-  width: 20%;
-  height: 10%;
-  border: 2.5px solid rgba(255, 255, 255, 0.92);
-  border-top: 0;
-  border-radius: 0 0 999px 999px;
-  transform: translateX(-50%);
-  opacity: 0;
-  transition: opacity 180ms ease;
-  pointer-events: none;
-}
-
-.orb-eyes.happy .orb-mouth,
-.orb-eyes.tapped .orb-mouth {
-  opacity: 1;
-}
-
-/* Blink (wins over smile while it fires) */
+/* Blink */
 .orb-eyes.blinking i {
   transform: scaleY(0.08);
 }
@@ -2301,34 +2270,6 @@ footer {
   }
 }
 
-@keyframes orbTapGlow {
-  0%,
-  100% {
-    box-shadow:
-      inset 0 3px 4px rgba(255, 255, 255, 0.86),
-      inset 10px 16px 36px rgba(230, 244, 255, 0.4),
-      inset 0 22px 50px rgba(255, 255, 255, 0.32),
-      inset -34px 0 58px rgba(1, 4, 55, 0.72),
-      inset 0 -42px 70px rgba(91, 0, 117, 0.58),
-      inset 0 0 0 1px rgba(218, 228, 255, 0.32),
-      0 18px 44px rgba(120, 70, 220, 0.24),
-      0 24px 56px rgba(40, 30, 140, 0.26),
-      0 0 90px rgba(128, 112, 255, 0.24);
-  }
-  45% {
-    box-shadow:
-      inset 0 3px 4px rgba(255, 255, 255, 0.9),
-      inset 10px 16px 36px rgba(255, 236, 210, 0.46),
-      inset 0 22px 50px rgba(255, 255, 255, 0.36),
-      inset -34px 0 58px rgba(1, 4, 55, 0.68),
-      inset 0 -42px 70px rgba(91, 0, 117, 0.52),
-      inset 0 0 0 1px rgba(255, 228, 200, 0.36),
-      0 20px 48px rgba(255, 120, 80, 0.28),
-      0 0 72px rgba(255, 170, 90, 0.42),
-      0 0 120px rgba(255, 210, 120, 0.34);
-  }
-}
-
 @media (max-width: 900px) {
   .hero,
   .memory-layout,
@@ -3828,6 +3769,158 @@ footer {
   background: rgba(120, 120, 128, 0.3);
 }
 
+/* --- Connectors & agent feed --- */
+.connector-intro {
+  margin-bottom: 12px;
+}
+
+.connector-add {
+  display: grid;
+  grid-template-columns: 120px 1fr 1.4fr auto;
+  gap: 8px;
+  padding: 12px;
+}
+
+.connector-actions {
+  padding: 0 12px 12px;
+}
+
+.connector-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.connector-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.connector-row.disabled {
+  opacity: 0.62;
+}
+
+.connector-row-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.connector-row-main strong {
+  font-size: 0.95rem;
+}
+
+.connector-row-main small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.connector-target {
+  word-break: break-all;
+}
+
+.connector-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.connector-row-actions .danger {
+  color: var(--red);
+}
+
+.connector-empty,
+.agent-feed-empty {
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.agent-feed {
+  display: grid;
+  gap: 10px;
+}
+
+.agent-feed-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.agent-feed-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--soft-shadow);
+}
+
+.feed-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tint, #0a84ff) 14%, transparent);
+  color: var(--tint, #0a84ff);
+}
+
+.feed-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.feed-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.feed-kind-tag {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.feed-text strong {
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+
+.feed-text small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.agent-feed-section {
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .connector-add {
+    grid-template-columns: 1fr;
+  }
+}
+
 </style>
   </head>
   <body>
@@ -3858,76 +3951,37 @@ footer {
     <main>
       <!-- HOME -->
       <section class="page active" id="homePage" data-page-panel="home">
-        <div class="hero">
+        <div class="hero agent-hero">
           <div class="hero-copy">
-            <p class="eyebrow">Your voice companion</p>
-            <h1>Meet VoiceMate.</h1>
+            <p class="eyebrow">Personal voice agent</p>
+            <h1>Talk. Don't read.</h1>
             <p class="lede">
-              Talk to it like a person and it talks back. Run skills, keep a memory, and watch it think.
+              Add connectors in Settings — VoiceMate pulls what to remember, what's due tomorrow, and pages you want explained out loud.
             </p>
             <div class="hero-actions">
-              <button class="button primary page-link" type="button" data-page="talk">Start talking</button>
-              <button class="button secondary page-link" type="button" data-page="memory">Add memory</button>
+              <button class="button primary page-link" type="button" data-page="talk">Talk to VoiceMate</button>
+              <button class="button secondary page-link" type="button" data-page="settings" data-settings-focus="connectors">Add connectors</button>
             </div>
           </div>
 
           <div class="phone-card">
             <div class="orb hero-orb" id="heroOrb" aria-hidden="true">
-              <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="device-label">Talk. It talks back.</p>
-            <p class="device-subtitle">A natural voice with real pauses, not a robot reading text.</p>
+            <p class="device-label">Your agent, out loud</p>
+            <p class="device-subtitle">Reminders, tomorrow, and explainers — from the connectors you choose.</p>
           </div>
         </div>
 
-        <div class="home-dashboard" id="homeDashboard" aria-label="Today in VoiceMate"></div>
+        <div class="home-dashboard" id="homeDashboard" aria-label="Quick actions"></div>
 
-        <div class="home-section release-section">
+        <div class="home-section agent-feed-section">
           <div class="section-head">
-            <p class="eyebrow">What's new</p>
-            <h2>VoiceMate v0.4</h2>
-            <p class="small-copy">
-              Talk is the center. The orb feels alive. Context, skills, and memory stay out of the way until you need them.
-            </p>
+            <p class="eyebrow">From your connectors</p>
+            <h2>Remind · Tomorrow · Explain</h2>
+            <p class="small-copy">Tap anything to talk it through with VoiceMate — no need to open the original page.</p>
           </div>
-          <div class="release-grid">
-            <article class="release-item">
-              <strong>Happy orb</strong>
-              <p>Tap the bubble and VoiceMate makes a face and glows. Works with Enter or Space too.</p>
-            </article>
-            <article class="release-item">
-              <strong>Living voice</strong>
-              <p>3D gaze, darker glass style, live captions with active-word highlight, and in-place transcript corrections.</p>
-            </article>
-            <article class="release-item">
-              <strong>Home dashboard</strong>
-              <p>Live voice status, active context, open reminders, and recent conversations with quick actions.</p>
-            </article>
-            <article class="release-item">
-              <strong>Context sheet</strong>
-              <p>Uploads live in a bottom sheet opened by a small Context pill — not a permanent panel on Talk.</p>
-            </article>
-            <article class="release-item">
-              <strong>Image understanding</strong>
-              <p>When the backend is connected, uploaded images get a concise model summary saved into memory.</p>
-            </article>
-            <article class="release-item">
-              <strong>First-run onboarding</strong>
-              <p>A short intro to Talk, uploads, and skills. Skippable, calm, and iOS-inspired.</p>
-            </article>
-          </div>
-          <p class="release-foot">
-            <button class="button secondary page-link" type="button" data-page="settings">Release notes &amp; roadmap</button>
-          </p>
-        </div>
-
-        <div class="home-section">
-          <div class="section-head">
-            <p class="eyebrow">Skills</p>
-            <h2>Pick what VoiceMate does.</h2>
-            <p class="small-copy">Choose a skill to start a guided workflow, or just start talking and VoiceMate routes to the right one.</p>
-          </div>
-          <div class="skill-grid" id="skillGrid" aria-label="VoiceMate skills"></div>
+          <div class="agent-feed" id="agentFeed" aria-live="polite"></div>
         </div>
       </section>
 
@@ -3946,9 +4000,9 @@ footer {
 
           <div class="focus-orb-wrap" id="focusOrbWrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
-              <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="voice-hint" id="voiceHint">Tap below to start a live call, or type a message.</p>
+            <p class="voice-hint" id="voiceHint">Ask about reminders, tomorrow, or anything your connectors pulled in.</p>
             <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
               <span class="call-icon" id="callIcon"></span>
               <span class="live-label">Start live call</span>
@@ -4028,8 +4082,8 @@ footer {
       <section class="page" id="memoryPage" data-page-panel="memory">
         <div class="page-heading">
           <p class="eyebrow">Memory</p>
-          <h2>What VoiceMate remembers</h2>
-          <p class="small-copy">Saved on this device. Add files, photos, or notes and choose what VoiceMate should use in conversation.</p>
+          <h2>What VoiceMate saved</h2>
+          <p class="small-copy">Explanations, uploads, and notes your agent keeps — so you don't have to re-read them.</p>
         </div>
 
         <div class="memory-actions" aria-label="Add to memory">
@@ -4071,10 +4125,32 @@ footer {
       <section class="page" id="settingsPage" data-page-panel="settings">
         <div class="page-heading">
           <h2>Settings</h2>
-          <p class="small-copy">Tune VoiceMate’s voice, conversation style, reminders, and local data.</p>
+          <p class="small-copy">Connectors, voice, reminders, and local data for your personal agent.</p>
         </div>
 
         <div class="settings-wrap">
+          <section class="settings-group connector-panel" id="connectorPanel">
+            <p class="group-label">Connectors</p>
+            <p class="group-foot connector-intro">
+              Add web pages or notes. VoiceMate scrapes them and surfaces <strong>remind later</strong>, <strong>tomorrow</strong>, and <strong>explain</strong> items on Home — so you can talk through them instead of reading.
+            </p>
+            <div class="group-card connector-add-card">
+              <div class="connector-add">
+                <select id="connectorType" class="row-control" aria-label="Connector type">
+                  <option value="url">Web page</option>
+                  <option value="note">Text note</option>
+                </select>
+                <input id="connectorName" type="text" placeholder="Name (e.g. Team wiki)" aria-label="Connector name" />
+                <input id="connectorTarget" type="text" placeholder="URL or paste text" aria-label="URL or note text" />
+                <button class="row-button" id="addConnector" type="button">Add</button>
+              </div>
+              <div class="connector-actions">
+                <button class="button secondary" id="syncAllConnectors" type="button">Sync all connectors</button>
+              </div>
+            </div>
+            <div class="connector-list" id="connectorList" aria-label="Your connectors"></div>
+          </section>
+
           <section class="settings-group">
             <p class="group-label">Voice</p>
             <div class="group-card">
@@ -4374,9 +4450,9 @@ footer {
                 <span class="row-icon" data-icon="info" data-tint="#8e8e93"></span>
                 <div class="row-text">
                   <strong>VoiceMate</strong>
-                  <span>Voice companion with skills, memory, uploads, live voice, and a v0.4 polish pass.</span>
+                  <span>Personal voice agent with connectors, live voice, reminders, and saved explanations.</span>
                 </div>
-                <span class="row-value">0.4.0</span>
+                <span class="row-value">0.5.0</span>
               </div>
             </div>
           </section>
@@ -4398,34 +4474,24 @@ footer {
     <div class="modal onboarding-modal" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" hidden>
       <div class="modal-card onboarding-card" role="document">
         <div class="modal-head">
-          <h3 id="onboardingTitle">Set up VoiceMate</h3>
+          <h3 id="onboardingTitle">Set up your agent</h3>
           <button class="modal-close" id="onboardingSkip" type="button" aria-label="Skip onboarding">&times;</button>
         </div>
         <div class="onboarding-steps">
           <article>
+            <span class="row-icon" data-icon="link" data-tint="#0a84ff"></span>
+            <strong>Add a connector</strong>
+            <p>Paste a URL or note in Settings. VoiceMate scrapes it for reminders, tomorrow's tasks, and things to explain.</p>
+          </article>
+          <article>
             <span class="row-icon" data-icon="waveform" data-tint="#0a84ff"></span>
-            <strong>Pick a voice</strong>
-            <p>Choose a voice in Settings, or just start talking in Talk.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="mic" data-tint="#0a84ff"></span>
-            <strong>Try saying something</strong>
-            <p>Type, tap the mic, or start a live call when your server is connected.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="photo" data-tint="#34c759"></span>
-            <strong>Upload and ask</strong>
-            <p>Add a file, screenshot, or note and ask VoiceMate about it.</p>
+            <strong>Talk it through</strong>
+            <p>Tap anything on Home or start a live call — get the gist out loud without reading the page.</p>
           </article>
           <article>
             <span class="row-icon" data-icon="check" data-tint="#ff2d55"></span>
-            <strong>Set a reminder</strong>
-            <p>Say “remind me tomorrow at 9 to call Alex” or add one in Settings.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="sparkles" data-tint="#5e5ce6"></span>
-            <strong>Use a skill</strong>
-            <p>Research, briefing, pitch, data analysis, or coaching — all from Home.</p>
+            <strong>Remind &amp; tomorrow</strong>
+            <p>Say "remind me tomorrow at 9…" or let connectors surface what's due next.</p>
           </article>
         </div>
         <div class="onboarding-actions">
@@ -4451,7 +4517,7 @@ footer {
     </div>
 
     <footer>
-      <p>VoiceMate runs locally. Open the one-file demo, or run the server for full live voice.</p>
+      <p>VoiceMate runs locally. Connect pages in Settings, then talk through what matters.</p>
     </footer>
 
     <script>
@@ -4463,11 +4529,11 @@ footer {
 const STARTER_MEMORY = [
   {
     type: "brief",
-    name: "VoiceMate product brief",
+    name: "VoiceMate agent brief",
     summary:
-      "VoiceMate is a human sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
+      "VoiceMate is a personal voice agent. Connectors pull reminders, tomorrow's tasks, and pages to explain — so you talk instead of read.",
     content:
-      "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
+      "VoiceMate connects to pages and notes you choose. It surfaces remind-later items, tomorrow's work, and explainers you can talk through out loud.",
     createdAt: new Date().toISOString()
   }
 ];
@@ -4703,7 +4769,9 @@ const state = {
   callTimerId: null,
   memoryFilterQuery: "",
   pendingRemember: null,
-  pauseCuriousAt: 0
+  pauseCuriousAt: 0,
+  connectors: [],
+  settingsFocus: ""
 };
 
 const LANGUAGES = [
@@ -4756,6 +4824,14 @@ function cacheEls() {
     voiceOrb: document.querySelector("#voiceOrb"),
     heroOrb: document.querySelector("#heroOrb"),
     homeDashboard: document.querySelector("#homeDashboard"),
+    agentFeed: document.querySelector("#agentFeed"),
+    connectorList: document.querySelector("#connectorList"),
+    connectorType: document.querySelector("#connectorType"),
+    connectorName: document.querySelector("#connectorName"),
+    connectorTarget: document.querySelector("#connectorTarget"),
+    addConnector: document.querySelector("#addConnector"),
+    syncAllConnectors: document.querySelector("#syncAllConnectors"),
+    connectorPanel: document.querySelector("#connectorPanel"),
     quickPrompts: document.querySelector("#quickPrompts"),
     activityFeed: document.querySelector("#activityFeed"),
     talkContextPanel: document.querySelector("#talkContextPanel"),
@@ -4829,6 +4905,8 @@ function init() {
   renderIcons();
   renderSkills();
   renderHomeDashboard();
+  renderAgentFeed();
+  renderConnectors();
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
@@ -4872,7 +4950,10 @@ function wireEvents() {
   });
 
   els.pageLinks.forEach((button) => {
-    button.addEventListener("click", () => showPage(button.dataset.page));
+    button.addEventListener("click", () => {
+      const focus = button.dataset.settingsFocus;
+      showPage(button.dataset.page, focus ? { focus } : undefined);
+    });
   });
 
   els.promptLinks.forEach((button) => {
@@ -5083,6 +5164,17 @@ function wireEvents() {
     });
   }
 
+  if (els.syncAllConnectors) {
+    els.syncAllConnectors.addEventListener("click", () => syncAllConnectors());
+  }
+  if (els.addConnector) {
+    els.addConnector.addEventListener("click", () => addConnectorFromForm());
+  }
+  if (els.connectorType) {
+    els.connectorType.addEventListener("change", updateConnectorFormPlaceholder);
+    updateConnectorFormPlaceholder();
+  }
+
   if (els.copyTranscript) {
     els.copyTranscript.addEventListener("click", async () => {
       const text = getTranscriptText();
@@ -5224,68 +5316,366 @@ function imageForModel(item) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Connectors — scrape pages & notes, surface remind / tomorrow / explain
+// ---------------------------------------------------------------------------
+
+const FEED_KIND_LABELS = {
+  remind: "Remind later",
+  tomorrow: "Tomorrow",
+  explain: "Explain"
+};
+
+const FEED_KIND_ICONS = {
+  remind: "check",
+  tomorrow: "sun",
+  explain: "doc"
+};
+
+const FEED_KIND_TINTS = {
+  remind: "#ff2d55",
+  tomorrow: "#ff9f0a",
+  explain: "#0a84ff"
+};
+
+function createConnectorId() {
+  return "conn-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function updateConnectorFormPlaceholder() {
+  if (!els.connectorTarget || !els.connectorType) return;
+  els.connectorTarget.placeholder =
+    els.connectorType.value === "note" ? "Paste text VoiceMate should explain later" : "https://example.com/page";
+}
+
+function addConnectorFromForm() {
+  const type = els.connectorType?.value || "url";
+  const name = (els.connectorName?.value || "").trim();
+  const target = (els.connectorTarget?.value || "").trim();
+  if (!name || !target) {
+    toast("Add a name and URL or note");
+    return;
+  }
+  if (type === "url" && !/^https?:\/\//i.test(target)) {
+    toast("Web connectors need a full https:// URL");
+    return;
+  }
+  const connector = {
+    id: createConnectorId(),
+    type,
+    name,
+    url: type === "url" ? target : "",
+    note: type === "note" ? target : "",
+    enabled: true,
+    items: [],
+    lastSyncedAt: "",
+    createdAt: new Date().toISOString()
+  };
+  state.connectors.push(connector);
+  saveState();
+  renderConnectors();
+  if (els.connectorName) els.connectorName.value = "";
+  if (els.connectorTarget) els.connectorTarget.value = "";
+  toast("Connector added");
+  syncConnector(connector.id);
+}
+
+function removeConnector(id) {
+  state.connectors = state.connectors.filter((c) => c.id !== id);
+  saveState();
+  renderConnectors();
+  renderAgentFeed();
+  renderHomeDashboard();
+}
+
+function toggleConnector(id, enabled) {
+  const connector = state.connectors.find((c) => c.id === id);
+  if (!connector) return;
+  connector.enabled = enabled;
+  saveState();
+  renderConnectors();
+  renderAgentFeed();
+  renderHomeDashboard();
+}
+
+function extractFeedItemsFromText(text, sourceName, sourceUrl = "") {
+  const items = [];
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return items;
+
+  items.push({
+    id: "feed-" + Date.now() + "-main",
+    kind: "explain",
+    title: sourceName,
+    summary: clean.slice(0, 180) + (clean.length > 180 ? "…" : ""),
+    content: clean.slice(0, 12000),
+    source: sourceName,
+    sourceUrl
+  });
+
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length > 8);
+
+  lines.forEach((line, index) => {
+    if (/\btomorrow\b/i.test(line)) {
+      items.push({
+        id: "feed-" + Date.now() + "-t" + index,
+        kind: "tomorrow",
+        title: line.slice(0, 96),
+        summary: line,
+        content: line,
+        source: sourceName,
+        sourceUrl
+      });
+    } else if (/\b(remind|don't forget|due|deadline)\b/i.test(line)) {
+      items.push({
+        id: "feed-" + Date.now() + "-r" + index,
+        kind: "remind",
+        title: line.slice(0, 96),
+        summary: line,
+        content: line,
+        source: sourceName,
+        sourceUrl
+      });
+    }
+  });
+
+  return items.slice(0, 12);
+}
+
+async function syncConnector(id) {
+  const connector = state.connectors.find((c) => c.id === id);
+  if (!connector || !connector.enabled) return;
+  addActivity("Syncing connector", connector.name);
+  try {
+    if (connector.type === "note") {
+      connector.items = extractFeedItemsFromText(connector.note, connector.name);
+    } else {
+      const response = await fetch("/api/connector/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: connector.url })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Scrape failed");
+      connector.items = extractFeedItemsFromText(data.text || data.excerpt || "", data.title || connector.name, connector.url);
+    }
+    connector.lastSyncedAt = new Date().toISOString();
+    saveState();
+    renderConnectors();
+    renderAgentFeed();
+    renderHomeDashboard();
+    toast(`Synced ${connector.name}`);
+    addActivity("Connector synced", `${connector.items.length} item(s) from ${connector.name}.`);
+  } catch (error) {
+    toast("Sync failed");
+    addActivity("Connector sync failed", error.message || "Could not scrape this connector.");
+  }
+}
+
+async function syncAllConnectors() {
+  const enabled = state.connectors.filter((c) => c.enabled);
+  if (!enabled.length) {
+    toast("Add a connector first");
+    return;
+  }
+  for (const connector of enabled) {
+    await syncConnector(connector.id);
+  }
+}
+
+function isTomorrowDate(iso) {
+  if (!iso) return false;
+  const due = new Date(iso);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return due.getFullYear() === tomorrow.getFullYear() && due.getMonth() === tomorrow.getMonth() && due.getDate() === tomorrow.getDate();
+}
+
+function agentFeedItems() {
+  const items = [];
+
+  state.reminders
+    .filter((r) => !r.done)
+    .forEach((reminder) => {
+      const tomorrow = isTomorrowDate(reminder.dueAt);
+      items.push({
+        id: "rem-" + reminder.id,
+        kind: tomorrow ? "tomorrow" : "remind",
+        title: reminder.text,
+        summary: formatReminder(reminder),
+        source: "Your reminders",
+        prompt: tomorrow
+          ? `What's on my plate tomorrow? Include: ${reminder.text}`
+          : `Remind me about this later: ${reminder.text}`
+      });
+    });
+
+  state.connectors
+    .filter((c) => c.enabled)
+    .forEach((connector) => {
+      (connector.items || []).forEach((item) => {
+        items.push({
+          ...item,
+          source: connector.name,
+          prompt: feedPromptForItem(item)
+        });
+      });
+    });
+
+  return items.slice(0, 24);
+}
+
+function feedPromptForItem(item) {
+  if (item.kind === "tomorrow") return `Help me plan for tomorrow. Focus on: ${item.title}`;
+  if (item.kind === "remind") return `Remind me about this and when I should follow up: ${item.title}`;
+  return `Explain this so I don't have to read it: ${item.title}. ${item.summary || ""}`;
+}
+
+function connectorsForContext() {
+  return agentFeedItems()
+    .slice(0, 8)
+    .map((item) => `${FEED_KIND_LABELS[item.kind] || item.kind}: ${item.title} (${item.source})`);
+}
+
+function renderConnectors() {
+  if (!els.connectorList) return;
+  if (!state.connectors.length) {
+    els.connectorList.innerHTML = `<p class="connector-empty">No connectors yet. Add a web page or note above — VoiceMate will scrape it and pull items onto Home.</p>`;
+    return;
+  }
+  els.connectorList.innerHTML = state.connectors
+    .map((connector) => {
+      const synced = connector.lastSyncedAt
+        ? `Synced ${new Date(connector.lastSyncedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`
+        : "Not synced yet";
+      const target = connector.type === "url" ? connector.url : truncate(connector.note || "", 64);
+      return `
+        <article class="connector-row ${connector.enabled ? "" : "disabled"}" data-id="${escapeHtml(connector.id)}">
+          <div class="connector-row-main">
+            <strong>${escapeHtml(connector.name)}</strong>
+            <small>${escapeHtml(connector.type === "url" ? "Web page" : "Text note")} · ${escapeHtml(synced)}</small>
+            <small class="connector-target">${escapeHtml(target)}</small>
+            <small>${(connector.items || []).length} item(s) on Home</small>
+          </div>
+          <div class="connector-row-actions">
+            <button type="button" class="row-button" data-action="sync">Sync</button>
+            <button type="button" class="row-button" data-action="toggle">${connector.enabled ? "Pause" : "Enable"}</button>
+            <button type="button" class="row-button danger" data-action="remove">Remove</button>
+          </div>
+        </article>`;
+    })
+    .join("");
+
+  els.connectorList.querySelectorAll(".connector-row").forEach((row) => {
+    const id = row.dataset.id;
+    row.querySelector('[data-action="sync"]')?.addEventListener("click", () => syncConnector(id));
+    row.querySelector('[data-action="toggle"]')?.addEventListener("click", () => {
+      const connector = state.connectors.find((c) => c.id === id);
+      if (connector) toggleConnector(id, !connector.enabled);
+    });
+    row.querySelector('[data-action="remove"]')?.addEventListener("click", () => {
+      if (confirm("Remove this connector?")) removeConnector(id);
+    });
+  });
+}
+
+function renderAgentFeed() {
+  if (!els.agentFeed) return;
+  const items = agentFeedItems();
+  if (!items.length) {
+    els.agentFeed.innerHTML = `
+      <div class="agent-feed-empty">
+        <p><strong>Nothing pulled in yet.</strong></p>
+        <p>Add a connector in Settings, sync it, or create a reminder — items show up here.</p>
+        <button class="button secondary page-link" type="button" data-page="settings" data-settings-focus="connectors">Add connectors</button>
+      </div>`;
+    els.agentFeed.querySelector(".page-link")?.addEventListener("click", () => showPage("settings", { focus: "connectors" }));
+    return;
+  }
+
+  els.agentFeed.innerHTML = items
+    .map(
+      (item) => `
+      <button class="agent-feed-card" type="button" data-feed-id="${escapeHtml(item.id)}">
+        <span class="feed-icon" style="--tint:${FEED_KIND_TINTS[item.kind] || FEED_KIND_TINTS.explain}">${svgIcon(FEED_KIND_ICONS[item.kind] || "doc")}</span>
+        <span class="feed-text">
+          <span class="feed-kind-tag">${escapeHtml(FEED_KIND_LABELS[item.kind] || "Explain")}</span>
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${escapeHtml(item.source)}${item.summary ? " · " + escapeHtml(item.summary.slice(0, 72)) : ""}</small>
+        </span>
+      </button>`
+    )
+    .join("");
+
+  els.agentFeed.querySelectorAll(".agent-feed-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const item = items.find((entry) => entry.id === card.dataset.feedId);
+      if (!item) return;
+      showPage("talk");
+      handlePrompt(item.prompt || feedPromptForItem(item));
+    });
+  });
+}
+
 function renderHomeDashboard() {
   if (!els.homeDashboard) return;
-  const active = activeUploadItems().filter((item) => item.type !== "brief");
-  const openReminders = state.reminders.filter((reminder) => !reminder.done);
+  const feed = agentFeedItems();
+  const tomorrow = feed.filter((i) => i.kind === "tomorrow").length;
+  const explain = feed.filter((i) => i.kind === "explain").length;
+  const remind = feed.filter((i) => i.kind === "remind").length;
   const lastConvo = state.conversations.find((convo) => convo.titled);
+
   const cards = [
     {
       icon: "waveform",
       tint: "#0a84ff",
-      title: state.backendOnline ? "Live voice ready" : "Browser preview",
-      body: state.backendOnline ? "Start a natural live call." : "Run the server for natural live voice.",
+      title: "Talk to your agent",
+      body: state.backendOnline ? "Live voice or type — ask about anything on Home." : "Type a message or connect the server for live voice.",
       action: "Talk",
       onClick: () => showPage("talk")
     },
     {
-      icon: active.length ? memoryIconName(active[active.length - 1].type) : "archive",
-      tint: "#34c759",
-      title: active.length ? `${active.length} active context item${active.length === 1 ? "" : "s"}` : "No active context",
-      body: active.length ? active.map((item) => item.name).slice(-2).join(", ") : "Upload a file, note, or photo.",
-      action: active.length ? "Review" : "Add",
-      onClick: () => (active.length ? openContextSheet() : showPage("memory"))
+      icon: "sun",
+      tint: "#ff9f0a",
+      title: tomorrow ? `${tomorrow} for tomorrow` : "Tomorrow",
+      body: tomorrow ? "Tap an item on Home or ask VoiceMate to walk through your day." : "Connectors and reminders with a tomorrow date show here.",
+      action: "View",
+      onClick: () => document.getElementById("agentFeed")?.scrollIntoView({ behavior: "smooth" })
+    },
+    {
+      icon: "doc",
+      tint: "#0a84ff",
+      title: explain ? `${explain} to explain` : "Explain",
+      body: explain ? "Talk through pages so you don't have to read them." : "Add a web connector and sync to pull explainers.",
+      action: "Explain",
+      onClick: () => document.getElementById("agentFeed")?.scrollIntoView({ behavior: "smooth" })
     },
     {
       icon: "check",
       tint: "#ff2d55",
-      title: openReminders.length ? `${openReminders.length} open reminder${openReminders.length === 1 ? "" : "s"}` : "No reminders",
-      body: openReminders[0] ? formatReminder(openReminders[0]) : "Ask VoiceMate to remind you.",
-      action: "Reminders",
+      title: remind ? `${remind} to remember` : "Remind later",
+      body: remind ? "VoiceMate will surface these when you talk." : "Say “remind me…” or scrape a page with todo lines.",
+      action: "Remind",
       onClick: () => showPage("settings")
+    },
+    {
+      icon: "link",
+      tint: "#5e5ce6",
+      title: state.connectors.length ? `${state.connectors.length} connector${state.connectors.length === 1 ? "" : "s"}` : "Connectors",
+      body: state.connectors.length ? "Sync pages and notes in Settings." : "Add URLs or notes VoiceMate can scrape.",
+      action: "Connect",
+      onClick: () => showPage("settings", { focus: "connectors" })
     },
     {
       icon: "history",
       tint: "#5e5ce6",
-      title: lastConvo ? "Continue" : "Start fresh",
-      body: lastConvo ? lastConvo.title : "Begin a new chat or live call.",
+      title: lastConvo ? "Continue" : "New chat",
+      body: lastConvo ? lastConvo.title : "Pick up where you left off.",
       action: lastConvo ? "Resume" : "Start",
       onClick: () => (lastConvo ? resumeConversation(lastConvo.id) : showPage("talk"))
-    },
-    {
-      icon: "sun",
-      tint: "#ff9f0a",
-      title: "Daily briefing",
-      body: state.memory.length > 1 || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
-      action: "Brief",
-      onClick: () => {
-        showPage("talk");
-        setMode("digest", false);
-        runSkillWorkflow("digest");
-      }
-    },
-    {
-      icon: "photo",
-      tint: "#34c759",
-      title: active.length ? "Recent upload" : "Add context",
-      body: active.length ? active[active.length - 1].name : "Upload a screenshot or file to discuss.",
-      action: active.length ? "Ask" : "Upload",
-      onClick: () => {
-        if (active.length) {
-          showPage("talk");
-          handlePrompt(`Summarize ${active[active.length - 1].name}.`);
-        } else showPage("memory");
-      }
     }
   ];
 
@@ -5408,7 +5798,7 @@ function activateMemoryItem(item) {
 // Navigation
 // ---------------------------------------------------------------------------
 
-function showPage(page) {
+function showPage(page, options = {}) {
   const update = () => {
     document.body.classList.toggle("talk-session", page === "talk");
     els.pages.forEach((panel) => {
@@ -5431,6 +5821,12 @@ function showPage(page) {
     startTalkSession();
   } else {
     endTalkSession();
+  }
+
+  if (page === "settings" && options.focus === "connectors") {
+    window.requestAnimationFrame(() => {
+      els.connectorPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   updateWake();
@@ -5857,7 +6253,16 @@ async function chatAgent(prompt, images, onDelta) {
     mode: state.mode,
     language: state.language,
     history: state.history.slice(0, -1).slice(-10),
-    memory: state.memory.map((item) => memoryForChat(item, prompt)),
+    memory: [
+      ...state.memory.map((item) => memoryForChat(item, prompt)),
+      ...agentFeedItems().slice(0, 8).map((item) => ({
+        name: item.title,
+        type: "connector",
+        summary: `${FEED_KIND_LABELS[item.kind] || "Feed"} (${item.source}): ${item.summary || item.title}`,
+        content: item.content || item.summary || item.title,
+        active: true
+      }))
+    ],
     reminders: remindersForContext()
   };
 
@@ -7196,19 +7601,6 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
-  [els.voiceOrb, els.heroOrb].forEach((orb) => {
-    if (!orb) return;
-    orb.setAttribute("tabindex", "0");
-    orb.setAttribute("role", "button");
-    orb.setAttribute("aria-label", "Make VoiceMate react");
-    orb.addEventListener("click", () => playOrbHappy(orb));
-    orb.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        playOrbHappy(orb);
-      }
-    });
-  });
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -7216,21 +7608,6 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
-}
-
-function playOrbHappy(orb) {
-  if (!orb) return;
-  const eyeEl = orb.querySelector(".orb-eyes");
-  if (!eyeEl) return;
-  eyeEl.classList.remove("tapped");
-  orb.classList.remove("orb-tapped");
-  void orb.offsetWidth;
-  eyeEl.classList.add("tapped");
-  orb.classList.add("orb-tapped");
-  window.setTimeout(() => {
-    eyeEl.classList.remove("tapped");
-    orb.classList.remove("orb-tapped");
-  }, 920);
 }
 
 function setEyeMode(mode) {
@@ -8058,7 +8435,8 @@ const ICONS = {
   camera:
     '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.7-2.5h7.6L17.5 6H21a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/>',
   history:
-    '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.6-6.4L3 8"/><path d="M12 7v5l3.5 2"/>'
+    '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.6-6.4L3 8"/><path d="M12 7v5l3.5 2"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.3 1.3"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.3-1.3"/>'
 };
 
 function svgIcon(name) {
@@ -8334,11 +8712,7 @@ function pulseOrbReading() {
 
 function maybeReactToUserPrompt(prompt) {
   state.lastUserActivity = Date.now();
-  const lower = String(prompt || "").toLowerCase();
-  if (/\b(thank you|thanks|thank u|appreciate it)\b/.test(lower)) {
-    setExpression("happy");
-  }
-  if (/\?\s*$/.test(prompt.trim())) {
+  if (/\?\s*$/.test(String(prompt || "").trim())) {
     setOrbMood("confused");
     window.setTimeout(() => setOrbMood("idle"), 1200);
   }
@@ -8360,7 +8734,7 @@ function loadState() {
     if (data.language && LANGUAGES.find((lang) => lang.id === data.language)) state.language = data.language;
     if (Array.isArray(data.conversations)) state.conversations = data.conversations;
     if (data.uploadContext && Array.isArray(data.uploadContext.ids)) state.uploadContext = data.uploadContext;
-    if (typeof data.wakeEnabled === "boolean") state.wakeEnabled = data.wakeEnabled;
+    if (Array.isArray(data.connectors)) state.connectors = data.connectors;
   } catch (error) {
     // ignore storage errors
   }
@@ -8390,6 +8764,7 @@ function statePayload(memory) {
     language: state.language,
     uploadContext: state.uploadContext,
     wakeEnabled: state.wakeEnabled,
+    connectors: state.connectors,
     conversations: state.conversations.slice(0, 40)
   };
 }
@@ -8723,24 +9098,13 @@ function memoryForChat(item, query) {
 let exprTimer = null;
 
 function detectExpression(text) {
-  const t = String(text || "");
-  if (/[!]|\b(great|awesome|nice|love|glad|happy|congrats|amazing|perfect|yay|excited|wonderful|haha)\b/i.test(t)) {
-    return "happy";
-  }
-  if (t.trim().endsWith("?")) return "curious";
+  if (String(text || "").trim().endsWith("?")) return "curious";
   return null;
 }
 
 function setExpression(type) {
   clearTimeout(exprTimer);
-  eyes.expr = type;
-  eyes.els.forEach((el) => el.classList.toggle("happy", type === "happy"));
-  if (type) {
-    exprTimer = setTimeout(() => {
-      eyes.expr = null;
-      eyes.els.forEach((el) => el.classList.remove("happy"));
-    }, 2600);
-  }
+  eyes.expr = type === "curious" ? "curious" : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -8996,6 +9360,7 @@ function scheduleAllReminderNotifications() {
 function renderReminders() {
   saveState();
   renderHomeDashboard();
+  renderAgentFeed();
   renderReminderCenter();
   if (!els.reminderList) return;
   els.reminderList.innerHTML = "";

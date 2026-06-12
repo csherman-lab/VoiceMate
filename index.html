@@ -6,7 +6,7 @@
     <title>VoiceMate</title>
     <meta
       name="description"
-      content="VoiceMate is a human sounding voice companion with skills, memory, and a clean Apple style interface."
+      content="VoiceMate is your personal voice agent. Connect pages and notes — it reminds you later, surfaces tomorrow's tasks, and explains things so you don't have to read."
     />
     <meta name="theme-color" content="#0a84ff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -44,76 +44,37 @@
     <main>
       <!-- HOME -->
       <section class="page active" id="homePage" data-page-panel="home">
-        <div class="hero">
+        <div class="hero agent-hero">
           <div class="hero-copy">
-            <p class="eyebrow">Your voice companion</p>
-            <h1>Meet VoiceMate.</h1>
+            <p class="eyebrow">Personal voice agent</p>
+            <h1>Talk. Don't read.</h1>
             <p class="lede">
-              Talk to it like a person and it talks back. Run skills, keep a memory, and watch it think.
+              Add connectors in Settings — VoiceMate pulls what to remember, what's due tomorrow, and pages you want explained out loud.
             </p>
             <div class="hero-actions">
-              <button class="button primary page-link" type="button" data-page="talk">Start talking</button>
-              <button class="button secondary page-link" type="button" data-page="memory">Add memory</button>
+              <button class="button primary page-link" type="button" data-page="talk">Talk to VoiceMate</button>
+              <button class="button secondary page-link" type="button" data-page="settings" data-settings-focus="connectors">Add connectors</button>
             </div>
           </div>
 
           <div class="phone-card">
             <div class="orb hero-orb" id="heroOrb" aria-hidden="true">
-              <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="device-label">Talk. It talks back.</p>
-            <p class="device-subtitle">A natural voice with real pauses, not a robot reading text.</p>
+            <p class="device-label">Your agent, out loud</p>
+            <p class="device-subtitle">Reminders, tomorrow, and explainers — from the connectors you choose.</p>
           </div>
         </div>
 
-        <div class="home-dashboard" id="homeDashboard" aria-label="Today in VoiceMate"></div>
+        <div class="home-dashboard" id="homeDashboard" aria-label="Quick actions"></div>
 
-        <div class="home-section release-section">
+        <div class="home-section agent-feed-section">
           <div class="section-head">
-            <p class="eyebrow">What's new</p>
-            <h2>VoiceMate v0.4</h2>
-            <p class="small-copy">
-              Talk is the center. The orb feels alive. Context, skills, and memory stay out of the way until you need them.
-            </p>
+            <p class="eyebrow">From your connectors</p>
+            <h2>Remind · Tomorrow · Explain</h2>
+            <p class="small-copy">Tap anything to talk it through with VoiceMate — no need to open the original page.</p>
           </div>
-          <div class="release-grid">
-            <article class="release-item">
-              <strong>Happy orb</strong>
-              <p>Tap the bubble and VoiceMate makes a face and glows. Works with Enter or Space too.</p>
-            </article>
-            <article class="release-item">
-              <strong>Living voice</strong>
-              <p>3D gaze, darker glass style, live captions with active-word highlight, and in-place transcript corrections.</p>
-            </article>
-            <article class="release-item">
-              <strong>Home dashboard</strong>
-              <p>Live voice status, active context, open reminders, and recent conversations with quick actions.</p>
-            </article>
-            <article class="release-item">
-              <strong>Context sheet</strong>
-              <p>Uploads live in a bottom sheet opened by a small Context pill — not a permanent panel on Talk.</p>
-            </article>
-            <article class="release-item">
-              <strong>Image understanding</strong>
-              <p>When the backend is connected, uploaded images get a concise model summary saved into memory.</p>
-            </article>
-            <article class="release-item">
-              <strong>First-run onboarding</strong>
-              <p>A short intro to Talk, uploads, and skills. Skippable, calm, and iOS-inspired.</p>
-            </article>
-          </div>
-          <p class="release-foot">
-            <button class="button secondary page-link" type="button" data-page="settings">Release notes &amp; roadmap</button>
-          </p>
-        </div>
-
-        <div class="home-section">
-          <div class="section-head">
-            <p class="eyebrow">Skills</p>
-            <h2>Pick what VoiceMate does.</h2>
-            <p class="small-copy">Choose a skill to start a guided workflow, or just start talking and VoiceMate routes to the right one.</p>
-          </div>
-          <div class="skill-grid" id="skillGrid" aria-label="VoiceMate skills"></div>
+          <div class="agent-feed" id="agentFeed" aria-live="polite"></div>
         </div>
       </section>
 
@@ -132,9 +93,9 @@
 
           <div class="focus-orb-wrap" id="focusOrbWrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
-              <span class="orb-eyes"><i></i><i></i><span class="orb-mouth" aria-hidden="true"></span></span>
+              <span class="orb-eyes"><i></i><i></i></span>
             </div>
-            <p class="voice-hint" id="voiceHint">Tap below to start a live call, or type a message.</p>
+            <p class="voice-hint" id="voiceHint">Ask about reminders, tomorrow, or anything your connectors pulled in.</p>
             <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
               <span class="call-icon" id="callIcon"></span>
               <span class="live-label">Start live call</span>
@@ -214,8 +175,8 @@
       <section class="page" id="memoryPage" data-page-panel="memory">
         <div class="page-heading">
           <p class="eyebrow">Memory</p>
-          <h2>What VoiceMate remembers</h2>
-          <p class="small-copy">Saved on this device. Add files, photos, or notes and choose what VoiceMate should use in conversation.</p>
+          <h2>What VoiceMate saved</h2>
+          <p class="small-copy">Explanations, uploads, and notes your agent keeps — so you don't have to re-read them.</p>
         </div>
 
         <div class="memory-actions" aria-label="Add to memory">
@@ -257,10 +218,32 @@
       <section class="page" id="settingsPage" data-page-panel="settings">
         <div class="page-heading">
           <h2>Settings</h2>
-          <p class="small-copy">Tune VoiceMate’s voice, conversation style, reminders, and local data.</p>
+          <p class="small-copy">Connectors, voice, reminders, and local data for your personal agent.</p>
         </div>
 
         <div class="settings-wrap">
+          <section class="settings-group connector-panel" id="connectorPanel">
+            <p class="group-label">Connectors</p>
+            <p class="group-foot connector-intro">
+              Add web pages or notes. VoiceMate scrapes them and surfaces <strong>remind later</strong>, <strong>tomorrow</strong>, and <strong>explain</strong> items on Home — so you can talk through them instead of reading.
+            </p>
+            <div class="group-card connector-add-card">
+              <div class="connector-add">
+                <select id="connectorType" class="row-control" aria-label="Connector type">
+                  <option value="url">Web page</option>
+                  <option value="note">Text note</option>
+                </select>
+                <input id="connectorName" type="text" placeholder="Name (e.g. Team wiki)" aria-label="Connector name" />
+                <input id="connectorTarget" type="text" placeholder="URL or paste text" aria-label="URL or note text" />
+                <button class="row-button" id="addConnector" type="button">Add</button>
+              </div>
+              <div class="connector-actions">
+                <button class="button secondary" id="syncAllConnectors" type="button">Sync all connectors</button>
+              </div>
+            </div>
+            <div class="connector-list" id="connectorList" aria-label="Your connectors"></div>
+          </section>
+
           <section class="settings-group">
             <p class="group-label">Voice</p>
             <div class="group-card">
@@ -560,9 +543,9 @@
                 <span class="row-icon" data-icon="info" data-tint="#8e8e93"></span>
                 <div class="row-text">
                   <strong>VoiceMate</strong>
-                  <span>Voice companion with skills, memory, uploads, live voice, and a v0.4 polish pass.</span>
+                  <span>Personal voice agent with connectors, live voice, reminders, and saved explanations.</span>
                 </div>
-                <span class="row-value">0.4.0</span>
+                <span class="row-value">0.5.0</span>
               </div>
             </div>
           </section>
@@ -584,34 +567,24 @@
     <div class="modal onboarding-modal" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" hidden>
       <div class="modal-card onboarding-card" role="document">
         <div class="modal-head">
-          <h3 id="onboardingTitle">Set up VoiceMate</h3>
+          <h3 id="onboardingTitle">Set up your agent</h3>
           <button class="modal-close" id="onboardingSkip" type="button" aria-label="Skip onboarding">&times;</button>
         </div>
         <div class="onboarding-steps">
           <article>
+            <span class="row-icon" data-icon="link" data-tint="#0a84ff"></span>
+            <strong>Add a connector</strong>
+            <p>Paste a URL or note in Settings. VoiceMate scrapes it for reminders, tomorrow's tasks, and things to explain.</p>
+          </article>
+          <article>
             <span class="row-icon" data-icon="waveform" data-tint="#0a84ff"></span>
-            <strong>Pick a voice</strong>
-            <p>Choose a voice in Settings, or just start talking in Talk.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="mic" data-tint="#0a84ff"></span>
-            <strong>Try saying something</strong>
-            <p>Type, tap the mic, or start a live call when your server is connected.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="photo" data-tint="#34c759"></span>
-            <strong>Upload and ask</strong>
-            <p>Add a file, screenshot, or note and ask VoiceMate about it.</p>
+            <strong>Talk it through</strong>
+            <p>Tap anything on Home or start a live call — get the gist out loud without reading the page.</p>
           </article>
           <article>
             <span class="row-icon" data-icon="check" data-tint="#ff2d55"></span>
-            <strong>Set a reminder</strong>
-            <p>Say “remind me tomorrow at 9 to call Alex” or add one in Settings.</p>
-          </article>
-          <article>
-            <span class="row-icon" data-icon="sparkles" data-tint="#5e5ce6"></span>
-            <strong>Use a skill</strong>
-            <p>Research, briefing, pitch, data analysis, or coaching — all from Home.</p>
+            <strong>Remind &amp; tomorrow</strong>
+            <p>Say "remind me tomorrow at 9…" or let connectors surface what's due next.</p>
           </article>
         </div>
         <div class="onboarding-actions">
@@ -637,7 +610,7 @@
     </div>
 
     <footer>
-      <p>VoiceMate runs locally. Open the one-file demo, or run the server for full live voice.</p>
+      <p>VoiceMate runs locally. Connect pages in Settings, then talk through what matters.</p>
     </footer>
 
     <script src="app.js"></script>

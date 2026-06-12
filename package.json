@@ -1,6 +1,6 @@
 {
   "name": "voicemate",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "VoiceMate — a human-sounding voice companion powered by real Grok voice, with a live assistant dashboard, active upload context, reminders, tools, and polished realtime captions.",
   "scripts": {
     "start": "node server.js",
