@@ -3,18 +3,6 @@
 // routing, and a visible "show its work" reasoning trace — all wrapped in our
 // own calm, Apple-style design.
 
-const STARTER_MEMORY = [
-  {
-    type: "brief",
-    name: "VoiceMate product brief",
-    summary:
-      "VoiceMate is a human sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
-    content:
-      "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
-    createdAt: new Date().toISOString()
-  }
-];
-
 const GROK_VOICES = [
   {
     id: "ara",
@@ -219,7 +207,7 @@ const ASSET_STORE = "assets";
 const ONBOARDING_KEY = "voicemate.onboarding.v1";
 
 const state = {
-  memory: [...STARTER_MEMORY],
+  memory: [],
   reminders: [],
   persona: "ara",
   mode: "companion",
@@ -275,7 +263,6 @@ function cacheEls() {
     navLinks: document.querySelectorAll(".nav-link"),
     pageLinks: document.querySelectorAll(".page-link"),
     promptLinks: document.querySelectorAll(".prompt-link"),
-    skillLinks: document.querySelectorAll("[data-skill]"),
     pages: document.querySelectorAll("[data-page-panel]"),
     brandLogo: document.querySelector("#brandLogo"),
     talkLogo: document.querySelector("#talkLogo"),
@@ -297,7 +284,6 @@ function cacheEls() {
     heroOrb: document.querySelector("#heroOrb"),
     homeDashboard: document.querySelector("#homeDashboard"),
     quickPrompts: document.querySelector("#quickPrompts"),
-    activityFeed: document.querySelector("#activityFeed"),
     talkContextPanel: document.querySelector("#talkContextPanel"),
     thinkingDrawer: document.querySelector("#thinkingDrawer"),
     talkTrace: document.querySelector("#talkTrace"),
@@ -348,8 +334,6 @@ function cacheEls() {
     talkUploadCards: document.querySelector("#talkUploadCards"),
     contextPill: document.querySelector("#contextPill"),
     memorySearch: document.querySelector("#memorySearch"),
-    diagnosticsList: document.querySelector("#diagnosticsList"),
-    reminderCenterList: document.querySelector("#reminderCenterList"),
     rememberModal: document.querySelector("#rememberModal"),
     rememberBody: document.querySelector("#rememberBody"),
     rememberEdit: document.querySelector("#rememberEdit"),
@@ -374,8 +358,6 @@ function init() {
   renderMemory();
   renderContextChips();
   renderReminders();
-  renderReminderCenter();
-  renderConnectionDiagnostics();
   scheduleAllReminderNotifications();
   renderLanguages();
   if (els.agentMode) els.agentMode.value = state.mode;
@@ -806,25 +788,12 @@ function renderHomeDashboard() {
       icon: "sun",
       tint: "#ff9f0a",
       title: "Daily briefing",
-      body: state.memory.length > 1 || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
+      body: state.memory.length || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
       action: "Brief",
       onClick: () => {
         showPage("talk");
         setMode("digest", false);
         runSkillWorkflow("digest");
-      }
-    },
-    {
-      icon: "photo",
-      tint: "#34c759",
-      title: active.length ? "Recent upload" : "Add context",
-      body: active.length ? active[active.length - 1].name : "Upload a screenshot or file to discuss.",
-      action: active.length ? "Ask" : "Upload",
-      onClick: () => {
-        if (active.length) {
-          showPage("talk");
-          handlePrompt(`Summarize ${active[active.length - 1].name}.`);
-        } else showPage("memory");
       }
     }
   ];
@@ -1228,6 +1197,9 @@ function contextualPrompts() {
   const active = activeUploadItems().filter((item) => item.type !== "brief");
   if (active.length) {
     const latest = active[active.length - 1];
+    if (latest.suggestedQuestions?.length) {
+      return latest.suggestedQuestions.slice(0, 3);
+    }
     return [
       `Summarize ${latest.name}`,
       "What should I notice in this upload?",
@@ -1337,12 +1309,8 @@ async function handlePrompt(prompt) {
   }
 
   const steps = planReasoning(cleaned, detected);
-  steps.forEach((step, index) => {
-    window.setTimeout(() => addReasoning(step.type, step.text), index * 140);
-  });
-
-  const startDelay = Math.max(280, steps.length * 150);
-  window.setTimeout(() => respond(cleaned), startDelay);
+  steps.forEach((step) => addReasoning(step.type, step.text));
+  respond(cleaned);
 }
 
 async function respond(prompt) {
@@ -2721,19 +2689,19 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
-  [els.voiceOrb, els.heroOrb].forEach((orb) => {
-    if (!orb) return;
-    orb.setAttribute("tabindex", "0");
-    orb.setAttribute("role", "button");
-    orb.setAttribute("aria-label", "Make VoiceMate react");
-    orb.addEventListener("click", () => playOrbHappy(orb));
-    orb.addEventListener("keydown", (event) => {
+  if (els.heroOrb) {
+    els.heroOrb.setAttribute("tabindex", "0");
+    els.heroOrb.setAttribute("role", "button");
+    els.heroOrb.setAttribute("aria-label", "Start talking");
+    const startTalk = () => showPage("talk");
+    els.heroOrb.addEventListener("click", startTalk);
+    els.heroOrb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        playOrbHappy(orb);
+        startTalk();
       }
     });
-  });
+  }
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -2741,21 +2709,6 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
-}
-
-function playOrbHappy(orb) {
-  if (!orb) return;
-  const eyeEl = orb.querySelector(".orb-eyes");
-  if (!eyeEl) return;
-  eyeEl.classList.remove("tapped");
-  orb.classList.remove("orb-tapped");
-  void orb.offsetWidth;
-  eyeEl.classList.add("tapped");
-  orb.classList.add("orb-tapped");
-  window.setTimeout(() => {
-    eyeEl.classList.remove("tapped");
-    orb.classList.remove("orb-tapped");
-  }, 920);
 }
 
 function setEyeMode(mode) {
@@ -3003,17 +2956,9 @@ function addReasoning(type, text) {
 }
 
 function addTrace(type, title, detail) {
-  const noisySettingsTitles = new Set(["Started session", "Started talk session", "Mode set", "Voice engine connected", "Skill selected"]);
-  const showInSettings = type !== "system" || !noisySettingsTitles.has(title);
   const item = document.createElement("div");
   item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
-  if (els.activityFeed && showInSettings) {
-    els.activityFeed.prepend(item.cloneNode(true));
-    while (els.activityFeed.children.length > 60) {
-      els.activityFeed.removeChild(els.activityFeed.lastChild);
-    }
-  }
   if (els.talkTrace && type !== "system") {
     if (els.thinkingDrawer) {
       els.thinkingDrawer.hidden = false;
@@ -3178,6 +3123,7 @@ async function handleKnowledgeFiles(files, options = {}) {
   }
   renderMemory();
   if (activate) noteUploadContext(added);
+  renderQuickPrompts();
   addMessage("agent", `Added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
   return added;
 }
@@ -3255,6 +3201,7 @@ async function handleImageFiles(files, options = {}) {
   }
   renderMemory();
   if (activate) noteUploadContext(added);
+  renderQuickPrompts();
   addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
   added.forEach((item) => enrichImageMemory(item));
   return added;
@@ -3282,8 +3229,10 @@ async function enrichImageMemory(item) {
     item.summary = data.answer.slice(0, 280);
     item.content = `${item.name}. ${item.summary}`;
     item.understoodAt = new Date().toISOString();
+    enrichUploadUnderstanding(item);
     renderMemory();
     renderContextChips();
+    renderQuickPrompts();
     addActivity("Image understood", item.summary);
   } catch (error) {
     // Vision enrichment is best effort; uploaded image metadata still works.
@@ -3327,7 +3276,6 @@ async function checkBackend() {
   }
   updateGrokStatus();
   renderHomeDashboard();
-  renderConnectionDiagnostics();
 }
 
 // ---------------------------------------------------------------------------
@@ -3808,55 +3756,6 @@ function showTranscriptError(text) {
   window.setTimeout(() => setOrbMood(state.backendOnline ? "idle" : "offline"), 1800);
 }
 
-function renderConnectionDiagnostics() {
-  if (!els.diagnosticsList) return;
-  const mic = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-  const notify =
-    !("Notification" in window) ? "Unavailable" : Notification.permission === "granted" ? "Allowed" : Notification.permission;
-  let storage = "OK";
-  try {
-    localStorage.setItem("voicemate.probe", "1");
-    localStorage.removeItem("voicemate.probe");
-  } catch (error) {
-    storage = "Full";
-  }
-  const rows = [
-    { label: "Backend", value: state.backendOnline ? "Connected" : "Offline", ok: state.backendOnline },
-    { label: "API key", value: state.backendOnline ? "Configured" : "Missing", ok: state.backendOnline },
-    { label: "Realtime voice", value: state.realtimeModel || "Unavailable", ok: Boolean(state.backendOnline && state.realtimeModel) },
-    { label: "Browser mic", value: mic ? "Available" : "Unavailable", ok: mic },
-    { label: "Notifications", value: notify, ok: notify === "Allowed" },
-    { label: "Storage", value: storage, ok: storage === "OK" }
-  ];
-  els.diagnosticsList.innerHTML = rows
-    .map(
-      (row) =>
-        `<div class="diagnostics-row ${row.ok ? "ok" : "warn"}"><span>${escapeHtml(row.label)}</span><em>${escapeHtml(String(row.value))}</em></div>`
-    )
-    .join("");
-}
-
-function renderReminderCenter() {
-  if (!els.reminderCenterList) return;
-  const now = Date.now();
-  const upcoming = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() >= now);
-  const overdue = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() < now);
-  const completed = state.reminders.filter((r) => r.done).slice(-5).reverse();
-  const open = state.reminders.filter((r) => !r.done && !r.dueAt);
-  const section = (title, items, cls = "") => {
-    if (!items.length) return "";
-    return `<p class="memory-group-label">${escapeHtml(title)}</p>${items
-      .map((r) => `<div class="reminder-center-row ${cls}"><span>${escapeHtml(r.text)}</span><em>${escapeHtml(formatReminder(r))}</em></div>`)
-      .join("")}`;
-  };
-  els.reminderCenterList.innerHTML =
-    section("Overdue", overdue, "overdue") +
-    section("Upcoming", upcoming, "ok") +
-    section("Open", open) +
-    section("Completed", completed) ||
-    `<p class="reminder-empty">No reminders yet. Ask VoiceMate to remind you.</p>`;
-}
-
 function parseReminderInput(raw) {
   let text = String(raw || "").trim();
   text = text.replace(/^remind me(?: to)?\s+/i, "");
@@ -3917,7 +3816,11 @@ function loadState() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (Array.isArray(data.memory) && data.memory.length) state.memory = data.memory;
+    if (Array.isArray(data.memory) && data.memory.length) {
+      state.memory = data.memory.filter(
+        (item) => !(item.type === "brief" && item.name === "VoiceMate product brief")
+      );
+    }
     if (Array.isArray(data.reminders)) state.reminders = data.reminders;
     if (data.persona && GROK_VOICES.find((persona) => persona.id === data.persona)) state.persona = data.persona;
     if (data.mode && SKILLS.find((skill) => skill.id === data.mode)) state.mode = data.mode;
@@ -4560,7 +4463,6 @@ function scheduleAllReminderNotifications() {
 function renderReminders() {
   saveState();
   renderHomeDashboard();
-  renderReminderCenter();
   if (!els.reminderList) return;
   els.reminderList.innerHTML = "";
   const open = state.reminders.filter((reminder) => !reminder.done);

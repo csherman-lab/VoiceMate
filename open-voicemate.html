@@ -758,42 +758,6 @@ h3 {
   font-size: 0.72rem;
 }
 
-.diagnostics-list,
-.reminder-center {
-  padding: 0 14px 14px;
-  display: grid;
-  gap: 8px;
-}
-
-.diagnostics-row,
-.reminder-center-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 0.84rem;
-}
-
-.diagnostics-row em,
-.reminder-center-row em {
-  font-style: normal;
-  font-weight: 700;
-}
-
-.diagnostics-row.ok em,
-.reminder-center-row.ok em {
-  color: var(--green);
-}
-
-.diagnostics-row.warn em,
-.reminder-center-row.overdue em {
-  color: var(--red);
-}
-
 .remember-body {
   margin: 0 0 14px;
   color: var(--ink);
@@ -802,36 +766,6 @@ h3 {
 
 .remember-edit {
   width: 100%;
-}
-
-.roadmap-tag {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
-.roadmap-tag.done {
-  color: var(--green);
-  background: color-mix(in srgb, var(--green) 14%, transparent);
-}
-
-.roadmap-tag.next {
-  color: var(--muted);
-  background: color-mix(in srgb, var(--muted) 12%, transparent);
-}
-
-.roadmap-notes h4 {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
   min-height: 88px;
   margin-bottom: 14px;
   padding: 12px;
@@ -3797,45 +3731,6 @@ footer {
 
         <div class="home-dashboard" id="homeDashboard" aria-label="Today in VoiceMate"></div>
 
-        <div class="home-section release-section">
-          <div class="section-head">
-            <p class="eyebrow">What's new</p>
-            <h2>VoiceMate v0.4</h2>
-            <p class="small-copy">
-              Talk is the center. The orb feels alive. Context, skills, and memory stay out of the way until you need them.
-            </p>
-          </div>
-          <div class="release-grid">
-            <article class="release-item">
-              <strong>Happy orb</strong>
-              <p>Tap the bubble and VoiceMate makes a face and glows. Works with Enter or Space too.</p>
-            </article>
-            <article class="release-item">
-              <strong>Living voice</strong>
-              <p>3D gaze, darker glass style, live captions with active-word highlight, and in-place transcript corrections.</p>
-            </article>
-            <article class="release-item">
-              <strong>Home dashboard</strong>
-              <p>Live voice status, active context, open reminders, and recent conversations with quick actions.</p>
-            </article>
-            <article class="release-item">
-              <strong>Context sheet</strong>
-              <p>Uploads live in a bottom sheet opened by a small Context pill — not a permanent panel on Talk.</p>
-            </article>
-            <article class="release-item">
-              <strong>Image understanding</strong>
-              <p>When the backend is connected, uploaded images get a concise model summary saved into memory.</p>
-            </article>
-            <article class="release-item">
-              <strong>First-run onboarding</strong>
-              <p>A short intro to Talk, uploads, and skills. Skippable, calm, and iOS-inspired.</p>
-            </article>
-          </div>
-          <p class="release-foot">
-            <button class="button secondary page-link" type="button" data-page="settings">Release notes &amp; roadmap</button>
-          </p>
-        </div>
-
         <div class="home-section">
           <div class="section-head">
             <p class="eyebrow">Skills</p>
@@ -4125,172 +4020,6 @@ footer {
           </section>
 
           <section class="settings-group">
-            <details class="settings-disclosure" id="connectionDiagnostics">
-              <summary>
-                <span>
-                  <small class="group-label">Reliability</small>
-                  <strong>Connection diagnostics</strong>
-                </span>
-                <em>Open</em>
-              </summary>
-              <div class="diagnostics-list" id="diagnosticsList"></div>
-            </details>
-          </section>
-
-          <section class="settings-group">
-            <details class="settings-disclosure" id="reminderCenter">
-              <summary>
-                <span>
-                  <small class="group-label">Reminders</small>
-                  <strong>Notification center</strong>
-                </span>
-                <em>Open</em>
-              </summary>
-              <div class="reminder-center" id="reminderCenterList"></div>
-            </details>
-          </section>
-
-          <section class="settings-group diagnostics-group">
-            <details class="settings-disclosure">
-              <summary>
-                <span>
-                  <small class="group-label">Diagnostics</small>
-                  <strong>Session activity</strong>
-                </span>
-                <em>Open</em>
-              </summary>
-              <div class="activity-feed" id="activityFeed"></div>
-            </details>
-          </section>
-
-          <section class="settings-group">
-            <details class="settings-disclosure" id="releaseNotes">
-              <summary>
-                <span>
-                  <small class="group-label">Release notes</small>
-                  <strong>What's new in v0.4</strong>
-                </span>
-                <em>Open</em>
-              </summary>
-              <div class="release-notes">
-                <p>Validated with <code>node --check</code>, <code>npm run build</code>, and local smoke tests on PORT 3132–3133.</p>
-                <h4>Orb &amp; Talk</h4>
-                <ul>
-                  <li>Tap reaction: a quick happy face and a warm glow (click, tap, Enter, Space).</li>
-                  <li>3D orb gaze turning and darker glass reference style.</li>
-                  <li>Live transcript fixes — corrections replace the same bubble instead of duplicating.</li>
-                  <li>Progressive user captions and word-by-word assistant reveal with active-word highlight.</li>
-                  <li>System and call events styled as subtle centered status chips.</li>
-                  <li>Cleaner Talk chrome — orb, transcript, composer, minimal controls.</li>
-                </ul>
-                <h4>Home &amp; onboarding</h4>
-                <ul>
-                  <li>Home dashboard: live voice status, active context, reminders, recent conversations.</li>
-                  <li>First-run onboarding for Talk, uploads/context, and skills.</li>
-                </ul>
-                <h4>Context &amp; uploads</h4>
-                <ul>
-                  <li>Context moved to a bottom-sheet surface via a small Context control.</li>
-                  <li>Backend-powered image understanding when Grok is connected.</li>
-                  <li>AudioWorklet microphone capture with ScriptProcessor fallback.</li>
-                </ul>
-                <h4>Settings &amp; polish</h4>
-                <ul>
-                  <li>Grouped Settings cards, theme toggle, connection test, export/import memory.</li>
-                  <li>Skill cards launch guided workflows from Home.</li>
-                </ul>
-                <p class="release-meta">Shipped in commits <code>edef3fb</code> (happy orb) and <code>a18f631</code> (dashboard &amp; live polish). PR #4.</p>
-              </div>
-            </details>
-          </section>
-
-          <section class="settings-group">
-            <details class="settings-disclosure" id="roadmap">
-              <summary>
-                <span>
-                  <small class="group-label">Product direction</small>
-                  <strong>Roadmap</strong>
-                </span>
-                <em>Open</em>
-              </summary>
-              <div class="release-notes roadmap-notes">
-                <p>The goal: feel less like a web app with voice features and more like a living assistant with a calm, premium interface.</p>
-                <h4>1. Talk as the product center <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Orb as emotional center; secondary UI hidden until needed.</li>
-                  <li>Context, tools, and thinking as small expandable affordances.</li>
-                  <li>Clean transcript; system messages like iOS call status text.</li>
-                </ul>
-                <h4>2. Make the orb truly alive <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Clear states: idle, listening, thinking, speaking, happy, confused, error/offline.</li>
-                  <li>Personality micro-moments: curious blink on pause, smile on thanks, reading look during file work.</li>
-                </ul>
-                <h4>3. FaceTime-style live calls <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Explicit call states: connecting, listening, you're speaking, thinking, VoiceMate speaking, interrupted.</li>
-                  <li>Subtle call timer, mute/speaker controls later, minimal core controls.</li>
-                </ul>
-                <h4>4. Premium live captions <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>User speech streams in with gentle settle; corrections in-place.</li>
-                  <li>Assistant words sync with speech; typography hierarchy for user, assistant, system, tool, and error rows.</li>
-                </ul>
-                <h4>5. Skills as mini-products <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Research: clarify, search, cite, offer short vs deep follow-up.</li>
-                  <li>Briefing: reminders, uploads, memory, due dates — lead with what matters first.</li>
-                  <li>Pitch, analyst, and coach modes with guided steps and practice/rehearse flows.</li>
-                </ul>
-                <h4>6. Magical uploads <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Compact upload cards in Talk with ask, summarize, compare, remove actions.</li>
-                  <li>Automatic first-pass understanding: title, type, summary, entities, suggested questions.</li>
-                  <li>Real PDF text extraction, OCR, DOCX parsing, CSV profiling, image captioning.</li>
-                </ul>
-                <h4>7. Trustworthy memory <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Memory types: preferences, uploads, conversation summaries, reminders, temporary context, saved facts.</li>
-                  <li>“VoiceMate wants to remember…” prompts with Remember / Not now / Edit.</li>
-                  <li>Memory search and source labels (upload, chat, call, manual note).</li>
-                </ul>
-                <h4>8. Useful reminders <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Natural-language parsing (“tomorrow at 9 to call Alex”).</li>
-                  <li>Notification center for upcoming, overdue, and completed items.</li>
-                  <li>Real providers later: Twilio, SendGrid, calendar, webhooks — with explicit permissions.</li>
-                </ul>
-                <h4>9. More iOS-native UI <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Fewer panels, more bottom sheets, blurred glass, progressive disclosure, animation restraint.</li>
-                  <li>Memory grouped by type with search; diagnostics hidden by default.</li>
-                </ul>
-                <h4>10–12. Today, onboarding, reliability <span class="roadmap-tag done">Shipped</span></h4>
-                <ul>
-                  <li>Home evolves into Continue, reminders, uploads, suggested next action, daily briefing.</li>
-                  <li>Onboarding: pick voice, try speaking, upload, ask, set reminder — all skippable.</li>
-                  <li>Graceful errors for mic blocked, backend offline, key missing, realtime drop, TTS fail, bad uploads.</li>
-                  <li>Connection diagnostics: backend, API key, realtime, mic, notifications, storage.</li>
-                </ul>
-                <h4>Recommended build order</h4>
-                <ol>
-                  <li>Bottom-sheet Context <span class="roadmap-tag done">Done</span></li>
-                  <li>Live caption polish &amp; active word highlight <span class="roadmap-tag done">Done</span></li>
-                  <li>Skill workflow screens for Research, Pitch, Analyst, Coach <span class="roadmap-tag done">Done</span></li>
-                  <li>PDF / OCR / DOCX extraction <span class="roadmap-tag done">Done</span></li>
-                  <li>Memory review &amp; categories <span class="roadmap-tag done">Done</span></li>
-                  <li>Reminder parsing &amp; notification center <span class="roadmap-tag done">Done</span></li>
-                  <li>Onboarding flow expansion <span class="roadmap-tag done">Done</span></li>
-                  <li>Home dashboard evolution <span class="roadmap-tag done">Done</span></li>
-                  <li>AudioWorklet realtime capture <span class="roadmap-tag done">Done</span></li>
-                  <li>E2E tests, IndexedDB uploads, auth, deploy hardening <span class="roadmap-tag next">Next</span></li>
-                </ol>
-                <p class="release-meta">Principle: fewer visible controls, more intelligence behind the scenes, stronger moments where VoiceMate feels alive, aware, and useful.</p>
-              </div>
-            </details>
-          </section>
-
-          <section class="settings-group">
             <p class="group-label">About</p>
             <div class="group-card">
               <div class="settings-row static">
@@ -4382,18 +4111,6 @@ footer {
 // Local-first inspiration from OpenJarvis: a skills catalog, automatic intent
 // routing, and a visible "show its work" reasoning trace — all wrapped in our
 // own calm, Apple-style design.
-
-const STARTER_MEMORY = [
-  {
-    type: "brief",
-    name: "VoiceMate product brief",
-    summary:
-      "VoiceMate is a human sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
-    content:
-      "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
-    createdAt: new Date().toISOString()
-  }
-];
 
 const GROK_VOICES = [
   {
@@ -4599,7 +4316,7 @@ const ASSET_STORE = "assets";
 const ONBOARDING_KEY = "voicemate.onboarding.v1";
 
 const state = {
-  memory: [...STARTER_MEMORY],
+  memory: [],
   reminders: [],
   persona: "ara",
   mode: "companion",
@@ -4655,7 +4372,6 @@ function cacheEls() {
     navLinks: document.querySelectorAll(".nav-link"),
     pageLinks: document.querySelectorAll(".page-link"),
     promptLinks: document.querySelectorAll(".prompt-link"),
-    skillLinks: document.querySelectorAll("[data-skill]"),
     pages: document.querySelectorAll("[data-page-panel]"),
     brandLogo: document.querySelector("#brandLogo"),
     talkLogo: document.querySelector("#talkLogo"),
@@ -4677,7 +4393,6 @@ function cacheEls() {
     heroOrb: document.querySelector("#heroOrb"),
     homeDashboard: document.querySelector("#homeDashboard"),
     quickPrompts: document.querySelector("#quickPrompts"),
-    activityFeed: document.querySelector("#activityFeed"),
     talkContextPanel: document.querySelector("#talkContextPanel"),
     thinkingDrawer: document.querySelector("#thinkingDrawer"),
     talkTrace: document.querySelector("#talkTrace"),
@@ -4728,8 +4443,6 @@ function cacheEls() {
     talkUploadCards: document.querySelector("#talkUploadCards"),
     contextPill: document.querySelector("#contextPill"),
     memorySearch: document.querySelector("#memorySearch"),
-    diagnosticsList: document.querySelector("#diagnosticsList"),
-    reminderCenterList: document.querySelector("#reminderCenterList"),
     rememberModal: document.querySelector("#rememberModal"),
     rememberBody: document.querySelector("#rememberBody"),
     rememberEdit: document.querySelector("#rememberEdit"),
@@ -4754,8 +4467,6 @@ function init() {
   renderMemory();
   renderContextChips();
   renderReminders();
-  renderReminderCenter();
-  renderConnectionDiagnostics();
   scheduleAllReminderNotifications();
   renderLanguages();
   if (els.agentMode) els.agentMode.value = state.mode;
@@ -5186,25 +4897,12 @@ function renderHomeDashboard() {
       icon: "sun",
       tint: "#ff9f0a",
       title: "Daily briefing",
-      body: state.memory.length > 1 || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
+      body: state.memory.length || openReminders.length ? "Get a spoken rundown." : "Add memory or reminders first.",
       action: "Brief",
       onClick: () => {
         showPage("talk");
         setMode("digest", false);
         runSkillWorkflow("digest");
-      }
-    },
-    {
-      icon: "photo",
-      tint: "#34c759",
-      title: active.length ? "Recent upload" : "Add context",
-      body: active.length ? active[active.length - 1].name : "Upload a screenshot or file to discuss.",
-      action: active.length ? "Ask" : "Upload",
-      onClick: () => {
-        if (active.length) {
-          showPage("talk");
-          handlePrompt(`Summarize ${active[active.length - 1].name}.`);
-        } else showPage("memory");
       }
     }
   ];
@@ -5608,6 +5306,9 @@ function contextualPrompts() {
   const active = activeUploadItems().filter((item) => item.type !== "brief");
   if (active.length) {
     const latest = active[active.length - 1];
+    if (latest.suggestedQuestions?.length) {
+      return latest.suggestedQuestions.slice(0, 3);
+    }
     return [
       `Summarize ${latest.name}`,
       "What should I notice in this upload?",
@@ -5717,12 +5418,8 @@ async function handlePrompt(prompt) {
   }
 
   const steps = planReasoning(cleaned, detected);
-  steps.forEach((step, index) => {
-    window.setTimeout(() => addReasoning(step.type, step.text), index * 140);
-  });
-
-  const startDelay = Math.max(280, steps.length * 150);
-  window.setTimeout(() => respond(cleaned), startDelay);
+  steps.forEach((step) => addReasoning(step.type, step.text));
+  respond(cleaned);
 }
 
 async function respond(prompt) {
@@ -7101,19 +6798,19 @@ const eyes = {
 function setupEyes() {
   eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
   if (!eyes.els.length) return;
-  [els.voiceOrb, els.heroOrb].forEach((orb) => {
-    if (!orb) return;
-    orb.setAttribute("tabindex", "0");
-    orb.setAttribute("role", "button");
-    orb.setAttribute("aria-label", "Make VoiceMate react");
-    orb.addEventListener("click", () => playOrbHappy(orb));
-    orb.addEventListener("keydown", (event) => {
+  if (els.heroOrb) {
+    els.heroOrb.setAttribute("tabindex", "0");
+    els.heroOrb.setAttribute("role", "button");
+    els.heroOrb.setAttribute("aria-label", "Start talking");
+    const startTalk = () => showPage("talk");
+    els.heroOrb.addEventListener("click", startTalk);
+    els.heroOrb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        playOrbHappy(orb);
+        startTalk();
       }
     });
-  });
+  }
   window.addEventListener("mousemove", (event) => {
     eyes.mouseX = event.clientX;
     eyes.mouseY = event.clientY;
@@ -7121,21 +6818,6 @@ function setupEyes() {
   });
   scheduleBlink();
   requestAnimationFrame(eyeLoop);
-}
-
-function playOrbHappy(orb) {
-  if (!orb) return;
-  const eyeEl = orb.querySelector(".orb-eyes");
-  if (!eyeEl) return;
-  eyeEl.classList.remove("tapped");
-  orb.classList.remove("orb-tapped");
-  void orb.offsetWidth;
-  eyeEl.classList.add("tapped");
-  orb.classList.add("orb-tapped");
-  window.setTimeout(() => {
-    eyeEl.classList.remove("tapped");
-    orb.classList.remove("orb-tapped");
-  }, 920);
 }
 
 function setEyeMode(mode) {
@@ -7383,17 +7065,9 @@ function addReasoning(type, text) {
 }
 
 function addTrace(type, title, detail) {
-  const noisySettingsTitles = new Set(["Started session", "Started talk session", "Mode set", "Voice engine connected", "Skill selected"]);
-  const showInSettings = type !== "system" || !noisySettingsTitles.has(title);
   const item = document.createElement("div");
   item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
-  if (els.activityFeed && showInSettings) {
-    els.activityFeed.prepend(item.cloneNode(true));
-    while (els.activityFeed.children.length > 60) {
-      els.activityFeed.removeChild(els.activityFeed.lastChild);
-    }
-  }
   if (els.talkTrace && type !== "system") {
     if (els.thinkingDrawer) {
       els.thinkingDrawer.hidden = false;
@@ -7558,6 +7232,7 @@ async function handleKnowledgeFiles(files, options = {}) {
   }
   renderMemory();
   if (activate) noteUploadContext(added);
+  renderQuickPrompts();
   addMessage("agent", `Added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
   return added;
 }
@@ -7635,6 +7310,7 @@ async function handleImageFiles(files, options = {}) {
   }
   renderMemory();
   if (activate) noteUploadContext(added);
+  renderQuickPrompts();
   addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
   added.forEach((item) => enrichImageMemory(item));
   return added;
@@ -7662,8 +7338,10 @@ async function enrichImageMemory(item) {
     item.summary = data.answer.slice(0, 280);
     item.content = `${item.name}. ${item.summary}`;
     item.understoodAt = new Date().toISOString();
+    enrichUploadUnderstanding(item);
     renderMemory();
     renderContextChips();
+    renderQuickPrompts();
     addActivity("Image understood", item.summary);
   } catch (error) {
     // Vision enrichment is best effort; uploaded image metadata still works.
@@ -7707,7 +7385,6 @@ async function checkBackend() {
   }
   updateGrokStatus();
   renderHomeDashboard();
-  renderConnectionDiagnostics();
 }
 
 // ---------------------------------------------------------------------------
@@ -8188,55 +7865,6 @@ function showTranscriptError(text) {
   window.setTimeout(() => setOrbMood(state.backendOnline ? "idle" : "offline"), 1800);
 }
 
-function renderConnectionDiagnostics() {
-  if (!els.diagnosticsList) return;
-  const mic = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-  const notify =
-    !("Notification" in window) ? "Unavailable" : Notification.permission === "granted" ? "Allowed" : Notification.permission;
-  let storage = "OK";
-  try {
-    localStorage.setItem("voicemate.probe", "1");
-    localStorage.removeItem("voicemate.probe");
-  } catch (error) {
-    storage = "Full";
-  }
-  const rows = [
-    { label: "Backend", value: state.backendOnline ? "Connected" : "Offline", ok: state.backendOnline },
-    { label: "API key", value: state.backendOnline ? "Configured" : "Missing", ok: state.backendOnline },
-    { label: "Realtime voice", value: state.realtimeModel || "Unavailable", ok: Boolean(state.backendOnline && state.realtimeModel) },
-    { label: "Browser mic", value: mic ? "Available" : "Unavailable", ok: mic },
-    { label: "Notifications", value: notify, ok: notify === "Allowed" },
-    { label: "Storage", value: storage, ok: storage === "OK" }
-  ];
-  els.diagnosticsList.innerHTML = rows
-    .map(
-      (row) =>
-        `<div class="diagnostics-row ${row.ok ? "ok" : "warn"}"><span>${escapeHtml(row.label)}</span><em>${escapeHtml(String(row.value))}</em></div>`
-    )
-    .join("");
-}
-
-function renderReminderCenter() {
-  if (!els.reminderCenterList) return;
-  const now = Date.now();
-  const upcoming = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() >= now);
-  const overdue = state.reminders.filter((r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() < now);
-  const completed = state.reminders.filter((r) => r.done).slice(-5).reverse();
-  const open = state.reminders.filter((r) => !r.done && !r.dueAt);
-  const section = (title, items, cls = "") => {
-    if (!items.length) return "";
-    return `<p class="memory-group-label">${escapeHtml(title)}</p>${items
-      .map((r) => `<div class="reminder-center-row ${cls}"><span>${escapeHtml(r.text)}</span><em>${escapeHtml(formatReminder(r))}</em></div>`)
-      .join("")}`;
-  };
-  els.reminderCenterList.innerHTML =
-    section("Overdue", overdue, "overdue") +
-    section("Upcoming", upcoming, "ok") +
-    section("Open", open) +
-    section("Completed", completed) ||
-    `<p class="reminder-empty">No reminders yet. Ask VoiceMate to remind you.</p>`;
-}
-
 function parseReminderInput(raw) {
   let text = String(raw || "").trim();
   text = text.replace(/^remind me(?: to)?\s+/i, "");
@@ -8297,7 +7925,11 @@ function loadState() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (Array.isArray(data.memory) && data.memory.length) state.memory = data.memory;
+    if (Array.isArray(data.memory) && data.memory.length) {
+      state.memory = data.memory.filter(
+        (item) => !(item.type === "brief" && item.name === "VoiceMate product brief")
+      );
+    }
     if (Array.isArray(data.reminders)) state.reminders = data.reminders;
     if (data.persona && GROK_VOICES.find((persona) => persona.id === data.persona)) state.persona = data.persona;
     if (data.mode && SKILLS.find((skill) => skill.id === data.mode)) state.mode = data.mode;
@@ -8940,7 +8572,6 @@ function scheduleAllReminderNotifications() {
 function renderReminders() {
   saveState();
   renderHomeDashboard();
-  renderReminderCenter();
   if (!els.reminderList) return;
   els.reminderList.innerHTML = "";
   const open = state.reminders.filter((reminder) => !reminder.done);
