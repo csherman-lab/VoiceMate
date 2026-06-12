@@ -527,9 +527,17 @@ async function handleGrokTts(req, res) {
   });
 
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
+    const bodyText = await response.text().catch(() => "");
+    console.error(`[tts] xAI responded ${response.status}: ${bodyText.slice(0, 600)}`);
+    let message;
+    try {
+      const parsed = JSON.parse(bodyText);
+      message = parsed.error?.message || parsed.error || parsed.message;
+    } catch (error) {
+      message = bodyText.slice(0, 200);
+    }
     return sendJson(res, response.status, {
-      error: data.error?.message || data.message || "xAI text to speech request failed"
+      error: message || `Text to speech failed (HTTP ${response.status})`
     });
   }
 
@@ -596,13 +604,22 @@ async function handleRealtimeSecret(req, res) {
       })
     });
 
-    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      const bodyText = await response.text().catch(() => "");
+      console.error(`[realtime] xAI responded ${response.status}: ${bodyText.slice(0, 600)}`);
+      let message;
+      try {
+        const parsed = JSON.parse(bodyText);
+        message = parsed.error?.message || parsed.error || parsed.message;
+      } catch (error) {
+        message = bodyText.slice(0, 200);
+      }
       return sendJson(res, response.status, {
-        error: data.error?.message || data.message || "Could not start realtime voice session"
+        error: message || `Could not start realtime voice session (HTTP ${response.status})`
       });
     }
 
+    const data = await response.json().catch(() => ({}));
     return sendJson(res, 200, {
       value: data.value,
       expiresAt: data.expires_at,
