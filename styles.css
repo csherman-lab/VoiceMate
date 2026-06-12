@@ -475,6 +475,83 @@ h3 {
   font-size: 0.92rem;
 }
 
+.skills-section {
+  margin-top: 40px;
+}
+
+.section-head {
+  max-width: 640px;
+  margin-bottom: 18px;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 168px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(24px);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease;
+}
+
+.skill-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.skill-card:active {
+  transform: scale(0.985);
+}
+
+.skill-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(109, 93, 252, 0.16), rgba(0, 122, 255, 0.16));
+  font-size: 1.25rem;
+}
+
+.skill-tag {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.skill-card strong {
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.skill-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 .feature-row {
   margin-top: 18px;
 }
@@ -645,6 +722,44 @@ h3 {
   color: #d70015;
 }
 
+.live-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-color: rgba(0, 122, 255, 0.28);
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--blue);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.live-button.active {
+  border-color: rgba(255, 59, 48, 0.3);
+  background: rgba(255, 59, 48, 0.12);
+  color: #d70015;
+}
+
+.live-button.active .live-dot {
+  background: var(--red);
+  animation: livePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.35);
+  }
+}
+
 .backend-pill {
   display: inline-flex;
   align-items: center;
@@ -731,6 +846,59 @@ h3 {
   border-bottom-right-radius: 7px;
   background: var(--blue);
   color: white;
+}
+
+.message.typing::after {
+  display: inline-block;
+  margin-left: 2px;
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  animation: typingBlink 1s ease-in-out infinite;
+}
+
+@keyframes typingBlink {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.citations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.citations span {
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.citations a {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.citations a:hover {
+  background: var(--blue-soft);
 }
 
 .talk-dock {
@@ -1097,6 +1265,38 @@ select,
   background: var(--blue);
 }
 
+.activity-item.trace-thought > span {
+  background: #5e5ce6;
+}
+
+.activity-item.trace-action > span {
+  background: var(--blue);
+}
+
+.activity-item.trace-observation > span {
+  background: var(--green);
+}
+
+.activity-item.trace-system > span {
+  background: var(--faint);
+}
+
+.activity-item.trace-thought strong {
+  color: #4b46d6;
+}
+
+.activity-item.trace-observation strong {
+  color: #248a3d;
+}
+
+code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(118, 118, 128, 0.14);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.86em;
+}
+
 .activity-item strong {
   display: block;
   margin-bottom: 3px;
@@ -1190,6 +1390,10 @@ footer {
   .memory-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .skill-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -1233,5 +1437,13 @@ footer {
 
   .memory-grid {
     grid-template-columns: 1fr;
+  }
+
+  .skill-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-controls {
+    width: 100%;
   }
 }

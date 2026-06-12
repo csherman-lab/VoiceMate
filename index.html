@@ -6,7 +6,7 @@
     <title>VoiceMate</title>
     <meta
       name="description"
-      content="VoiceMate is a calm voice agent for talking, texting, uploads, memory, and pitch support."
+      content="VoiceMate is a human-sounding voice companion powered by real Grok voice, with skills, memory, and a visible reasoning trace."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -36,10 +36,10 @@
       <section class="page active" id="homePage" data-page-panel="home">
         <div class="hero">
           <div class="hero-copy">
-            <p class="eyebrow">Voice, text, memory</p>
+            <p class="eyebrow">Real Grok voice, on your terms</p>
             <h1>Meet VoiceMate.</h1>
             <p class="lede">
-              A simple AI voice agent for conversations, files, images, and helpful answers.
+              A voice companion that actually sounds human. Talk live with Grok voice, run skills, and watch it show its work.
             </p>
             <div class="hero-actions">
               <button class="button primary page-link" type="button" data-page="talk">Start talking</button>
@@ -55,30 +55,18 @@
               <span></span>
               <i></i>
             </div>
-            <p class="device-label">Speak. Type. Upload.</p>
-            <p class="device-subtitle">Everything stays calm and easy.</p>
+            <p class="device-label">Talk. It talks back.</p>
+            <p class="device-subtitle">Live Grok voice with natural pauses, laughter, and barge-in.</p>
           </div>
         </div>
 
-        <div class="feature-row">
-          <article class="feature-card">
-            <span>Talk</span>
-            <strong>Natural voice mode</strong>
-            <p>Use your mic where Chrome allows it. VoiceMate answers out loud.</p>
-            <button class="card-action page-link" type="button" data-page="talk">Open Talk</button>
-          </article>
-          <article class="feature-card">
-            <span>Upload</span>
-            <strong>Files and images</strong>
-            <p>Add notes, CSV files, briefs, screenshots, and reference images.</p>
-            <button class="card-action page-link" type="button" data-page="memory">Add Memory</button>
-          </article>
-          <article class="feature-card">
-            <span>Pitch</span>
-            <strong>Sales ready answers</strong>
-            <p>Turn rough information into clear client friendly talking points.</p>
-            <button class="card-action prompt-link" type="button" data-prompt="Pitch this to a client">Practice Pitch</button>
-          </article>
+        <div class="skills-section">
+          <div class="section-head">
+            <p class="eyebrow">Skills</p>
+            <h2>Pick what VoiceMate does.</h2>
+            <p class="small-copy">Choose a skill, or just start talking — VoiceMate routes to the right one automatically.</p>
+          </div>
+          <div class="skill-grid" id="skillGrid" aria-label="VoiceMate skills"></div>
         </div>
       </section>
 
@@ -99,6 +87,9 @@
             <div class="session-controls">
               <span class="backend-pill" id="backendStatus">Local mode</span>
               <span class="status-pill" id="speechStatus">Ready</span>
+              <button class="session-button live-button" id="liveButton" type="button" aria-pressed="false">
+                <span class="live-dot"></span><span class="live-label">Live call</span>
+              </button>
               <button class="session-button end-button page-link" type="button" data-page="home">End</button>
             </div>
           </div>
@@ -111,8 +102,8 @@
               <i></i>
             </div>
             <div class="voice-caption">
-                <strong id="activePersonaName">Eve</strong>
-              <span>Voice starts when this opens</span>
+                <strong id="activePersonaName">Ara</strong>
+              <span>Tap Live call for real-time Grok voice</span>
             </div>
           </div>
 
@@ -198,7 +189,9 @@
             <span>Mode</span>
             <h3>Conversation type</h3>
             <select id="agentMode">
-              <option value="companion">Natural conversation</option>
+              <option value="companion">Natural chat</option>
+              <option value="research">Deep research</option>
+              <option value="digest">Daily briefing</option>
               <option value="pitch">Pitch builder</option>
               <option value="analyst">Data analyst</option>
               <option value="coach">Meeting coach</option>
@@ -210,7 +203,7 @@
             <span>Production voice</span>
             <h3>Grok connection</h3>
             <p>
-              VoiceMate uses Grok through the local backend. Your key stays in `.env.local`.
+              Real Grok voice (TTS, streaming chat, and live speech-to-speech calls) runs through the local backend. Your key stays in <code>.env.local</code>, never in the browser.
             </p>
             <p class="connection-card" id="grokStatus">Checking connection.</p>
             <button class="button secondary full" id="testConnection" type="button">Test connection</button>
@@ -226,7 +219,7 @@
     </main>
 
     <footer>
-      <p>VoiceMate opens directly in Chrome. No server required for this demo.</p>
+      <p>VoiceMate runs locally. Open the one-file demo in Chrome, or run the backend for real Grok voice and live calls.</p>
     </footer>
 
     <script src="app.js"></script>

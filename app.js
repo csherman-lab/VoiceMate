@@ -1,115 +1,193 @@
+// VoiceMate — a human-sounding voice companion powered by Grok voice.
+// Local-first inspiration from OpenJarvis: a skills catalog, automatic intent
+// routing, and a visible "show its work" reasoning trace — all wrapped in our
+// own calm, Apple-style design.
+
 const STARTER_MEMORY = [
   {
     type: "brief",
     name: "VoiceMate product brief",
     summary:
-      "VoiceMate is a human like voice and text agent that can learn from uploads, create pitches, inspect images, summarize data, and show its work.",
+      "VoiceMate is a human-sounding voice companion. It talks with real Grok voice, runs skills, remembers your uploads, and shows its reasoning.",
     content:
-      "VoiceMate should feel like a polished AI teammate with natural voice, text chat, uploads, memory, pitch support, data summaries, and an Apple style interface.",
+      "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
     createdAt: new Date().toISOString()
   }
 ];
 
 const GROK_VOICES = [
   {
-    id: "eve",
-    name: "Eve",
-    style: "Energetic, upbeat",
-    bestFor: "Great default for demos and friendly conversations",
-    rate: 0.98,
-    pitch: 1.02
-  },
-  {
     id: "ara",
     name: "Ara",
     style: "Warm, friendly",
-    bestFor: "Best for natural support and human conversation",
-    rate: 0.98,
-    pitch: 1
+    bestFor: "The most natural, human conversation",
+    rate: 1.0,
+    pitch: 1.0
+  },
+  {
+    id: "eve",
+    name: "Eve",
+    style: "Energetic, upbeat",
+    bestFor: "Bright, lively demos and friendly chats",
+    rate: 1.04,
+    pitch: 1.05
   },
   {
     id: "rex",
     name: "Rex",
     style: "Confident, clear",
-    bestFor: "Good for business and product walkthroughs",
-    rate: 0.96,
+    bestFor: "Business walkthroughs and pitches",
+    rate: 0.98,
     pitch: 0.96
   },
   {
     id: "sal",
     name: "Sal",
     style: "Smooth, balanced",
-    bestFor: "Versatile voice for most conversations",
-    rate: 0.97,
-    pitch: 1
+    bestFor: "Versatile, even delivery",
+    rate: 1.0,
+    pitch: 1.0
   },
   {
     id: "leo",
     name: "Leo",
-    style: "Authoritative, strong",
-    bestFor: "Best for direct instructions and coaching",
-    rate: 0.94,
+    style: "Grounded, reassuring",
+    bestFor: "Calm coaching and clear instructions",
+    rate: 0.95,
     pitch: 0.92
   }
 ];
 
-const SUGGESTED_PROMPTS = [
-  "What are you?",
-  "Pitch this to a client",
-  "What can you do with files?",
-  "Summarize my data",
-  "Should we use Grok voice?",
-  "What do you remember?"
+// OpenJarvis-style skills catalog. Each skill maps to a conversation mode and
+// can be auto-detected from what the user says (intent routing).
+const SKILLS = [
+  {
+    id: "companion",
+    name: "Natural chat",
+    tag: "Talk",
+    blurb: "Just talk. VoiceMate listens and replies like a real person.",
+    keywords: []
+  },
+  {
+    id: "research",
+    name: "Deep research",
+    tag: "Research",
+    blurb: "Looks things up and gives a clear, sourced answer with citations.",
+    keywords: [
+      "research",
+      "look up",
+      "find out",
+      "search for",
+      "sources",
+      "cite",
+      "latest",
+      "news on",
+      "who is",
+      "what happened"
+    ]
+  },
+  {
+    id: "digest",
+    name: "Daily briefing",
+    tag: "Briefing",
+    blurb: "A short spoken briefing from your saved notes and files.",
+    keywords: ["briefing", "digest", "catch me up", "good morning", "what's on", "rundown"]
+  },
+  {
+    id: "pitch",
+    name: "Pitch builder",
+    tag: "Pitch",
+    blurb: "Turns rough ideas into a sharp, persuasive spoken pitch.",
+    keywords: ["pitch", "sell", "client", "investor", "persuade", "demo this"]
+  },
+  {
+    id: "analyst",
+    name: "Data analyst",
+    tag: "Data",
+    blurb: "Summarizes your CSVs and calls out the patterns that matter.",
+    keywords: ["data", "csv", "numbers", "trend", "analyze", "spreadsheet", "average", "stats"]
+  },
+  {
+    id: "coach",
+    name: "Meeting coach",
+    tag: "Coach",
+    blurb: "Coaches you to sound clearer, calmer, and more confident.",
+    keywords: ["coach", "practice", "feedback", "interview", "present", "rehearse"]
+  }
 ];
+
+const SUGGESTED_PROMPTS = [
+  "Let's just chat",
+  "Research the latest on Grok voice",
+  "Give me a quick briefing",
+  "Help me pitch this idea",
+  "Summarize my data",
+  "Coach me before a meeting"
+];
+
+const REALTIME_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
 
 const state = {
   memory: [...STARTER_MEMORY],
-  persona: "eve",
+  persona: "ara",
   mode: "companion",
   recognition: null,
   recognizing: false,
   backendOnline: false,
   backendModel: "",
+  realtimeModel: "",
   talkStarted: false,
+  history: [],
   currentAudioUrl: "",
-  currentAudio: null
+  currentAudio: null,
+  streaming: false,
+  live: null
 };
 
-const els = {
-  navLinks: document.querySelectorAll(".nav-link"),
-  pageLinks: document.querySelectorAll(".page-link"),
-  promptLinks: document.querySelectorAll(".prompt-link"),
-  pages: document.querySelectorAll("[data-page-panel]"),
-  personaList: document.querySelector("#personaList"),
-  agentMode: document.querySelector("#agentMode"),
-  sampleVoice: document.querySelector("#sampleVoice"),
-  activePersonaName: document.querySelector("#activePersonaName"),
-  modeCaption: document.querySelector("#modeCaption"),
-  speechStatus: document.querySelector("#speechStatus"),
-  transcript: document.querySelector("#transcript"),
-  promptForm: document.querySelector("#promptForm"),
-  promptInput: document.querySelector("#promptInput"),
-  micButton: document.querySelector("#micButton"),
-  voiceOrb: document.querySelector("#voiceOrb"),
-  heroOrb: document.querySelector("#heroOrb"),
-  quickPrompts: document.querySelector("#quickPrompts"),
-  activityFeed: document.querySelector("#activityFeed"),
-  knowledgeUpload: document.querySelector("#knowledgeUpload"),
-  imageUpload: document.querySelector("#imageUpload"),
-  quickFileUpload: document.querySelector("#quickFileUpload"),
-  manualContext: document.querySelector("#manualContext"),
-  saveContext: document.querySelector("#saveContext"),
-  clearMemory: document.querySelector("#clearMemory"),
-  clearTranscript: document.querySelector("#clearTranscript"),
-  copyTranscript: document.querySelector("#copyTranscript"),
-  saveTranscript: document.querySelector("#saveTranscript"),
-  memoryGrid: document.querySelector("#memoryGrid"),
-  grokStatus: document.querySelector("#grokStatus"),
-  backendStatus: document.querySelector("#backendStatus"),
-  testConnection: document.querySelector("#testConnection")
-};
+const els = {};
+
+function cacheEls() {
+  Object.assign(els, {
+    navLinks: document.querySelectorAll(".nav-link"),
+    pageLinks: document.querySelectorAll(".page-link"),
+    promptLinks: document.querySelectorAll(".prompt-link"),
+    skillLinks: document.querySelectorAll("[data-skill]"),
+    pages: document.querySelectorAll("[data-page-panel]"),
+    skillGrid: document.querySelector("#skillGrid"),
+    personaList: document.querySelector("#personaList"),
+    agentMode: document.querySelector("#agentMode"),
+    sampleVoice: document.querySelector("#sampleVoice"),
+    activePersonaName: document.querySelector("#activePersonaName"),
+    modeCaption: document.querySelector("#modeCaption"),
+    speechStatus: document.querySelector("#speechStatus"),
+    transcript: document.querySelector("#transcript"),
+    promptForm: document.querySelector("#promptForm"),
+    promptInput: document.querySelector("#promptInput"),
+    micButton: document.querySelector("#micButton"),
+    liveButton: document.querySelector("#liveButton"),
+    voiceOrb: document.querySelector("#voiceOrb"),
+    heroOrb: document.querySelector("#heroOrb"),
+    quickPrompts: document.querySelector("#quickPrompts"),
+    activityFeed: document.querySelector("#activityFeed"),
+    knowledgeUpload: document.querySelector("#knowledgeUpload"),
+    imageUpload: document.querySelector("#imageUpload"),
+    quickFileUpload: document.querySelector("#quickFileUpload"),
+    manualContext: document.querySelector("#manualContext"),
+    saveContext: document.querySelector("#saveContext"),
+    clearMemory: document.querySelector("#clearMemory"),
+    clearTranscript: document.querySelector("#clearTranscript"),
+    copyTranscript: document.querySelector("#copyTranscript"),
+    saveTranscript: document.querySelector("#saveTranscript"),
+    memoryGrid: document.querySelector("#memoryGrid"),
+    grokStatus: document.querySelector("#grokStatus"),
+    backendStatus: document.querySelector("#backendStatus"),
+    testConnection: document.querySelector("#testConnection")
+  });
+}
 
 function init() {
+  cacheEls();
+  renderSkills();
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
@@ -118,7 +196,7 @@ function init() {
   setupSpeechRecognition();
   wireEvents();
 
-  addActivity("Started session", "Voice, text, files, images, and memory are ready.");
+  addActivity("Started session", "Voice, skills, files, and memory are ready.");
 
   const pageFromHash = window.location.hash.replace("#", "");
   const initialPage = pageFromHash === "setup" ? "settings" : pageFromHash;
@@ -126,10 +204,7 @@ function init() {
     if (["home", "talk", "memory", "settings"].includes(initialPage)) {
       showPage(initialPage);
     }
-
-    window.requestAnimationFrame(() => {
-      document.body.classList.add("ui-ready");
-    });
+    window.requestAnimationFrame(() => document.body.classList.add("ui-ready"));
   });
 }
 
@@ -143,7 +218,9 @@ function wireEvents() {
   });
 
   els.promptLinks.forEach((button) => {
-    button.addEventListener("click", () => handlePrompt(button.dataset.prompt || button.textContent));
+    button.addEventListener("click", () =>
+      handlePrompt(button.dataset.prompt || button.textContent)
+    );
   });
 
   els.promptForm.addEventListener("submit", (event) => {
@@ -153,11 +230,13 @@ function wireEvents() {
 
   els.micButton.addEventListener("click", () => {
     if (!state.recognition) {
-      addMessage("agent", "Voice input is not available in this Chrome session. You can still type and upload files.");
-      addActivity("Voice input unavailable", "Chrome did not provide speech input here.");
+      addMessage(
+        "agent",
+        "Voice input isn't available in this browser session. You can still type, or start a live call for full Grok voice."
+      );
+      addActivity("Voice input unavailable", "This browser did not provide speech input.");
       return;
     }
-
     if (state.recognizing) {
       state.recognition.stop();
     } else {
@@ -165,15 +244,23 @@ function wireEvents() {
     }
   });
 
+  if (els.liveButton) {
+    els.liveButton.addEventListener("click", () => {
+      if (state.live) {
+        endLiveCall("You ended the call.");
+      } else {
+        startLiveCall();
+      }
+    });
+  }
+
   els.agentMode.addEventListener("change", (event) => {
-    state.mode = event.target.value;
-    updateModeCaption();
-    addActivity("Changed mode", `VoiceMate is now in ${modeLabel()} mode.`);
+    setMode(event.target.value, true);
   });
 
   els.sampleVoice.addEventListener("click", () => {
     const persona = getPersona();
-    speak(`I am ${persona.name}. ${persona.style}. Ask me anything or give me a file.`);
+    speak(`Hey, I'm ${persona.name}. [pause] Ask me anything, or hand me a file and I'll dig in.`);
   });
 
   els.knowledgeUpload.addEventListener("change", (event) => {
@@ -188,10 +275,7 @@ function wireEvents() {
 
   els.quickFileUpload.addEventListener("change", (event) => {
     const files = [...event.target.files];
-    const images = files.filter((file) => file.type.startsWith("image/"));
-    const docs = files.filter((file) => !file.type.startsWith("image/"));
-    if (docs.length) handleKnowledgeFiles(docs);
-    if (images.length) handleImageFiles(images);
+    routeFiles(files);
     event.target.value = "";
   });
 
@@ -201,11 +285,12 @@ function wireEvents() {
     state.memory = [];
     renderMemory();
     addActivity("Cleared memory", "Session memory is empty.");
-    addMessage("agent", "I cleared the memory for this session.");
+    addMessage("agent", "Done, I cleared everything I was remembering for this session.");
   });
 
   els.clearTranscript.addEventListener("click", () => {
     els.transcript.innerHTML = "";
+    state.history = [];
     state.talkStarted = false;
     addActivity("Started new chat", "Transcript cleared.");
     if (document.body.classList.contains("talk-session")) {
@@ -219,7 +304,6 @@ function wireEvents() {
       addActivity("Nothing to copy", "The chat is empty.");
       return;
     }
-
     try {
       await navigator.clipboard.writeText(text);
       addActivity("Copied chat", "Transcript copied to clipboard.");
@@ -234,7 +318,6 @@ function wireEvents() {
       addActivity("Nothing to save", "The chat is empty.");
       return;
     }
-
     state.memory.push({
       type: "note",
       name: `Saved chat ${state.memory.length + 1}`,
@@ -249,29 +332,37 @@ function wireEvents() {
   els.testConnection.addEventListener("click", async () => {
     addActivity("Testing connection", "Checking the local Grok backend.");
     await checkBackend();
-    addActivity(state.backendOnline ? "Grok is connected" : "Grok is not connected", els.grokStatus.textContent);
+    addActivity(
+      state.backendOnline ? "Grok is connected" : "Grok is not connected",
+      els.grokStatus.textContent
+    );
   });
 
   document.addEventListener("dragover", (event) => event.preventDefault());
   document.addEventListener("drop", (event) => {
     event.preventDefault();
-    const files = [...event.dataTransfer.files];
-    const images = files.filter((file) => file.type.startsWith("image/"));
-    const docs = files.filter((file) => !file.type.startsWith("image/"));
-    if (docs.length) handleKnowledgeFiles(docs);
-    if (images.length) handleImageFiles(images);
+    routeFiles([...event.dataTransfer.files]);
     showPage("memory");
   });
 }
 
+function routeFiles(files) {
+  const images = files.filter((file) => file.type.startsWith("image/"));
+  const docs = files.filter((file) => !file.type.startsWith("image/"));
+  if (docs.length) handleKnowledgeFiles(docs);
+  if (images.length) handleImageFiles(images);
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
 function showPage(page) {
   const update = () => {
     document.body.classList.toggle("talk-session", page === "talk");
-
     els.pages.forEach((panel) => {
       panel.classList.toggle("active", panel.dataset.pagePanel === page);
     });
-
     els.navLinks.forEach((button) => {
       button.classList.toggle("active", button.dataset.page === page);
     });
@@ -289,7 +380,7 @@ function showPage(page) {
     endTalkSession();
   }
 
-  addActivity("Opened page", `${titleCase(page)} page is active.`);
+  addActivity("Opened page", `${titleCase(page)} is active.`);
   if (window.location.hash.replace("#", "") !== page) {
     window.history.replaceState(null, "", `#${page}`);
   }
@@ -298,28 +389,29 @@ function showPage(page) {
 
 function startTalkSession() {
   if (state.talkStarted) return;
-
   state.talkStarted = true;
   const persona = getPersona();
   const greeting = state.backendOnline
-    ? `Hi, I am VoiceMate using Grok voice ${persona.name}. I am ready.`
-    : `Hi, I am VoiceMate. I am ready.`;
+    ? `Hey, I'm ${persona.name}. [pause] What's on your mind?`
+    : `Hey, I'm ${persona.name}. What's on your mind?`;
 
   addActivity("Started talk session", `${persona.name} voice is active.`);
-  addMessage("agent", greeting);
+  addMessage("agent", stripSpeechTags(greeting));
+  state.history.push({ role: "assistant", content: stripSpeechTags(greeting) });
   speak(greeting);
 }
 
 function endTalkSession() {
+  if (state.live) endLiveCall("Call ended.");
   if (!state.talkStarted) return;
-
   state.talkStarted = false;
-  if (state.recognition && state.recognizing) {
-    state.recognition.stop();
-  }
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
+  if (state.recognition && state.recognizing) state.recognition.stop();
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  stopCurrentAudio();
+  setSpeechStatus("Ready", false, false);
+}
+
+function stopCurrentAudio() {
   if (state.currentAudio) {
     state.currentAudio.pause();
     state.currentAudio = null;
@@ -328,12 +420,49 @@ function endTalkSession() {
     URL.revokeObjectURL(state.currentAudioUrl);
     state.currentAudioUrl = "";
   }
-  setSpeechStatus("Ready", false, false);
+}
+
+// ---------------------------------------------------------------------------
+// Skills + personas + modes
+// ---------------------------------------------------------------------------
+
+function renderSkills() {
+  if (!els.skillGrid) return;
+  els.skillGrid.innerHTML = "";
+  SKILLS.forEach((skill) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "skill-card";
+    card.dataset.skill = skill.id;
+    card.innerHTML = `
+      <span class="skill-icon">${skillGlyph(skill.id)}</span>
+      <span class="skill-tag">${escapeHtml(skill.tag)}</span>
+      <strong>${escapeHtml(skill.name)}</strong>
+      <p>${escapeHtml(skill.blurb)}</p>
+    `;
+    card.addEventListener("click", () => {
+      setMode(skill.id, false);
+      showPage("talk");
+      addActivity("Skill selected", `${skill.name} is ready.`);
+    });
+    els.skillGrid.appendChild(card);
+  });
+}
+
+function skillGlyph(id) {
+  const glyphs = {
+    companion: "&#128172;",
+    research: "&#128269;",
+    digest: "&#9728;",
+    pitch: "&#9889;",
+    analyst: "&#128202;",
+    coach: "&#127919;"
+  };
+  return glyphs[id] || "&#10024;";
 }
 
 function renderPersonas() {
   els.personaList.innerHTML = "";
-
   GROK_VOICES.forEach((persona) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -344,25 +473,34 @@ function renderPersonas() {
     button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
   });
-
   updatePersonaLabel();
 }
 
 function selectPersona(personaId, preview) {
   const persona = GROK_VOICES.find((item) => item.id === personaId);
   if (!persona) return;
-
   state.persona = persona.id;
   renderPersonas();
   updatePersonaLabel();
   addActivity("Changed voice", `${persona.name} is selected.`);
-  if (preview) {
-    speak(`I am ${persona.name}. Ready when you are.`);
+  if (state.live) {
+    addMessage("agent", "Pick the voice before starting a live call so I switch cleanly.");
+  } else if (preview) {
+    speak(`I'm ${persona.name}. Ready when you are.`);
   }
 }
 
 function updatePersonaLabel() {
   els.activePersonaName.textContent = getPersona().name;
+}
+
+function setMode(modeId, fromSelect) {
+  const skill = SKILLS.find((item) => item.id === modeId);
+  if (!skill) return;
+  state.mode = skill.id;
+  if (els.agentMode && !fromSelect) els.agentMode.value = skill.id;
+  updateModeCaption();
+  addActivity("Mode set", `${skill.name} mode is active.`);
 }
 
 function updateModeCaption() {
@@ -371,7 +509,6 @@ function updateModeCaption() {
 
 function renderQuickPrompts() {
   els.quickPrompts.innerHTML = "";
-
   SUGGESTED_PROMPTS.forEach((prompt) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -381,132 +518,220 @@ function renderQuickPrompts() {
   });
 }
 
-function renderMemory() {
-  els.memoryGrid.innerHTML = "";
+// ---------------------------------------------------------------------------
+// Intent routing (OpenJarvis-style)
+// ---------------------------------------------------------------------------
 
-  if (!state.memory.length) {
-    const empty = document.createElement("div");
-    empty.className = "memory-empty";
-    empty.textContent = "No memory yet.";
-    els.memoryGrid.appendChild(empty);
-    return;
+function detectSkill(text) {
+  const lower = text.toLowerCase();
+  for (const skill of SKILLS) {
+    if (skill.keywords.some((keyword) => lower.includes(keyword))) {
+      return skill;
+    }
   }
-
-  state.memory
-    .slice()
-    .reverse()
-    .forEach((item) => {
-      const card = document.createElement("article");
-      card.className = `memory-card ${item.type}`;
-
-      const visual = item.preview
-        ? `<img src="${item.preview}" alt="${escapeHtml(item.name)} preview" />`
-        : `<div class="memory-icon">${memoryIcon(item.type)}</div>`;
-
-      card.innerHTML = `
-        ${visual}
-        <div>
-          <span>${escapeHtml(item.type)}</span>
-          <strong>${escapeHtml(item.name)}</strong>
-          <p>${escapeHtml(item.summary)}</p>
-        </div>
-      `;
-      els.memoryGrid.appendChild(card);
-    });
+  return null;
 }
 
-function handlePrompt(prompt) {
-  const cleaned = prompt.trim();
-  if (!cleaned) return;
+// ---------------------------------------------------------------------------
+// Reasoning trace (ReAct: thought -> action -> observation)
+// ---------------------------------------------------------------------------
 
-  showPage("talk");
-  addMessage("user", cleaned);
-  els.promptInput.value = "";
+function planReasoning(prompt, detected) {
+  const steps = [];
+  const skill = detected || SKILLS.find((item) => item.id === state.mode) || SKILLS[0];
 
-  const steps = planSteps(cleaned);
-  steps.forEach((step, index) => {
-    window.setTimeout(() => addActivity(step.title, step.detail), index * 120);
+  steps.push({
+    type: "thought",
+    text: `Sounds like a ${skill.name.toLowerCase()} request. I'll handle it as ${getPersona().name}.`
   });
-
-  window.setTimeout(async () => {
-    const answer = await getAssistantAnswer(cleaned);
-    addMessage("agent", answer);
-    speak(answer);
-  }, Math.max(340, steps.length * 140));
-}
-
-async function getAssistantAnswer(cleaned) {
-  if (!state.backendOnline) {
-    return answerPrompt(cleaned);
-  }
-
-  try {
-    addActivity("Asked Grok", "Using the server key from the backend.");
-    const response = await fetch("/api/grok/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: cleaned,
-        persona: getPersona().name,
-        mode: modeLabel(),
-        memory: state.memory.map((item) => ({
-          name: item.name,
-          type: item.type,
-          summary: item.summary
-        }))
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Grok request failed");
-    }
-
-    addActivity("Received Grok answer", data.model || state.backendModel || "xAI model");
-    return data.answer || answerPrompt(cleaned);
-  } catch (error) {
-    addActivity("Grok fallback", error.message || "Using local response.");
-    return answerPrompt(cleaned);
-  }
-}
-
-function planSteps(prompt) {
-  const lower = prompt.toLowerCase();
-  const steps = [
-    {
-      title: "Read request",
-      detail: `Mode is ${modeLabel()} with ${getPersona().name}.`
-    }
-  ];
 
   if (state.memory.length) {
     steps.push({
-      title: "Checked memory",
-      detail: `${state.memory.length} item${state.memory.length === 1 ? "" : "s"} available.`
+      type: "action",
+      text: `Checking session memory (${state.memory.length} item${state.memory.length === 1 ? "" : "s"}).`
+    });
+    const relevant = relevantMemory(prompt);
+    steps.push({
+      type: "observation",
+      text: relevant ? `Found something useful: ${relevant}.` : "Nothing directly relevant in memory."
     });
   }
 
-  if (containsAny(lower, ["pitch", "sell", "client", "demo"])) {
-    steps.push({ title: "Built pitch angle", detail: "Using problem, promise, proof, and next step." });
+  if (skill.id === "analyst") {
+    const csvs = state.memory.filter((item) => item.type === "csv");
+    steps.push({
+      type: "observation",
+      text: csvs.length ? `${csvs.length} CSV file(s) ready to read.` : "No CSV uploaded yet."
+    });
   }
 
-  if (containsAny(lower, ["data", "csv", "number", "trend", "summarize"])) {
-    steps.push({ title: "Checked data", detail: "Looking for uploaded rows, columns, and numbers." });
+  if (skill.id === "research") {
+    steps.push({ type: "action", text: "Researching with live search before answering." });
   }
 
-  if (containsAny(lower, ["image", "picture", "screenshot", "photo", "look"])) {
-    steps.push({ title: "Checked images", detail: "Looking at image details and previews." });
-  }
+  steps.push({
+    type: "action",
+    text: state.backendOnline ? `Asking Grok (${state.backendModel || "xAI"}).` : "Composing a local answer."
+  });
 
-  if (containsAny(lower, ["grok", "xai", "voice model", "api key"])) {
-    steps.push({ title: "Checked voice plan", detail: "Comparing local demo voice with production Grok voice." });
-  }
-
-  steps.push({ title: "Drafted answer", detail: "Combining your request with session memory." });
   return steps;
 }
+
+function relevantMemory(prompt) {
+  const lower = prompt.toLowerCase();
+  const words = new Set(lower.match(/[a-z0-9]{4,}/g) || []);
+  for (const item of state.memory.slice().reverse()) {
+    const hay = `${item.name} ${item.summary}`.toLowerCase();
+    for (const word of words) {
+      if (hay.includes(word)) return item.name;
+    }
+  }
+  return "";
+}
+
+// ---------------------------------------------------------------------------
+// Prompt handling + streaming chat
+// ---------------------------------------------------------------------------
+
+async function handlePrompt(prompt) {
+  const cleaned = String(prompt || "").trim();
+  if (!cleaned) return;
+  if (state.streaming) return;
+
+  showPage("talk");
+  addMessage("user", cleaned);
+  state.history.push({ role: "user", content: cleaned });
+  els.promptInput.value = "";
+
+  const detected = detectSkill(cleaned);
+  if (detected && detected.id !== state.mode) {
+    setMode(detected.id, false);
+    addActivity("Auto-routed", `Switched to ${detected.name} based on what you asked.`);
+  }
+
+  const steps = planReasoning(cleaned, detected);
+  steps.forEach((step, index) => {
+    window.setTimeout(() => addReasoning(step.type, step.text), index * 140);
+  });
+
+  const startDelay = Math.max(280, steps.length * 150);
+  window.setTimeout(() => respond(cleaned), startDelay);
+}
+
+async function respond(prompt) {
+  state.streaming = true;
+  setSpeechStatus("Thinking", false, false);
+  const bubble = addMessage("agent", "");
+  bubble.classList.add("typing");
+
+  let answer = "";
+  let citations = [];
+
+  if (state.backendOnline) {
+    try {
+      const result = await streamGrok(prompt, (delta) => {
+        answer += delta;
+        bubble.textContent = stripSpeechTags(answer);
+        els.transcript.scrollTop = els.transcript.scrollHeight;
+      });
+      answer = result.text || answer;
+      citations = result.citations || [];
+      addReasoning("observation", "Got Grok's reply. Speaking it now.");
+    } catch (error) {
+      addReasoning("observation", `Grok hiccup (${error.message || "error"}). Using a local reply.`);
+      answer = answerPrompt(prompt);
+    }
+  } else {
+    answer = answerPrompt(prompt);
+    addReasoning("observation", "Answered locally (no backend connected).");
+  }
+
+  const spoken = answer || answerPrompt(prompt);
+  bubble.classList.remove("typing");
+  bubble.textContent = stripSpeechTags(spoken);
+  if (citations.length) renderCitations(bubble, citations);
+  state.history.push({ role: "assistant", content: stripSpeechTags(spoken) });
+
+  state.streaming = false;
+  speak(spoken);
+}
+
+async function streamGrok(prompt, onDelta) {
+  const response = await fetch("/api/grok/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: prompt,
+      persona: getPersona().id,
+      mode: state.mode,
+      history: state.history.slice(0, -1).slice(-10),
+      memory: state.memory.map((item) => ({
+        name: item.name,
+        type: item.type,
+        summary: item.summary
+      }))
+    })
+  });
+
+  if (!response.ok || !response.body) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Grok request failed");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let citations = [];
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() || "";
+    for (const frame of frames) {
+      const line = frame.trim();
+      if (!line.startsWith("data:")) continue;
+      const json = safeParse(line.slice(5).trim());
+      if (!json) continue;
+      if (json.type === "delta" && json.text) {
+        text += json.text;
+        onDelta(json.text);
+      } else if (json.type === "citations") {
+        citations = json.citations || citations;
+      }
+    }
+  }
+
+  return { text, citations };
+}
+
+function renderCitations(bubble, citations) {
+  const list = Array.isArray(citations) ? citations.filter(Boolean).slice(0, 5) : [];
+  if (!list.length) return;
+  const wrap = document.createElement("div");
+  wrap.className = "citations";
+  wrap.innerHTML =
+    `<span>Sources</span>` +
+    list
+      .map((url, index) => {
+        const href = typeof url === "string" ? url : url.url || "";
+        let label = href;
+        try {
+          label = new URL(href).hostname.replace(/^www\./, "");
+        } catch (error) {
+          label = `Source ${index + 1}`;
+        }
+        return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+      })
+      .join("");
+  bubble.appendChild(wrap);
+}
+
+// ---------------------------------------------------------------------------
+// Local fallback answers (used when the backend / Grok is not connected)
+// ---------------------------------------------------------------------------
 
 function answerPrompt(rawPrompt) {
   const prompt = rawPrompt.toLowerCase();
@@ -515,131 +740,461 @@ function answerPrompt(rawPrompt) {
   const csvs = state.memory.filter((item) => item.type === "csv");
   const images = state.memory.filter((item) => item.type === "image");
 
-  if (containsAny(prompt, ["grok", "xai", "api key", "voice model", "better voice"])) {
-    return "Yes, Grok xAI voice is worth testing for the real voice agent. It supports realtime voice, tool use, and simple usage pricing. I would not put the real key inside this static page because anyone could see it. The right architecture is a small backend that stores the Grok key, creates a voice session, and lets this page connect safely. For now, this demo uses Chrome voice so it can open as one file.";
+  if (containsAny(prompt, ["grok", "xai", "voice model", "real voice", "human voice"])) {
+    return "Yeah, the real magic is Grok voice. Start the server with your xAI key and hit Start live call, and I'll talk back in real time with natural prosody and barge-in. Right now we're in local mode, so this is a preview.";
   }
-
   if (containsAny(prompt, ["what are you", "what do you do", "who are you", "voicemate"])) {
-    return "I am VoiceMate, a prototype for a human like voice agent. I can talk, type, remember uploads, summarize files, inspect image details, help with pitches, and show what I am doing while I answer.";
+    return "I'm VoiceMate, a voice companion. I can chat, research things, give you a quick briefing, help you pitch, read your data, and coach you, and I show my reasoning while I work.";
   }
-
   if (containsAny(prompt, ["pitch", "sell", "demo", "client", "persuade"])) {
-    return `${persona.name} pitch mode: VoiceMate gives users one calm place to talk, type, upload context, and get useful answers. The value is speed and clarity. Give it your real information and it becomes a pitch partner, analyst, and conversation assistant. Current context: ${memoryContext}`;
+    return `${persona.name} here. Quick pitch: VoiceMate gives people one calm place to talk, drop in context, and get useful answers, out loud. The win is speed and clarity. Want me to tailor it to a specific audience?`;
   }
-
-  if (containsAny(prompt, ["upload", "file", "files", "memory", "remember", "what did i upload"])) {
-    if (!state.memory.length) return "You have not added memory yet. Upload files, images, or paste notes on the Memory page.";
-    return `I have ${state.memory.length} memory item${state.memory.length === 1 ? "" : "s"} right now: ${state.memory
-      .map((item) => `${item.name} as ${item.type}`)
+  if (containsAny(prompt, ["upload", "file", "remember", "what did i upload", "memory"])) {
+    if (!state.memory.length) return "Nothing saved yet. Drop files or paste notes on the Memory page and I'll keep them in mind.";
+    return `I'm holding ${state.memory.length} item${state.memory.length === 1 ? "" : "s"}: ${state.memory
+      .map((item) => `${item.name}`)
       .join(", ")}.`;
   }
-
-  if (containsAny(prompt, ["data", "csv", "numbers", "trend", "analyze", "summarize my data"])) {
-    if (!csvs.length) {
-      return "I do not see a CSV file yet. Upload one on the Memory page and I can summarize rows, columns, averages, ranges, and obvious patterns.";
-    }
-
+  if (containsAny(prompt, ["data", "csv", "numbers", "trend", "analyze"])) {
+    if (!csvs.length) return "I don't see a CSV yet. Upload one and I'll call out rows, columns, averages, and anything that jumps out.";
     return csvs.map((csv) => `${csv.name}: ${csv.summary} ${csv.insights || ""}`).join(" ");
   }
-
   if (containsAny(prompt, ["image", "picture", "photo", "screenshot", "look at"])) {
-    if (!images.length) {
-      return "I do not see an image yet. Upload one on the Memory page or with the upload button in Talk mode. This local demo reads image details and previews. The real version should connect to a multimodal model for full image understanding.";
-    }
-
+    if (!images.length) return "No image yet. Add one and I'll read its details. Full visual understanding needs the multimodal model on the backend.";
     return images.map((image) => `${image.name}: ${image.summary}`).join(" ");
   }
-
-  if (containsAny(prompt, ["production", "build", "real app", "features", "make it work"])) {
-    return "For the real product, I would use Grok xAI or OpenAI for realtime voice, LiveKit for voice sessions, a backend for secret keys, a multimodal model for images, private memory, source based answers, and real tools for search, calendars, CRM, and documents.";
+  if (containsAny(prompt, ["briefing", "digest", "catch me up", "rundown", "good morning"])) {
+    if (!state.memory.length) return "Here's your briefing: nothing in memory yet, so there's not much to report. Add notes or files and I'll build a proper rundown.";
+    return `Quick briefing. ${memoryContext}. That's what I've got so far.`;
   }
-
-  if (state.mode === "pitch") {
-    return `Pitch mode: I would explain the outcome first. VoiceMate helps people talk with their information instead of digging through files. It listens, remembers, summarizes, and turns rough ideas into clear action. Current context: ${memoryContext}`;
+  if (containsAny(prompt, ["research", "look up", "find out", "latest", "sources"])) {
+    return "I'd normally research that with live search and cite the sources, but that needs the Grok backend running. Start the server with your xAI key and ask again.";
   }
-
-  if (state.mode === "analyst") {
-    return `Analyst mode: I would separate your notes, files, images, and data, then look for patterns and missing context. Current memory: ${memoryContext}`;
-  }
-
-  if (state.mode === "coach") {
-    return "Coach mode: Tell me the audience and goal. I can help you sound clearer, more natural, and more persuasive.";
-  }
-
-  return `I can help with that. I am using ${modeLabel()} mode and this memory: ${memoryContext}. Add more files or notes if you want a sharper answer.`;
+  return `Got it. We're in ${modeLabel()} mode. ${memoryContext === "no saved memory yet" ? "Ask me anything, or add a file for sharper answers." : `Here's what I'm keeping in mind: ${memoryContext}.`}`;
 }
 
-function saveManualContext() {
-  const content = els.manualContext.value.trim();
-  if (!content) {
-    addActivity("Memory not saved", "Paste text first.");
+// ---------------------------------------------------------------------------
+// Speaking: Grok TTS with a human touch, browser fallback
+// ---------------------------------------------------------------------------
+
+async function speak(text) {
+  if (state.live) return; // realtime handles its own audio
+  const speechText = humanizeForSpeech(text);
+  if (!speechText) return;
+
+  if (state.backendOnline) {
+    try {
+      setSpeechStatus("Speaking", false, true);
+      const response = await fetch("/api/grok/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: speechText,
+          voiceId: getPersona().id,
+          speed: 1.0
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Grok voice failed");
+      }
+
+      const audioBlob = await response.blob();
+      stopCurrentAudio();
+      state.currentAudioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(state.currentAudioUrl);
+      state.currentAudio = audio;
+      audio.onended = () => {
+        state.currentAudio = null;
+        setSpeechStatus("Ready", false, false);
+        startListeningAfterSpeech();
+      };
+      audio.onerror = () => {
+        state.currentAudio = null;
+        setSpeechStatus("Ready", false, false);
+        startListeningAfterSpeech();
+      };
+      await audio.play();
+      return;
+    } catch (error) {
+      addActivity("Grok voice fallback", error.message || "Using local browser voice.");
+    }
+  }
+
+  speakWithBrowser(speechText);
+}
+
+function speakWithBrowser(text) {
+  if (!window.speechSynthesis) return;
+  // Browser voices can't read speech tags; strip them for the fallback.
+  const clean = stripSpeechTags(text);
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(clean);
+  const persona = getPersona();
+  utterance.rate = persona.rate;
+  utterance.pitch = persona.pitch;
+
+  const preferred = pickBrowserVoice();
+  if (preferred) utterance.voice = preferred;
+
+  utterance.onstart = () => setSpeechStatus("Speaking", false, true);
+  utterance.onend = () => {
+    setSpeechStatus("Ready", false, false);
+    startListeningAfterSpeech();
+  };
+  utterance.onerror = () => {
+    setSpeechStatus("Ready", false, false);
+    startListeningAfterSpeech();
+  };
+  window.speechSynthesis.speak(utterance);
+}
+
+function pickBrowserVoice() {
+  if (!window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if (!voices.length) return null;
+  const preferredNames = [
+    "Samantha",
+    "Google US English",
+    "Microsoft Aria Online (Natural)",
+    "Microsoft Jenny Online (Natural)",
+    "Ava",
+    "Allison"
+  ];
+  for (const name of preferredNames) {
+    const match = voices.find((voice) => voice.name === name);
+    if (match) return match;
+  }
+  return voices.find((voice) => /en[-_]US/i.test(voice.lang)) || voices[0];
+}
+
+// Strip markdown/symbols that should never be read aloud, while keeping the
+// Grok speech tags intact for the real TTS engine.
+function humanizeForSpeech(text) {
+  return String(text || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\((?:https?:[^)]+)\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "that link")
+    .replace(/^[\s>#-]*[-*]\s+/gm, "")
+    .replace(/[*_#>]+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function stripSpeechTags(text) {
+  return String(text || "")
+    .replace(/<\/?[a-z-]+>/gi, "")
+    .replace(/\[[a-z-]+\]/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// ---------------------------------------------------------------------------
+// Realtime live call (Grok Voice speech-to-speech)
+// ---------------------------------------------------------------------------
+
+async function startLiveCall() {
+  if (state.live) return;
+  if (!state.backendOnline) {
+    addMessage(
+      "agent",
+      "Live calls need the Grok backend. Start the server with your xAI key (npm start), open localhost, and try the call again."
+    );
+    addActivity("Live call unavailable", "Backend / Grok key not connected.");
     return;
   }
 
-  state.memory.push({
-    type: "note",
-    name: `Pasted context ${state.memory.length + 1}`,
-    summary: summarizeText(content),
-    content,
-    createdAt: new Date().toISOString()
-  });
-  els.manualContext.value = "";
-  renderMemory();
-  addActivity("Saved memory", "Pasted context was added.");
-  addMessage("agent", "I saved that context to memory.");
-}
+  showPage("talk");
+  setLiveButton(true, "Connecting...");
+  addActivity("Starting live call", "Requesting a secure Grok voice session.");
 
-async function handleKnowledgeFiles(files) {
-  if (!files.length) return;
+  let live = {
+    ws: null,
+    ctx: null,
+    stream: null,
+    processor: null,
+    source: null,
+    rate: 24000,
+    sources: new Set(),
+    nextTime: 0,
+    assistantBubble: null,
+    userBubble: null
+  };
+  state.live = live;
 
-  for (const file of files) {
-    const text = await file.text();
-    const type = file.name.toLowerCase().endsWith(".csv") ? "csv" : "note";
-    const item =
-      type === "csv"
-        ? summarizeCsv(file.name, text)
-        : {
-            type,
-            name: file.name,
-            summary: summarizeText(text),
-            content: text.slice(0, 20000),
-            createdAt: new Date().toISOString()
-          };
-
-    state.memory.push(item);
-    addActivity("Read file", `${file.name} was added.`);
-  }
-
-  renderMemory();
-  addMessage("agent", `I added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
-}
-
-async function handleImageFiles(files) {
-  if (!files.length) return;
-
-  for (const file of files) {
-    const preview = await readAsDataUrl(file);
-    const dimensions = await getImageDimensions(preview);
-    const summary = `Image file, ${(file.size / 1024).toFixed(1)} KB, ${dimensions.width} by ${dimensions.height} pixels.`;
-
-    state.memory.push({
-      type: "image",
-      name: file.name,
-      summary,
-      preview,
-      content: `${file.name} ${summary}`,
-      createdAt: new Date().toISOString()
+  try {
+    // 1) Mic first, so we capture audio as early as possible.
+    live.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
     });
-    addActivity("Read image", `${file.name} was added.`);
+
+    let ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!REALTIME_SAMPLE_RATES.includes(ctx.sampleRate)) {
+      await ctx.close();
+      ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+    }
+    if (ctx.state === "suspended") await ctx.resume();
+    live.ctx = ctx;
+    live.rate = ctx.sampleRate;
+
+    // 2) Get an ephemeral client secret from our backend.
+    const secretRes = await fetch("/api/grok/realtime-secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voice: getPersona().id,
+        mode: state.mode,
+        memory: state.memory.map((item) => ({
+          name: item.name,
+          type: item.type,
+          summary: item.summary
+        }))
+      })
+    });
+    const secret = await secretRes.json();
+    if (!secretRes.ok || !secret.value) {
+      throw new Error(secret.error || "Could not start a voice session");
+    }
+
+    // 3) Connect straight to xAI realtime with the ephemeral token.
+    const url = `wss://api.x.ai/v1/realtime?model=${encodeURIComponent(secret.model)}`;
+    const ws = new WebSocket(url, [`xai-client-secret.${secret.value}`]);
+    live.ws = ws;
+
+    ws.addEventListener("open", () => {
+      if (state.live !== live) return;
+      ws.send(
+        JSON.stringify({
+          type: "session.update",
+          session: {
+            voice: getPersona().id,
+            turn_detection: { type: "server_vad" },
+            audio: {
+              input: {
+                format: { type: "audio/pcm", rate: live.rate },
+                transcription: { model: "grok-transcribe" }
+              },
+              output: { format: { type: "audio/pcm", rate: live.rate } }
+            }
+          }
+        })
+      );
+      startMicStreaming(live);
+      setLiveButton(true, "End call");
+      setSpeechStatus("Live", true, false);
+      addActivity("Live call connected", `Talking with Grok voice ${getPersona().name}.`);
+      addMessage("agent", "I'm live. Just start talking whenever you're ready.");
+    });
+
+    ws.addEventListener("message", (event) => handleRealtimeMessage(live, event.data));
+    ws.addEventListener("error", () => {
+      if (state.live === live) endLiveCall("The live connection hit an error.");
+    });
+    ws.addEventListener("close", () => {
+      if (state.live === live) endLiveCall("The call disconnected.");
+    });
+  } catch (error) {
+    addMessage("agent", `Couldn't start the call: ${error.message || "unknown error"}.`);
+    addActivity("Live call failed", error.message || "Unknown error.");
+    endLiveCall();
+  }
+}
+
+function startMicStreaming(live) {
+  const ctx = live.ctx;
+  live.source = ctx.createMediaStreamSource(live.stream);
+  live.processor = ctx.createScriptProcessor(4096, 1, 1);
+  live.source.connect(live.processor);
+  live.processor.connect(ctx.destination);
+
+  live.processor.onaudioprocess = (event) => {
+    if (!live.ws || live.ws.readyState !== WebSocket.OPEN) return;
+    const input = event.inputBuffer.getChannelData(0);
+    const b64 = float32ToBase64PCM16(input);
+    live.ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
+  };
+}
+
+function handleRealtimeMessage(live, raw) {
+  if (state.live !== live) return;
+  const msg = safeParse(raw);
+  if (!msg) return;
+
+  switch (msg.type) {
+    case "input_audio_buffer.speech_started":
+      // Barge-in: user started talking, drop any queued assistant audio.
+      stopLivePlayback(live);
+      setSpeechStatus("Listening", true, false);
+      break;
+
+    case "conversation.item.input_audio_transcription.completed": {
+      const text = (msg.transcript || "").trim();
+      if (text) {
+        addMessage("user", text);
+        state.history.push({ role: "user", content: text });
+      }
+      live.userBubble = null;
+      break;
+    }
+
+    case "response.output_audio_transcript.delta": {
+      if (!live.assistantBubble) {
+        live.assistantBubble = addMessage("agent", "");
+        live.assistantBubble.classList.add("typing");
+        live.assistantText = "";
+      }
+      live.assistantText = (live.assistantText || "") + (msg.delta || "");
+      live.assistantBubble.textContent = stripSpeechTags(live.assistantText);
+      els.transcript.scrollTop = els.transcript.scrollHeight;
+      break;
+    }
+
+    case "response.output_audio_transcript.done": {
+      if (live.assistantBubble) {
+        live.assistantBubble.classList.remove("typing");
+        const finalText = stripSpeechTags(msg.transcript || live.assistantText || "");
+        if (finalText) {
+          live.assistantBubble.textContent = finalText;
+          state.history.push({ role: "assistant", content: finalText });
+        }
+      }
+      live.assistantBubble = null;
+      live.assistantText = "";
+      break;
+    }
+
+    case "response.output_audio.delta":
+      if (msg.delta) enqueueLiveAudio(live, msg.delta);
+      setSpeechStatus("Speaking", false, true);
+      break;
+
+    case "response.done":
+      setSpeechStatus("Live", true, false);
+      break;
+
+    case "error":
+      addActivity("Realtime error", msg.error?.message || msg.message || "Unknown realtime error.");
+      break;
+
+    default:
+      break;
+  }
+}
+
+function enqueueLiveAudio(live, base64) {
+  const float32 = base64PCM16ToFloat32(base64);
+  if (!float32.length) return;
+  const ctx = live.ctx;
+  const buffer = ctx.createBuffer(1, float32.length, live.rate);
+  buffer.getChannelData(0).set(float32);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+
+  const now = ctx.currentTime;
+  if (live.nextTime < now) live.nextTime = now + 0.04;
+  source.start(live.nextTime);
+  live.nextTime += buffer.duration;
+  live.sources.add(source);
+  source.onended = () => live.sources.delete(source);
+}
+
+function stopLivePlayback(live) {
+  live.sources.forEach((source) => {
+    try {
+      source.stop();
+    } catch (error) {
+      // already stopped
+    }
+  });
+  live.sources.clear();
+  live.nextTime = 0;
+}
+
+function endLiveCall(note) {
+  const live = state.live;
+  if (!live) {
+    setLiveButton(false, "Live call");
+    return;
+  }
+  state.live = null;
+
+  try {
+    if (live.processor) {
+      live.processor.disconnect();
+      live.processor.onaudioprocess = null;
+    }
+    if (live.source) live.source.disconnect();
+    if (live.stream) live.stream.getTracks().forEach((track) => track.stop());
+    stopLivePlayback(live);
+    if (live.ws && live.ws.readyState <= WebSocket.OPEN) live.ws.close();
+    if (live.ctx && live.ctx.state !== "closed") live.ctx.close();
+  } catch (error) {
+    // ignore teardown errors
   }
 
-  renderMemory();
-  addMessage("agent", `I added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
+  setLiveButton(false, "Live call");
+  setSpeechStatus("Ready", false, false);
+  if (note) {
+    addActivity("Live call ended", note);
+    addMessage("agent", note);
+  }
 }
+
+function setLiveButton(active, label) {
+  if (!els.liveButton) return;
+  els.liveButton.classList.toggle("active", active);
+  els.liveButton.querySelector(".live-label").textContent = label;
+  els.liveButton.setAttribute("aria-pressed", String(active));
+}
+
+function float32ToBase64PCM16(float32Array) {
+  const pcm16 = new Int16Array(float32Array.length);
+  for (let i = 0; i < float32Array.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32Array[i]));
+    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return bytesToBase64(new Uint8Array(pcm16.buffer));
+}
+
+function base64PCM16ToFloat32(base64String) {
+  const bytes = base64ToBytes(base64String);
+  const usableLength = bytes.length - (bytes.length % 2);
+  const pcm16 = new Int16Array(bytes.buffer, 0, usableLength / 2);
+  const float32 = new Float32Array(pcm16.length);
+  for (let i = 0; i < pcm16.length; i++) {
+    float32[i] = pcm16[i] / 32768.0;
+  }
+  return float32;
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64String) {
+  const binary = atob(base64String);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// ---------------------------------------------------------------------------
+// Push-to-talk speech recognition (browser STT for typed-style turns)
+// ---------------------------------------------------------------------------
 
 function setupSpeechRecognition() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
   if (!Recognition) {
     els.micButton.disabled = false;
     setSpeechStatus("Type ready", false);
@@ -667,7 +1222,7 @@ function setupSpeechRecognition() {
 
   state.recognition.onerror = () => {
     setSpeechStatus("Type ready", false);
-    addActivity("Voice input issue", "Chrome blocked or skipped speech input.");
+    addActivity("Voice input issue", "The browser blocked or skipped speech input.");
   };
 
   state.recognition.onend = () => {
@@ -678,89 +1233,26 @@ function setupSpeechRecognition() {
 }
 
 function startListeningAfterSpeech() {
-  if (!state.talkStarted || !state.recognition || state.recognizing) return;
-
+  if (!state.talkStarted || state.live || !state.recognition || state.recognizing) return;
+  // Only auto-listen if the user had been using the mic.
+  if (!state.autoListen) return;
   try {
     state.recognition.start();
   } catch (error) {
-    addActivity("Tap mic to speak", "Chrome needs a mic tap before listening.");
+    addActivity("Tap mic to speak", "The browser needs a tap before listening again.");
   }
 }
 
-async function speak(text) {
-  if (state.backendOnline) {
-    try {
-      setSpeechStatus("Speaking", false, true);
-      const response = await fetch("/api/grok/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          text,
-          voiceId: getPersona().id
-        })
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Grok voice failed");
-      }
-
-      const audioBlob = await response.blob();
-      if (state.currentAudioUrl) {
-        URL.revokeObjectURL(state.currentAudioUrl);
-      }
-      state.currentAudioUrl = URL.createObjectURL(audioBlob);
-      if (state.currentAudio) {
-        state.currentAudio.pause();
-      }
-      const audio = new Audio(state.currentAudioUrl);
-      state.currentAudio = audio;
-      audio.onended = () => {
-        state.currentAudio = null;
-        setSpeechStatus("Ready", false, false);
-        startListeningAfterSpeech();
-      };
-      audio.onerror = () => {
-        state.currentAudio = null;
-        setSpeechStatus("Ready", false, false);
-        startListeningAfterSpeech();
-      };
-      await audio.play();
-      return;
-    } catch (error) {
-      addActivity("Grok voice fallback", error.message || "Using local browser voice.");
-    }
-  }
-
-  if (!window.speechSynthesis) return;
-
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  const persona = getPersona();
-
-  utterance.rate = persona.rate;
-  utterance.pitch = persona.pitch;
-
-  utterance.onstart = () => setSpeechStatus("Speaking", false, true);
-  utterance.onend = () => {
-    setSpeechStatus("Ready", false, false);
-    startListeningAfterSpeech();
-  };
-  utterance.onerror = () => {
-    setSpeechStatus("Ready", false, false);
-    startListeningAfterSpeech();
-  };
-
-  window.speechSynthesis.speak(utterance);
-}
+// ---------------------------------------------------------------------------
+// Transcript + activity rendering
+// ---------------------------------------------------------------------------
 
 function setSpeechStatus(label, listening, speaking = false) {
   els.speechStatus.textContent = label;
   [els.voiceOrb, els.heroOrb].forEach((orb) => {
-    orb.classList.toggle("listening", listening);
-    orb.classList.toggle("speaking", speaking);
+    if (!orb) return;
+    orb.classList.toggle("listening", Boolean(listening));
+    orb.classList.toggle("speaking", Boolean(speaking));
   });
 }
 
@@ -770,37 +1262,183 @@ function addMessage(role, text) {
   message.textContent = text;
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
+  return message;
 }
 
 function getTranscriptText() {
   return [...els.transcript.querySelectorAll(".message")]
     .map((message) => {
       const speaker = message.classList.contains("user") ? "You" : "VoiceMate";
-      return `${speaker}: ${message.textContent.trim()}`;
+      const clone = message.cloneNode(true);
+      const cites = clone.querySelector(".citations");
+      if (cites) cites.remove();
+      return `${speaker}: ${clone.textContent.trim()}`;
     })
     .filter(Boolean)
     .join("\n");
 }
 
 function addActivity(title, detail) {
+  addTrace("system", title, detail);
+}
+
+function addReasoning(type, text) {
+  const titles = { thought: "Thinking", action: "Doing", observation: "Noticed" };
+  addTrace(type, titles[type] || "Step", text);
+}
+
+function addTrace(type, title, detail) {
   const item = document.createElement("div");
-  item.className = "activity-item";
+  item.className = `activity-item trace-${type}`;
   item.innerHTML = `<span></span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`;
   els.activityFeed.prepend(item);
+  while (els.activityFeed.children.length > 60) {
+    els.activityFeed.removeChild(els.activityFeed.lastChild);
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Memory + files
+// ---------------------------------------------------------------------------
+
+function renderMemory() {
+  els.memoryGrid.innerHTML = "";
+  if (!state.memory.length) {
+    const empty = document.createElement("div");
+    empty.className = "memory-empty";
+    empty.textContent = "No memory yet.";
+    els.memoryGrid.appendChild(empty);
+    return;
+  }
+
+  state.memory
+    .slice()
+    .reverse()
+    .forEach((item) => {
+      const card = document.createElement("article");
+      card.className = `memory-card ${item.type}`;
+      const visual = item.preview
+        ? `<img src="${item.preview}" alt="${escapeHtml(item.name)} preview" />`
+        : `<div class="memory-icon">${memoryIcon(item.type)}</div>`;
+      card.innerHTML = `
+        ${visual}
+        <div>
+          <span>${escapeHtml(item.type)}</span>
+          <strong>${escapeHtml(item.name)}</strong>
+          <p>${escapeHtml(item.summary)}</p>
+        </div>
+      `;
+      els.memoryGrid.appendChild(card);
+    });
+}
+
+function saveManualContext() {
+  const content = els.manualContext.value.trim();
+  if (!content) {
+    addActivity("Memory not saved", "Paste text first.");
+    return;
+  }
+  state.memory.push({
+    type: "note",
+    name: `Pasted context ${state.memory.length + 1}`,
+    summary: summarizeText(content),
+    content,
+    createdAt: new Date().toISOString()
+  });
+  els.manualContext.value = "";
+  renderMemory();
+  addActivity("Saved memory", "Pasted context was added.");
+  addMessage("agent", "Got it, I saved that to memory.");
+}
+
+async function handleKnowledgeFiles(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    const text = await file.text();
+    const type = file.name.toLowerCase().endsWith(".csv") ? "csv" : "note";
+    const item =
+      type === "csv"
+        ? summarizeCsv(file.name, text)
+        : {
+            type,
+            name: file.name,
+            summary: summarizeText(text),
+            content: text.slice(0, 20000),
+            createdAt: new Date().toISOString()
+          };
+    state.memory.push(item);
+    addActivity("Read file", `${file.name} was added.`);
+  }
+  renderMemory();
+  addMessage("agent", `Added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
+}
+
+async function handleImageFiles(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    const preview = await readAsDataUrl(file);
+    const dimensions = await getImageDimensions(preview);
+    const summary = `Image, ${(file.size / 1024).toFixed(1)} KB, ${dimensions.width} by ${dimensions.height} pixels.`;
+    state.memory.push({
+      type: "image",
+      name: file.name,
+      summary,
+      preview,
+      content: `${file.name} ${summary}`,
+      createdAt: new Date().toISOString()
+    });
+    addActivity("Read image", `${file.name} was added.`);
+  }
+  renderMemory();
+  addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
+}
+
+// ---------------------------------------------------------------------------
+// Backend status
+// ---------------------------------------------------------------------------
+
+function updateGrokStatus() {
+  if (state.backendOnline) {
+    els.grokStatus.textContent = `Connected to Grok. Model ${state.backendModel || "xAI"}, realtime ${state.realtimeModel || "grok-voice"}. Your key stays on the backend.`;
+    els.backendStatus.textContent = "Grok voice";
+    els.backendStatus.classList.add("connected");
+    if (els.liveButton) els.liveButton.classList.remove("disabled");
+    return;
+  }
+  els.backendStatus.textContent = "Local mode";
+  els.backendStatus.classList.remove("connected");
+  els.grokStatus.textContent = "Local mode. Run npm start and open localhost to unlock real Grok voice and live calls.";
+}
+
+async function checkBackend() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    const data = await response.json();
+    state.backendOnline = Boolean(response.ok && data.xaiConfigured);
+    state.backendModel = data.model || "";
+    state.realtimeModel = data.realtimeModel || "";
+    if (state.backendOnline) {
+      addActivity("Backend connected", `Grok ready with ${state.backendModel || "xAI"}.`);
+    } else if (response.ok) {
+      addActivity("Backend missing key", "Add XAI_API_KEY to .env.local.");
+    }
+  } catch (error) {
+    state.backendOnline = false;
+  }
+  updateGrokStatus();
+}
+
+// ---------------------------------------------------------------------------
+// Small utilities + summarizers
+// ---------------------------------------------------------------------------
 
 function getPersona() {
   return GROK_VOICES.find((persona) => persona.id === state.persona) || GROK_VOICES[0];
 }
 
 function modeLabel() {
-  const labels = {
-    companion: "Natural conversation",
-    pitch: "Pitch builder",
-    analyst: "Data analyst",
-    coach: "Meeting coach"
-  };
-  return labels[state.mode] || labels.companion;
+  const skill = SKILLS.find((item) => item.id === state.mode);
+  return skill ? skill.name : "Natural chat";
 }
 
 function memoryIcon(type) {
@@ -821,7 +1459,6 @@ function summarizeMemoryForAnswer() {
 function summarizeText(text) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "Empty text.";
-
   const words = normalized.split(/\s+/).length;
   const firstSentence = normalized.split(/[.!?]/)[0].trim().slice(0, 190);
   const keywords = topKeywords(normalized).slice(0, 5);
@@ -836,7 +1473,6 @@ function summarizeCsv(name, text) {
   const insights = numericSummaries.length
     ? `Numeric columns: ${numericSummaries.join("; ")}.`
     : "No obvious numeric columns found.";
-
   return {
     type: "csv",
     name,
@@ -853,7 +1489,6 @@ function parseCsv(text) {
     const cells = [];
     let current = "";
     let quoted = false;
-
     for (const char of line) {
       if (char === '"') {
         quoted = !quoted;
@@ -864,7 +1499,6 @@ function parseCsv(text) {
         current += char;
       }
     }
-
     cells.push(current.trim());
     return cells;
   });
@@ -876,9 +1510,7 @@ function summarizeNumericColumns(headers, rows) {
       const values = rows
         .map((row) => Number(String(row[columnIndex] || "").replace(/[$,%]/g, "")))
         .filter((value) => Number.isFinite(value));
-
       if (values.length < Math.max(2, rows.length * 0.5)) return null;
-
       const min = Math.min(...values);
       const max = Math.max(...values);
       const average = values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -890,24 +1522,8 @@ function summarizeNumericColumns(headers, rows) {
 
 function topKeywords(text) {
   const stop = new Set([
-    "the",
-    "and",
-    "for",
-    "that",
-    "with",
-    "this",
-    "you",
-    "your",
-    "are",
-    "from",
-    "into",
-    "can",
-    "will",
-    "have",
-    "has",
-    "was",
-    "our",
-    "about"
+    "the", "and", "for", "that", "with", "this", "you", "your", "are", "from",
+    "into", "can", "will", "have", "has", "was", "our", "about"
   ]);
   const counts = new Map();
   text
@@ -916,10 +1532,7 @@ function topKeywords(text) {
     ?.forEach((word) => {
       if (!stop.has(word)) counts.set(word, (counts.get(word) || 0) + 1);
     });
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([word]) => word);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([word]) => word);
 }
 
 function readAsDataUrl(file) {
@@ -940,35 +1553,12 @@ function getImageDimensions(src) {
   });
 }
 
-function updateGrokStatus() {
-  if (state.backendOnline) {
-    els.grokStatus.textContent = `Connected to Grok. Model: ${state.backendModel || "xAI"}. Voice key is protected by the backend.`;
-    els.backendStatus.textContent = "Grok voice";
-    els.backendStatus.classList.add("connected");
-    return;
-  }
-  els.backendStatus.textContent = "Local mode";
-  els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = "Local mode. Run npm start and open localhost to use Grok voice.";
-}
-
-async function checkBackend() {
+function safeParse(value) {
   try {
-    const response = await fetch("/api/health", { cache: "no-store" });
-    const data = await response.json();
-    state.backendOnline = Boolean(response.ok && data.xaiConfigured);
-    state.backendModel = data.model || "";
-
-    if (state.backendOnline) {
-      addActivity("Backend connected", `Grok is ready with ${state.backendModel || "xAI"}.`);
-    } else if (response.ok) {
-      addActivity("Backend missing key", "Add XAI_API_KEY to .env.local.");
-    }
+    return JSON.parse(value);
   } catch (error) {
-    state.backendOnline = false;
+    return null;
   }
-
-  updateGrokStatus();
 }
 
 function containsAny(value, needles) {
@@ -991,5 +1581,12 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// Track whether the user has used the mic so we don't auto-listen unexpectedly.
+document.addEventListener("click", (event) => {
+  if (event.target.closest && event.target.closest("#micButton")) {
+    state.autoListen = true;
+  }
+});
 
 init();
