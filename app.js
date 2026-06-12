@@ -1926,7 +1926,7 @@ async function startLiveCall() {
   if (!state.backendOnline) {
     addMessage(
       "system",
-      "The live voice needs the VoiceMate server. Start it with npm start, open localhost, and tap Start live call again."
+      `The live voice needs the VoiceMate server. Start it with npm start, open ${localServerUrl()}, and tap Start live call again.`
     );
     addActivity("Live voice unavailable", "Voice server not connected.");
     showPage("settings");
@@ -3086,6 +3086,13 @@ async function enrichImageMemory(item) {
 // Backend status
 // ---------------------------------------------------------------------------
 
+function localServerUrl() {
+  if (/^https?:/.test(window.location.protocol)) {
+    return window.location.origin;
+  }
+  return "http://localhost:3000";
+}
+
 function updateGrokStatus() {
   if (state.backendOnline) {
     els.grokStatus.textContent = "Connected. Natural live voice is ready.";
@@ -3097,7 +3104,7 @@ function updateGrokStatus() {
   }
   els.backendStatus.textContent = "Browser voice";
   els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
+  els.grokStatus.textContent = `Offline. Run npm start and open ${localServerUrl()} for natural live voice.`;
   if (els.voiceHint) els.voiceHint.textContent = "Browser preview. Set up the server for live voice";
   if (!state.live) setLiveButton(false, "Set up live voice");
 }
