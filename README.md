@@ -102,6 +102,15 @@ key would leak. Use the backend below for the real thing.
 
 3. Open `http://localhost:3000`, go to **Talk**, and hit **Start live call**.
 
+**Port already in use?** An old server may still be running. On Mac/Linux:
+
+```bash
+npm run stop
+npm run dev
+```
+
+Or free port 3000 manually: `lsof -ti :3000 | xargs kill -9`
+
 If you expose the server beyond localhost, set `VM_API_TOKEN` and put an auth
 gate in front of the app. The local prototype has lightweight API rate limits,
 but it is still designed primarily for local development.

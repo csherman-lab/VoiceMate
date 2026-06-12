@@ -111,6 +111,16 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`\nPort ${PORT} is already in use — an old VoiceMate server is probably still running.`);
+    console.error(`\nFree the port (Mac/Linux):\n  lsof -ti :${PORT} | xargs kill -9\n`);
+    console.error(`Or use a different port:\n  PORT=${PORT + 1} npm run dev\n`);
+    process.exit(1);
+  }
+  throw error;
+});
+
 server.listen(PORT, () => {
   console.log(`VoiceMate running at http://localhost:${PORT}`);
   console.log(`xAI key configured: ${Boolean(XAI_API_KEY)}`);
