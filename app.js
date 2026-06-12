@@ -271,6 +271,7 @@ function init() {
   setLiveButton(false, "Start call");
   setupSpeechRecognition();
   setupShortcuts();
+  setupEyes();
   registerServiceWorker();
   wireEvents();
 
@@ -1653,6 +1654,122 @@ function setSpeechStatus(label, listening, speaking = false) {
     orb.classList.toggle("listening", Boolean(listening));
     orb.classList.toggle("speaking", Boolean(speaking));
   });
+
+  if (speaking) setEyeMode("speaking");
+  else if (listening) setEyeMode("listening");
+  else if (label === "Thinking") setEyeMode("thinking");
+  else setEyeMode("idle");
+}
+
+// ---------------------------------------------------------------------------
+// Living eyes: cursor-follow gaze, natural blinks/saccades, and states
+// ---------------------------------------------------------------------------
+
+const eyes = {
+  els: [],
+  gx: 0,
+  gy: 0,
+  tx: 0,
+  ty: 0,
+  mode: "idle",
+  mouseX: 0,
+  mouseY: 0,
+  mouseTs: -9999,
+  nextSaccade: 0
+};
+
+function setupEyes() {
+  eyes.els = Array.from(document.querySelectorAll(".orb-eyes"));
+  if (!eyes.els.length) return;
+  window.addEventListener("mousemove", (event) => {
+    eyes.mouseX = event.clientX;
+    eyes.mouseY = event.clientY;
+    eyes.mouseTs = performance.now();
+  });
+  scheduleBlink();
+  requestAnimationFrame(eyeLoop);
+}
+
+function setEyeMode(mode) {
+  if (eyes.mode === mode) return;
+  eyes.mode = mode;
+  eyes.els.forEach((el) => el.classList.toggle("alert", mode === "listening"));
+}
+
+function activeOrbRect() {
+  const orb = document.body.classList.contains("talk-session") ? els.voiceOrb : els.heroOrb;
+  const candidates = [orb, els.voiceOrb, els.heroOrb];
+  for (const candidate of candidates) {
+    if (candidate) {
+      const rect = candidate.getBoundingClientRect();
+      if (rect.width && rect.bottom > 0 && rect.top < window.innerHeight) return rect;
+    }
+  }
+  return null;
+}
+
+function eyeLoop() {
+  const now = performance.now();
+  const mouseActive = now - eyes.mouseTs < 2500;
+  const typing = document.activeElement === els.promptInput;
+
+  if (eyes.mode === "speaking") {
+    // Steady, with tiny life so it isn't a stare.
+    if (now > eyes.nextSaccade) {
+      eyes.tx = (Math.random() - 0.5) * 0.18;
+      eyes.ty = (Math.random() - 0.5) * 0.14;
+      eyes.nextSaccade = now + 600 + Math.random() * 900;
+    }
+  } else if (eyes.mode === "thinking") {
+    eyes.tx = -0.45;
+    eyes.ty = -0.62;
+  } else if (typing) {
+    // Look down toward the message box.
+    eyes.tx = 0;
+    eyes.ty = 0.55;
+  } else if (mouseActive) {
+    const rect = activeOrbRect();
+    if (rect) {
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      eyes.tx = clampEye((eyes.mouseX - cx) / (rect.width * 0.9));
+      eyes.ty = clampEye((eyes.mouseY - cy) / (rect.height * 0.9));
+    }
+  } else if (now > eyes.nextSaccade) {
+    // Idle wandering: occasional small glances, sometimes center.
+    eyes.tx = Math.random() < 0.4 ? 0 : Math.random() * 1.2 - 0.6;
+    eyes.ty = Math.random() * 0.7 - 0.35;
+    eyes.nextSaccade = now + 1400 + Math.random() * 3000;
+  }
+
+  eyes.gx += (eyes.tx - eyes.gx) * 0.12;
+  eyes.gy += (eyes.ty - eyes.gy) * 0.12;
+  const transform = `translate(${(eyes.gx * 8).toFixed(2)}%, ${(eyes.gy * 6).toFixed(2)}%)`;
+  for (const el of eyes.els) el.style.transform = transform;
+
+  requestAnimationFrame(eyeLoop);
+}
+
+function scheduleBlink() {
+  const delay = 1800 + Math.random() * 4200;
+  window.setTimeout(() => {
+    blinkOnce(() => {
+      if (Math.random() < 0.25) window.setTimeout(() => blinkOnce(scheduleBlink), 180);
+      else scheduleBlink();
+    });
+  }, delay);
+}
+
+function blinkOnce(done) {
+  eyes.els.forEach((el) => el.classList.add("blinking"));
+  window.setTimeout(() => {
+    eyes.els.forEach((el) => el.classList.remove("blinking"));
+    if (done) done();
+  }, 120);
+}
+
+function clampEye(value) {
+  return Math.min(1, Math.max(-1, value));
 }
 
 function addMessage(role, text) {

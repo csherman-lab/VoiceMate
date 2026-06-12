@@ -439,8 +439,8 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 9%;
-  /* The eyes glance left, then right, then settle. */
-  animation: orbLook 9s ease-in-out infinite;
+  /* Gaze is driven by JS (cursor-follow, saccades, look-away) */
+  will-change: transform;
 }
 
 .orb-eyes i {
@@ -450,8 +450,17 @@ h3 {
   background: #ffffff;
   box-shadow: 0 2px 12px rgba(40, 0, 40, 0.22);
   transform-origin: center;
-  /* ...and blink after looking around. */
-  animation: orbBlink 9s ease-in-out infinite;
+  transition: transform 110ms ease;
+}
+
+/* Perk up (alert) when listening */
+.orb-eyes.alert i {
+  transform: scaleY(1.18);
+}
+
+/* Blink */
+.orb-eyes.blinking i {
+  transform: scaleY(0.08);
 }
 
 .hero-orb {
@@ -1457,45 +1466,6 @@ footer {
   }
 }
 
-@keyframes orbLook {
-  0%,
-  6% {
-    transform: translateX(0);
-  }
-  13%,
-  24% {
-    transform: translateX(-7%);
-  }
-  31%,
-  42% {
-    transform: translateX(7%);
-  }
-  49%,
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes orbBlink {
-  0%,
-  54% {
-    transform: scaleY(1);
-  }
-  58% {
-    transform: scaleY(0.1);
-  }
-  62%,
-  92% {
-    transform: scaleY(1);
-  }
-  95% {
-    transform: scaleY(0.1);
-  }
-  98%,
-  100% {
-    transform: scaleY(1);
-  }
-}
 
 @media (max-width: 900px) {
   .hero,
@@ -2332,11 +2302,6 @@ footer {
   transition: transform 120ms ease-out;
 }
 
-.orb.reacting .orb-eyes,
-.orb.speaking .orb-eyes {
-  animation: none;
-  transform: none;
-}
 
 /* ===========================================================================
    Dark mode — driven by the theme toggle (data-theme="dark")
