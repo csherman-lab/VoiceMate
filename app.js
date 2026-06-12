@@ -2603,12 +2603,12 @@ function setupEyes() {
     if (!orb) return;
     orb.setAttribute("tabindex", "0");
     orb.setAttribute("role", "button");
-    orb.setAttribute("aria-label", "Make VoiceMate react");
-    orb.addEventListener("click", () => playOrbHappy(orb));
+    orb.setAttribute("aria-label", "VoiceMate");
+    orb.addEventListener("click", () => playOrbSquint());
     orb.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        playOrbHappy(orb);
+        playOrbSquint();
       }
     });
   });
@@ -2621,17 +2621,15 @@ function setupEyes() {
   requestAnimationFrame(eyeLoop);
 }
 
-function playOrbHappy(orb) {
-  if (!orb) return;
-  setExpression("happy");
-  orb.classList.remove("orb-happy-pop");
-  // Force a reflow so repeated taps restart the animation.
-  void orb.offsetWidth;
-  orb.classList.add("orb-happy-pop");
-  window.setTimeout(() => orb.classList.remove("orb-happy-pop"), 760);
-  if (!state.live) {
-    setEyeMode("idle");
-  }
+let squintTimer = null;
+
+function playOrbSquint() {
+  if (squintTimer) clearTimeout(squintTimer);
+  eyes.els.forEach((el) => el.classList.add("squint"));
+  squintTimer = window.setTimeout(() => {
+    eyes.els.forEach((el) => el.classList.remove("squint"));
+    squintTimer = null;
+  }, 420);
 }
 
 function setEyeMode(mode) {
@@ -3762,28 +3760,22 @@ function memoryForChat(item, query) {
 }
 
 // ---------------------------------------------------------------------------
-// Orb expressions: smile on upbeat, tilt on a question
+// Orb expressions: subtle head tilt on a question
 // ---------------------------------------------------------------------------
 
 let exprTimer = null;
 
 function detectExpression(text) {
-  const t = String(text || "");
-  if (/[!]|\b(great|awesome|nice|love|glad|happy|congrats|amazing|perfect|yay|excited|wonderful|haha)\b/i.test(t)) {
-    return "happy";
-  }
-  if (t.trim().endsWith("?")) return "curious";
+  if (String(text || "").trim().endsWith("?")) return "curious";
   return null;
 }
 
 function setExpression(type) {
   clearTimeout(exprTimer);
-  eyes.expr = type;
-  eyes.els.forEach((el) => el.classList.toggle("happy", type === "happy"));
+  eyes.expr = type || null;
   if (type) {
     exprTimer = setTimeout(() => {
       eyes.expr = null;
-      eyes.els.forEach((el) => el.classList.remove("happy"));
     }, 2600);
   }
 }
