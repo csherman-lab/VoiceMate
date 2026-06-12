@@ -397,9 +397,9 @@ h3 {
     radial-gradient(135% 135% at 30% 24%,
       #ffffff 0%, #d3e6ff 4%, #4f8bff 20%, #5b54f2 38%, #a83df0 55%, #ff4f97 71%, #ff6a2c 87%, #c0263f 100%);
   box-shadow:
-    inset 0 -30px 56px rgba(80, 5, 55, 0.55),
-    inset 0 18px 46px rgba(255, 255, 255, 0.6),
-    0 30px 78px rgba(140, 70, 255, 0.45);
+    inset 0 -30px 56px rgba(80, 5, 55, 0.5),
+    inset 0 18px 46px rgba(255, 255, 255, 0.55),
+    0 16px 40px rgba(120, 70, 220, 0.22);
   animation: orbHue 14s ease-in-out infinite;
   will-change: filter;
 }
@@ -413,10 +413,10 @@ h3 {
     conic-gradient(from 0deg at 50% 50%,
       rgba(80, 130, 255, 0.1), rgba(95, 84, 242, 0.85), rgba(168, 61, 240, 0.8),
       rgba(255, 79, 151, 0.85), rgba(255, 106, 44, 0.8), rgba(80, 130, 255, 0.1));
-  filter: blur(13px);
+  filter: blur(22px);
   mix-blend-mode: screen;
-  opacity: 0.95;
-  animation: orbSwirl 5s linear infinite;
+  opacity: 0.7;
+  animation: orbSwirl 9s linear infinite;
 }
 
 /* Glossy specular highlight + soft bottom rim light */
@@ -1476,22 +1476,6 @@ footer {
   }
 }
 
-@keyframes orbLiquid {
-  0%,
-  100% {
-    border-radius: 50%;
-  }
-  25% {
-    border-radius: 54% 46% 47% 53% / 52% 48% 52% 48%;
-  }
-  50% {
-    border-radius: 47% 53% 52% 48% / 49% 51% 49% 51%;
-  }
-  75% {
-    border-radius: 52% 48% 48% 52% / 53% 47% 51% 49%;
-  }
-}
-
 @keyframes orbBlink {
   0%,
   54% {
@@ -2340,24 +2324,14 @@ footer {
 }
 
 /* Audio-reactive orb during live calls */
-/* While talking: a liquid, flowing body whose scale + glow track the voice
-   amplitude in real time, with eyes held forward (not glancing around). */
+/* While talking: a subtle, smooth scale that tracks the voice amplitude.
+   No extra glow, no shape morphing, no rings. Eyes hold forward. */
 .orb.reacting {
-  animation: orbLiquid 3.2s ease-in-out infinite;
-  transform: scale(calc(1 + var(--level, 0) * 0.12)) scaleY(calc(1 + var(--level, 0) * 0.05));
-  transition: transform 90ms ease-out;
-  box-shadow:
-    inset 0 -30px 56px rgba(80, 5, 55, 0.55),
-    inset 0 18px 46px rgba(255, 255, 255, 0.6),
-    0 30px calc(70px + var(--level, 0) * 150px) rgba(150, 90, 255, calc(0.4 + var(--level, 0) * 0.5));
+  animation: none !important;
+  transform: scale(calc(1 + var(--level, 0) * 0.06));
+  transition: transform 120ms ease-out;
 }
 
-/* Fluid swirls faster as it speaks */
-.orb.reacting::before {
-  animation-duration: 3s;
-}
-
-/* Eyes stay forward and just blink while talking */
 .orb.reacting .orb-eyes,
 .orb.speaking .orb-eyes {
   animation: none;
