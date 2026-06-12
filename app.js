@@ -217,6 +217,7 @@ const state = {
   history: [],
   conversations: [],
   currentConvo: null,
+  uploadContext: { ids: [], createdAt: 0 },
   wakeEnabled: false,
   wakeRec: null,
   currentAudioUrl: "",
@@ -308,6 +309,7 @@ function cacheEls() {
 function init() {
   cacheEls();
   loadState();
+  ensureMemoryIds();
   applyStoredTheme();
   if (els.brandLogo) els.brandLogo.innerHTML = logoSvg("vmlogo1");
   if (els.talkLogo) els.talkLogo.innerHTML = logoSvg("vmlogo2");
@@ -516,6 +518,7 @@ function wireEvents() {
       return;
     }
     state.memory.push({
+      id: createMemoryId("note"),
       type: "note",
       name: `Saved chat ${state.memory.length + 1}`,
       summary: summarizeText(text),
@@ -543,11 +546,85 @@ function wireEvents() {
   });
 }
 
-function routeFiles(files) {
+async function routeFiles(files) {
   const images = files.filter((file) => file.type.startsWith("image/"));
   const docs = files.filter((file) => !file.type.startsWith("image/"));
-  if (docs.length) handleKnowledgeFiles(docs);
-  if (images.length) handleImageFiles(images);
+  const added = [];
+  if (docs.length) added.push(...(await handleKnowledgeFiles(docs, { activate: false })));
+  if (images.length) added.push(...(await handleImageFiles(images, { activate: false })));
+  if (added.length) noteUploadContext(added);
+}
+
+function createMemoryId(prefix = "m") {
+  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ensureMemoryIds() {
+  state.memory.forEach((item) => {
+    if (!item.id) item.id = createMemoryId(memoryPrefix(item.type));
+  });
+}
+
+function memoryPrefix(type) {
+  if (type === "image") return "img";
+  if (type === "csv") return "csv";
+  if (type === "brief") return "brief";
+  return "mem";
+}
+
+function noteUploadContext(items, options = {}) {
+  const ids = items.map((item) => item.id).filter(Boolean);
+  if (!ids.length) return;
+  state.uploadContext = { ids, createdAt: Date.now() };
+  saveState();
+  const names = items.map((item) => item.name).filter(Boolean).join(", ");
+  addActivity("Context ready", names ? `VoiceMate can use ${names} in this chat.` : "VoiceMate can use the upload now.");
+  shareMemoryWithLive(items, options);
+}
+
+function uploadContextItems() {
+  const ids = state.uploadContext && Array.isArray(state.uploadContext.ids) ? state.uploadContext.ids : [];
+  const byId = new Map(state.memory.map((item) => [item.id, item]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function activeUploadItems() {
+  const recent = uploadContextItems();
+  if (recent.length) return recent;
+  return state.memory.filter((item) => item.type !== "brief").slice(-4);
+}
+
+function promptRefersToUploads(prompt) {
+  const text = String(prompt || "").toLowerCase();
+  return /\b(upload|uploaded|attach|attached|attachment|file|document|doc|csv|spreadsheet|note|image|photo|picture|screenshot|camera|chart|graph|diagram|this|that|these|those|it|what i sent|what i gave you|look at|see)\b/.test(
+    text
+  );
+}
+
+function collectImagesForPrompt(prompt) {
+  const images = state.memory.filter((item) => item.type === "image" && item.preview);
+  if (!images.length) return [];
+  const activeImages = activeUploadItems().filter((item) => item.type === "image" && item.preview);
+  const visual = promptRefersToUploads(prompt) || state.mode === "analyst";
+  const selected = visual ? activeImages.concat(images.slice(-2)) : activeImages;
+  const unique = [];
+  const seen = new Set();
+  for (const item of selected) {
+    const key = item.id || item.name;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+    if (unique.length >= 3) break;
+  }
+  return unique.map(imageForModel);
+}
+
+function imageForModel(item) {
+  return {
+    name: item.name,
+    summary: item.summary,
+    url: item.preview
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -923,17 +1000,16 @@ async function chatAgent(prompt, images) {
 // so the model actually understands what the user uploaded, not just a label.
 function memoryForContext(item) {
   const excerpt = item.content
-    ? String(item.content).replace(/\s+/g, " ").trim().slice(0, 600)
+    ? String(item.content).replace(/\s+/g, " ").trim().slice(0, item.type === "image" ? 300 : 1400)
     : "";
-  return { name: item.name, type: item.type, summary: item.summary, excerpt };
-}
-
-function collectImagesForPrompt(prompt) {
-  const images = state.memory.filter((item) => item.type === "image" && item.preview);
-  if (!images.length) return [];
-  const visual = /\b(image|photo|picture|screenshot|see|look|chart|graph|diagram|this)\b/i.test(prompt);
-  if (!visual && state.mode !== "analyst") return [];
-  return images.slice(-2).map((item) => item.preview);
+  return {
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    summary: item.summary,
+    excerpt,
+    active: uploadContextItems().some((ctx) => ctx.id === item.id)
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -994,6 +1070,7 @@ async function executeTool(name, args) {
       const text = String(args.text || "").trim();
       if (!text) return "Nothing to remember.";
       state.memory.push({
+        id: createMemoryId("note"),
         type: "note",
         name: truncate(text, 42),
         summary: summarizeText(text),
@@ -1130,6 +1207,8 @@ function answerPrompt(rawPrompt) {
   const memoryContext = summarizeMemoryForAnswer();
   const csvs = state.memory.filter((item) => item.type === "csv");
   const images = state.memory.filter((item) => item.type === "image");
+  const uploadAnswer = answerFromUploadContext(prompt);
+  if (uploadAnswer) return uploadAnswer;
 
   if (containsAny(prompt, ["voice model", "real voice", "human voice", "live voice", "talk out loud"])) {
     return "The natural live voice runs through the VoiceMate server. Start it, tap Start call, and I'll talk back in real time with natural pauses and barge-in. Right now this is the local preview.";
@@ -1162,6 +1241,22 @@ function answerPrompt(rawPrompt) {
     return "I'd normally research that with live search and cite the sources, but that needs the VoiceMate server running. Start it and ask again.";
   }
   return `Got it. We're in ${modeLabel()} mode. ${memoryContext === "no saved memory yet" ? "Ask me anything, or add a file for sharper answers." : `Here's what I'm keeping in mind: ${memoryContext}.`}`;
+}
+
+function answerFromUploadContext(prompt) {
+  if (!promptRefersToUploads(prompt)) return "";
+  const items = activeUploadItems().filter((item) => item.type !== "brief");
+  if (!items.length) return "";
+  const parts = items.slice(0, 4).map((item) => {
+    if (item.type === "image") {
+      return `${item.name}: ${item.summary} I can use the natural vision model for actual image details when the server is connected.`;
+    }
+    if (item.type === "csv") {
+      return `${item.name}: ${item.summary} ${item.insights || ""}`;
+    }
+    return `${item.name}: ${item.summary} Excerpt: ${liveMemoryExcerpt(item).slice(0, 320)}`;
+  });
+  return `I'm using the latest upload as context. ${parts.join(" ")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1332,6 +1427,59 @@ function noDashes(text) {
 // Realtime live call (Grok Voice speech-to-speech)
 // ---------------------------------------------------------------------------
 
+function shareMemoryWithLive(items, options = {}) {
+  const live = state.live;
+  if (!live || !live.ws || live.ws.readyState !== WebSocket.OPEN) return;
+  if (!live.sharedMemoryIds) live.sharedMemoryIds = new Set();
+  const selected = items.filter((item) => item && item.id && !live.sharedMemoryIds.has(item.id)).slice(0, 4);
+  if (!selected.length) return;
+
+  for (const item of selected) {
+    live.sharedMemoryIds.add(item.id);
+    const summary = [item.name, item.summary].filter(Boolean).join(". ");
+    if (item.type === "image" && item.preview) {
+      live.ws.send(
+        JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [
+              { type: "input_text", text: `Uploaded image context: ${summary}. Use this image when I ask about it.` },
+              { type: "input_image", image_url: item.preview }
+            ]
+          }
+        })
+      );
+    } else {
+      live.ws.send(
+        JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: `Uploaded file context: ${summary}. Excerpt: ${liveMemoryExcerpt(item)}`
+              }
+            ]
+          }
+        })
+      );
+    }
+  }
+  addActivity("Shared context", "Uploaded context is available in the live call.");
+  if (options.respond) live.ws.send(JSON.stringify({ type: "response.create" }));
+}
+
+function liveMemoryExcerpt(item) {
+  return String(item.content || item.insights || item.summary || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1600);
+}
+
 async function startLiveCall() {
   if (state.live) return;
   if (!state.backendOnline) {
@@ -1361,7 +1509,8 @@ async function startLiveCall() {
     curUserText: "",
     lastUserFinal: "",
     curAsst: null,
-    curAsstText: ""
+    curAsstText: "",
+    sharedMemoryIds: new Set()
   };
   state.live = live;
 
@@ -1422,6 +1571,7 @@ async function startLiveCall() {
         })
       );
       startMicStreaming(live);
+      shareMemoryWithLive(activeUploadItems());
       setLiveButton(true, "End call");
       setSpeechStatus("Live", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
@@ -2061,21 +2211,26 @@ function saveManualContext() {
     addActivity("Memory not saved", "Paste text first.");
     return;
   }
-  state.memory.push({
+  const item = {
+    id: createMemoryId("note"),
     type: "note",
     name: `Pasted context ${state.memory.length + 1}`,
     summary: summarizeText(content),
     content,
     createdAt: new Date().toISOString()
-  });
+  };
+  state.memory.push(item);
   els.manualContext.value = "";
   renderMemory();
+  noteUploadContext([item]);
   addActivity("Saved memory", "Pasted context was added.");
   addMessage("agent", "Got it, I saved that to memory.");
 }
 
-async function handleKnowledgeFiles(files) {
-  if (!files.length) return;
+async function handleKnowledgeFiles(files, options = {}) {
+  if (!files.length) return [];
+  const activate = options.activate !== false;
+  const added = [];
   for (const file of files) {
     const text = await file.text();
     const type = file.name.toLowerCase().endsWith(".csv") ? "csv" : "note";
@@ -2083,37 +2238,50 @@ async function handleKnowledgeFiles(files) {
       type === "csv"
         ? summarizeCsv(file.name, text)
         : {
+            id: createMemoryId("note"),
             type,
             name: file.name,
             summary: summarizeText(text),
             content: text.slice(0, 20000),
             createdAt: new Date().toISOString()
           };
+    if (!item.id) item.id = createMemoryId(memoryPrefix(item.type));
     state.memory.push(item);
+    added.push(item);
     addActivity("Read file", `${file.name} was added.`);
   }
   renderMemory();
+  if (activate) noteUploadContext(added);
   addMessage("agent", `Added ${files.length} file${files.length === 1 ? "" : "s"} to memory.`);
+  return added;
 }
 
-async function handleImageFiles(files) {
-  if (!files.length) return;
+async function handleImageFiles(files, options = {}) {
+  if (!files.length) return [];
+  const activate = options.activate !== false;
+  const added = [];
   for (const file of files) {
-    const preview = await readAsDataUrl(file);
+    const rawPreview = await readAsDataUrl(file);
+    const preview = await prepareImagePreview(rawPreview);
     const dimensions = await getImageDimensions(preview);
     const summary = `Image, ${(file.size / 1024).toFixed(1)} KB, ${dimensions.width} by ${dimensions.height} pixels.`;
-    state.memory.push({
+    const item = {
+      id: createMemoryId("img"),
       type: "image",
       name: file.name,
       summary,
       preview,
       content: `${file.name} ${summary}`,
       createdAt: new Date().toISOString()
-    });
+    };
+    state.memory.push(item);
+    added.push(item);
     addActivity("Read image", `${file.name} was added.`);
   }
   renderMemory();
+  if (activate) noteUploadContext(added);
   addMessage("agent", `Added ${files.length} image${files.length === 1 ? "" : "s"} to memory.`);
+  return added;
 }
 
 // ---------------------------------------------------------------------------
@@ -2211,6 +2379,7 @@ function summarizeCsv(name, text) {
     ? `Numeric columns: ${numericSummaries.join("; ")}.`
     : "No obvious numeric columns found.";
   return {
+    id: createMemoryId("csv"),
     type: "csv",
     name,
     summary: `${dataRows.length} rows and ${headers.length} columns. Columns: ${headers.slice(0, 8).join(", ")}.`,
@@ -2278,6 +2447,26 @@ function readAsDataUrl(file) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+function prepareImagePreview(src, maxSide = 1400) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+      if (scale >= 1) {
+        resolve(src);
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => resolve(src);
+    image.src = src;
   });
 }
 
@@ -2413,6 +2602,7 @@ function loadState() {
     if (data.mode && SKILLS.find((skill) => skill.id === data.mode)) state.mode = data.mode;
     if (data.language && LANGUAGES.find((lang) => lang.id === data.language)) state.language = data.language;
     if (Array.isArray(data.conversations)) state.conversations = data.conversations;
+    if (data.uploadContext && Array.isArray(data.uploadContext.ids)) state.uploadContext = data.uploadContext;
     if (typeof data.wakeEnabled === "boolean") state.wakeEnabled = data.wakeEnabled;
   } catch (error) {
     // ignore storage errors
@@ -2429,6 +2619,7 @@ function saveState() {
         persona: state.persona,
         mode: state.mode,
         language: state.language,
+        uploadContext: state.uploadContext,
         wakeEnabled: state.wakeEnabled,
         conversations: state.conversations.slice(0, 40)
       })
@@ -2622,10 +2813,12 @@ function relevantExcerpt(content, query, max = 900) {
 
 function memoryForChat(item, query) {
   return {
+    id: item.id,
     name: item.name,
     type: item.type,
     summary: item.summary,
-    excerpt: item.content ? relevantExcerpt(item.content, query) : ""
+    excerpt: item.content ? relevantExcerpt(item.content, query, item.type === "image" ? 300 : 1200) : "",
+    active: uploadContextItems().some((ctx) => ctx.id === item.id)
   };
 }
 
@@ -2739,32 +2932,24 @@ async function handleCamera() {
     addMessage("agent", "I couldn't open the camera. Check the browser permission.");
     return;
   }
-  state.memory.push({
+  const preview = await prepareImagePreview(dataUrl);
+  const dimensions = await getImageDimensions(preview);
+  const item = {
+    id: createMemoryId("img"),
     type: "image",
     name: `Photo ${new Date().toLocaleTimeString()}`,
-    summary: "Photo captured during the session.",
-    preview: dataUrl,
+    summary: `Photo captured during the session, ${dimensions.width} by ${dimensions.height} pixels.`,
+    preview,
     content: "A photo the user captured with the camera.",
     createdAt: new Date().toISOString()
-  });
+  };
+  state.memory.push(item);
   renderMemory();
   if (state.live && state.live.ws && state.live.ws.readyState === WebSocket.OPEN) {
-    state.live.ws.send(
-      JSON.stringify({
-        type: "conversation.item.create",
-        item: {
-          type: "message",
-          role: "user",
-          content: [
-            { type: "input_text", text: "Here is something I'm showing you." },
-            { type: "input_image", image_url: dataUrl }
-          ]
-        }
-      })
-    );
-    state.live.ws.send(JSON.stringify({ type: "response.create" }));
+    noteUploadContext([item], { respond: true });
     toast("Shared with VoiceMate");
   } else {
+    noteUploadContext([item]);
     addMessage("agent", "Got it, I can see the photo. Ask me anything about it.");
   }
 }

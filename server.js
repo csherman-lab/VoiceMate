@@ -249,7 +249,7 @@ function buildSystemPrompt(persona, modeKey, memoryItems, language) {
     "",
     "What the user has given you to work with (files, notes, reminders):",
     memory,
-    "When the user asks about something they uploaded or told you, answer directly from the content above. Use it naturally, don't read it back word for word, and don't mention it unless it's relevant."
+    "When the user asks about something they uploaded or told you, answer directly from the content above. If they say this, that, it, the file, the image, or the upload, treat that as the most recent active upload unless there are several plausible choices. Use uploaded images when they are attached to the current message, and use document excerpts as source material. If you only have image metadata and no image attachment, say what you can infer and ask them to resend the image if needed."
   ].join("\n");
 }
 
@@ -365,13 +365,24 @@ const REALTIME_TOOLS = TOOL_SPECS.map((spec) => ({ type: "function", ...spec }))
 
 function summarizeMemory(memoryItems) {
   if (!Array.isArray(memoryItems) || !memoryItems.length) return "nothing yet";
-  return memoryItems
-    .slice(0, 8)
+  const selected = [];
+  for (const item of memoryItems) {
+    if (item && item.active) selected.push(item);
+  }
+  for (const item of memoryItems.slice(-12)) {
+    if (item && !selected.some((selectedItem) => selectedItem.id && selectedItem.id === item.id)) {
+      selected.push(item);
+    }
+  }
+  return selected
+    .slice(0, 12)
     .map((item) => {
       const name = item.name || "note";
-      const excerpt = item.excerpt ? ` — "${String(item.excerpt).slice(0, 600)}"` : "";
+      const type = item.type ? `[${item.type}] ` : "";
+      const active = item.active ? "active upload: " : "";
+      const excerpt = item.excerpt ? ` excerpt: "${String(item.excerpt).slice(0, 1200)}"` : "";
       const summary = item.summary ? ` (${item.summary})` : "";
-      return `${name}${summary}${excerpt}`.trim();
+      return `${active}${type}${name}${summary}${excerpt}`.trim();
     })
     .join("\n");
 }
@@ -395,8 +406,21 @@ function buildChatMessages(body) {
 
   // Vision: attach images as multimodal content when provided.
   if (images.length) {
-    const content = [{ type: "text", text: message || "What do you see in this?" }];
-    for (const url of images) {
+    const imageNotes = images
+      .map((image, index) => {
+        const name = typeof image === "string" ? `Image ${index + 1}` : image.name || `Image ${index + 1}`;
+        const summary = typeof image === "string" ? "" : image.summary || "";
+        return `${index + 1}. ${name}${summary ? `: ${summary}` : ""}`;
+      })
+      .join("\n");
+    const content = [
+      {
+        type: "text",
+        text: `${message || "Talk about the uploaded image or file."}\n\nUploaded image context:\n${imageNotes}`
+      }
+    ];
+    for (const image of images) {
+      const url = typeof image === "string" ? image : image.url || image.preview || image.image_url || "";
       if (typeof url === "string" && url.startsWith("data:image")) {
         content.push({ type: "image_url", image_url: { url } });
       }

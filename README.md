@@ -33,8 +33,9 @@ what we studied and what we borrowed.
   voice, and change skills. Ask "remind me to email the team" and it just does it.
 - **Remembers between sessions.** Memory, reminders, voice, and skill are saved
   locally and restored on reload. Export or import your memory from Settings.
-- **Sees your images.** Uploaded photos and screenshots are sent to the model so
-  it can actually describe and reason over them.
+- **Understands uploads in conversation.** Uploaded files, notes, CSVs, photos,
+  and screenshots become active context. Ask "what is this?" or keep talking in
+  a live call and VoiceMate uses the latest upload instead of losing the thread.
 - **Installable + offline.** It's a PWA — install it like a native app; the
   interface works offline.
 - **Reactive voice orb, reminders, toasts, and keyboard shortcuts** (Esc ends a
