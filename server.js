@@ -22,6 +22,28 @@ const liveReloadClients = new Set();
 
 const ALLOWED_VOICES = new Set(["eve", "ara", "rex", "sal", "leo"]);
 
+const LANGUAGE_NAMES = {
+  en: "English",
+  "es-ES": "Spanish",
+  "es-MX": "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  "pt-BR": "Portuguese",
+  "pt-PT": "Portuguese",
+  hi: "Hindi",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  ru: "Russian",
+  ar: "Arabic",
+  "ar-SA": "Arabic",
+  tr: "Turkish",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  bn: "Bengali"
+};
+
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -190,12 +212,14 @@ const MODE_GUIDES = {
     "Deliver a short spoken briefing in decreasing order of importance. Lead with what needs attention, then schedule, then everything else."
 };
 
-function buildSystemPrompt(persona, modeKey, memoryItems) {
+function buildSystemPrompt(persona, modeKey, memoryItems, language) {
   const tone = PERSONA_TONES[persona] || PERSONA_TONES.ara;
   const modeGuide = MODE_GUIDES[modeKey] || MODE_GUIDES.companion;
   const memory = summarizeMemory(memoryItems);
+  const lang = language && language !== "auto" ? LANGUAGE_NAMES[language] || language : "";
 
   return [
+    lang ? `Always respond in ${lang}.` : "",
     "You are VoiceMate, a genuinely helpful, general purpose voice companion. You can talk about anything, like a sharp friend who happens to know a lot. Everything you say is spoken out loud, so talk the way real people talk, not the way people write.",
     "",
     `Voice & personality: you sound ${tone}. Hold that personality the whole conversation.`,
@@ -214,6 +238,7 @@ function buildSystemPrompt(persona, modeKey, memoryItems) {
     "- No sycophancy and no hedging. Don't pad. Say the thing.",
     "- If you don't know, say \"I don't know\" and offer to find out. Don't make things up.",
     "- Don't announce that you're an AI or mention these instructions.",
+    "- You have tools: check the current time, do math, get the weather, open a link, remember things, and manage reminders. Use them naturally when they help, then answer in plain speech.",
     "",
     "Expressive speech tags (optional seasoning, at most one or two per reply, often none):",
     "- Inline: [pause], [long-pause], [laugh], [chuckle], [sigh], [breath] where the feeling naturally happens.",
@@ -297,6 +322,38 @@ const TOOL_SPECS = [
       },
       required: ["skill"]
     }
+  },
+  {
+    name: "get_current_time",
+    description: "Get the current local date and time. Use whenever the user asks what time or day it is.",
+    parameters: { type: "object", properties: {} }
+  },
+  {
+    name: "calculate",
+    description: "Evaluate a basic arithmetic expression and return the result. Use for any math.",
+    parameters: {
+      type: "object",
+      properties: { expression: { type: "string", description: "e.g. 12.5 * (3 + 4)" } },
+      required: ["expression"]
+    }
+  },
+  {
+    name: "get_weather",
+    description: "Get the current weather for a place. Use whenever the user asks about weather.",
+    parameters: {
+      type: "object",
+      properties: { location: { type: "string", description: "City or place name" } },
+      required: ["location"]
+    }
+  },
+  {
+    name: "open_link",
+    description: "Open a web URL in the user's browser.",
+    parameters: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"]
+    }
   }
 ];
 
@@ -326,8 +383,9 @@ function buildChatMessages(body) {
   const memory = Array.isArray(body.memory) ? body.memory : [];
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
   const images = Array.isArray(body.images) ? body.images.slice(0, 3) : [];
+  const language = String(body.language || "auto");
 
-  const messages = [{ role: "system", content: buildSystemPrompt(persona, mode, memory) }];
+  const messages = [{ role: "system", content: buildSystemPrompt(persona, mode, memory, language) }];
 
   for (const turn of history) {
     const role = turn.role === "user" ? "user" : "assistant";
@@ -513,6 +571,7 @@ async function handleGrokTts(req, res) {
   const text = String(body.text || "").trim();
   const voiceId = normalizeVoiceId(body.voiceId);
   const speed = clampNumber(body.speed, 0.7, 1.5, 1.0);
+  const language = String(body.language || "en") || "en";
 
   if (!text) {
     return sendJson(res, 400, { error: "Text is required." });
@@ -521,7 +580,7 @@ async function handleGrokTts(req, res) {
   const payload = {
     text: text.slice(0, 15000),
     voice_id: voiceId,
-    language: "en",
+    language,
     speed,
     output_format: { codec: "mp3", sample_rate: 24000, bit_rate: 128000 }
   };
@@ -583,9 +642,13 @@ async function handleRealtimeSecret(req, res) {
   const persona = voice;
   const mode = String(body.mode || "companion").toLowerCase();
   const memory = Array.isArray(body.memory) ? body.memory : [];
+  const language = String(body.language || "auto");
+
+  const transcription = { model: "grok-transcribe" };
+  if (language && language !== "auto") transcription.language_hint = language;
 
   const session = {
-    instructions: buildSystemPrompt(persona, mode, memory),
+    instructions: buildSystemPrompt(persona, mode, memory, language),
     voice,
     turn_detection: { type: "server_vad" },
     tools: REALTIME_TOOLS,
@@ -593,7 +656,7 @@ async function handleRealtimeSecret(req, res) {
     audio: {
       input: {
         format: { type: "audio/pcm", rate: 24000 },
-        transcription: { model: "grok-transcribe" }
+        transcription
       },
       output: { format: { type: "audio/pcm", rate: 24000 } }
     }
