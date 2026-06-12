@@ -8,6 +8,12 @@
       name="description"
       content="VoiceMate is a human-sounding voice companion with skills, memory, and a clean Apple-style interface."
     />
+    <meta name="theme-color" content="#0a84ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="VoiceMate" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -218,6 +224,18 @@
           </section>
 
           <section class="settings-group">
+            <p class="group-label">Reminders</p>
+            <div class="group-card">
+              <div class="reminder-add">
+                <input id="reminderInput" type="text" placeholder="Add a reminder" aria-label="Add a reminder" />
+                <button class="row-button" id="addReminder" type="button">Add</button>
+              </div>
+              <div class="reminder-list" id="reminderList"></div>
+            </div>
+            <p class="group-foot">Ask VoiceMate to remind you out loud, or add one here.</p>
+          </section>
+
+          <section class="settings-group">
             <p class="group-label">Appearance</p>
             <div class="group-card">
               <div class="settings-row">
@@ -248,6 +266,29 @@
               </div>
             </div>
             <p class="group-foot">Live voice runs through your local VoiceMate server. Your key stays on the server, never in the browser.</p>
+          </section>
+
+          <section class="settings-group">
+            <p class="group-label">Data</p>
+            <div class="group-card">
+              <div class="settings-row">
+                <span class="row-icon" data-icon="arrow-up" data-tint="#34c759"></span>
+                <div class="row-text">
+                  <strong>Export memory</strong>
+                  <span>Download your memory and reminders as a file</span>
+                </div>
+                <button class="row-button" id="exportData" type="button">Export</button>
+              </div>
+              <label class="settings-row" for="importData" style="cursor:pointer">
+                <span class="row-icon" data-icon="doc" data-tint="#0a84ff"></span>
+                <div class="row-text">
+                  <strong>Import memory</strong>
+                  <span>Load a previously exported file</span>
+                </div>
+                <span class="row-button">Choose</span>
+                <input id="importData" type="file" accept="application/json" hidden />
+              </label>
+            </div>
           </section>
 
           <section class="settings-group">

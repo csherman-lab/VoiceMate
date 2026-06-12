@@ -133,8 +133,61 @@ const SUGGESTED_PROMPTS = [
 
 const REALTIME_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
 
+const TOOL_DEFS = [
+  {
+    name: "remember_fact",
+    description: "Save an important fact, preference, or note to memory for later.",
+    parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] }
+  },
+  {
+    name: "search_memory",
+    description: "Search saved memory for relevant information.",
+    parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] }
+  },
+  {
+    name: "add_reminder",
+    description: "Add a reminder or to-do for the user.",
+    parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] }
+  },
+  {
+    name: "list_reminders",
+    description: "List the user's current reminders.",
+    parameters: { type: "object", properties: {} }
+  },
+  {
+    name: "complete_reminder",
+    description: "Mark a reminder done by its text or number.",
+    parameters: { type: "object", properties: { which: { type: "string" } }, required: ["which"] }
+  },
+  {
+    name: "set_voice",
+    description: "Change VoiceMate's speaking voice.",
+    parameters: {
+      type: "object",
+      properties: { voice: { type: "string", enum: ["eve", "ara", "rex", "sal", "leo"] } },
+      required: ["voice"]
+    }
+  },
+  {
+    name: "set_skill",
+    description: "Switch the active skill / conversation mode.",
+    parameters: {
+      type: "object",
+      properties: {
+        skill: { type: "string", enum: ["companion", "research", "digest", "pitch", "analyst", "coach"] }
+      },
+      required: ["skill"]
+    }
+  }
+];
+
+const REALTIME_TOOLS = TOOL_DEFS.map((tool) => ({ type: "function", ...tool }));
+
+const STORE_KEY = "voicemate.state.v1";
+
 const state = {
   memory: [...STARTER_MEMORY],
+  reminders: [],
   persona: "ara",
   mode: "companion",
   recognition: null,
@@ -194,12 +247,18 @@ function cacheEls() {
     grokStatus: document.querySelector("#grokStatus"),
     backendStatus: document.querySelector("#backendStatus"),
     testConnection: document.querySelector("#testConnection"),
-    themeSeg: document.querySelector("#themeSeg")
+    themeSeg: document.querySelector("#themeSeg"),
+    reminderList: document.querySelector("#reminderList"),
+    reminderInput: document.querySelector("#reminderInput"),
+    addReminder: document.querySelector("#addReminder"),
+    exportData: document.querySelector("#exportData"),
+    importData: document.querySelector("#importData")
   });
 }
 
 function init() {
   cacheEls();
+  loadState();
   applyStoredTheme();
   if (els.brandLogo) els.brandLogo.innerHTML = logoSvg("vmlogo1");
   if (els.talkLogo) els.talkLogo.innerHTML = logoSvg("vmlogo2");
@@ -208,10 +267,14 @@ function init() {
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
+  renderReminders();
+  if (els.agentMode) els.agentMode.value = state.mode;
   updateModeCaption();
   updateGrokStatus();
   setLiveButton(false, "Start call");
   setupSpeechRecognition();
+  setupShortcuts();
+  registerServiceWorker();
   wireEvents();
 
   addActivity("Started session", "Voice, skills, files, and memory are ready.");
@@ -308,6 +371,29 @@ function wireEvents() {
   if (els.themeSeg) {
     els.themeSeg.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => setTheme(button.dataset.theme));
+    });
+  }
+
+  if (els.addReminder) {
+    els.addReminder.addEventListener("click", () => {
+      const text = (els.reminderInput.value || "").trim();
+      if (!text) return;
+      executeTool("add_reminder", { text });
+      els.reminderInput.value = "";
+    });
+    els.reminderInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        els.addReminder.click();
+      }
+    });
+  }
+
+  if (els.exportData) els.exportData.addEventListener("click", exportData);
+  if (els.importData) {
+    els.importData.addEventListener("change", (event) => {
+      importData(event.target.files[0]);
+      event.target.value = "";
     });
   }
 
@@ -513,6 +599,7 @@ function selectPersona(personaId, preview) {
   const persona = GROK_VOICES.find((item) => item.id === personaId);
   if (!persona) return;
   state.persona = persona.id;
+  saveState();
   renderPersonas();
   updatePersonaLabel();
   addActivity("Changed voice", `${persona.name} is selected.`);
@@ -531,6 +618,7 @@ function setMode(modeId, fromSelect) {
   const skill = SKILLS.find((item) => item.id === modeId);
   if (!skill) return;
   state.mode = skill.id;
+  saveState();
   if (els.agentMode && !fromSelect) els.agentMode.value = skill.id;
   updateModeCaption();
   addActivity("Mode set", `${skill.name} mode is active.`);
@@ -662,11 +750,7 @@ async function respond(prompt) {
 
   if (state.backendOnline) {
     try {
-      const result = await streamGrok(prompt, (delta) => {
-        answer += delta;
-        bubble.textContent = stripSpeechTags(answer);
-        els.transcript.scrollTop = els.transcript.scrollHeight;
-      });
+      const result = await chatAgent(prompt, collectImagesForPrompt(prompt));
       answer = result.text || answer;
       citations = result.citations || [];
       addReasoning("observation", "Got a reply. Speaking it now.");
@@ -689,55 +773,151 @@ async function respond(prompt) {
   speak(spoken);
 }
 
-async function streamGrok(prompt, onDelta) {
-  const response = await fetch("/api/grok/chat/stream", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: prompt,
-      persona: getPersona().id,
-      mode: state.mode,
-      history: state.history.slice(0, -1).slice(-10),
-      memory: state.memory.map((item) => ({
-        name: item.name,
-        type: item.type,
-        summary: item.summary
-      }))
-    })
-  });
+// Tool-enabled chat: calls the backend, runs any tools VoiceMate requests
+// (remember, reminders, set voice/skill, etc.), then returns the final reply.
+async function chatAgent(prompt, images) {
+  const baseBody = {
+    message: prompt,
+    persona: getPersona().id,
+    mode: state.mode,
+    history: state.history.slice(0, -1).slice(-10),
+    memory: state.memory.map((item) => ({
+      name: item.name,
+      type: item.type,
+      summary: item.summary
+    }))
+  };
 
-  if (!response.ok || !response.body) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || "Voice request failed");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let text = "";
+  let toolMessages = [];
   let citations = [];
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const frames = buffer.split("\n\n");
-    buffer = frames.pop() || "";
-    for (const frame of frames) {
-      const line = frame.trim();
-      if (!line.startsWith("data:")) continue;
-      const json = safeParse(line.slice(5).trim());
-      if (!json) continue;
-      if (json.type === "delta" && json.text) {
-        text += json.text;
-        onDelta(json.text);
-      } else if (json.type === "citations") {
-        citations = json.citations || citations;
+  for (let round = 0; round < 4; round++) {
+    const response = await fetch("/api/grok/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...baseBody,
+        images: round === 0 ? images || [] : [],
+        toolMessages
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Voice request failed");
+    if (data.citations && data.citations.length) citations = data.citations;
+
+    const calls = data.toolCalls || [];
+    if (!calls.length) {
+      return { text: data.answer || "", citations };
+    }
+
+    toolMessages.push({ role: "assistant", content: data.answer || null, tool_calls: calls });
+    for (const call of calls) {
+      let args = {};
+      try {
+        args = JSON.parse(call.function?.arguments || "{}");
+      } catch (error) {
+        args = {};
       }
+      addReasoning("action", `Using ${prettyTool(call.function?.name)}.`);
+      const result = executeTool(call.function?.name, args);
+      toolMessages.push({ role: "tool", tool_call_id: call.id, content: String(result) });
     }
   }
 
-  return { text, citations };
+  return { text: "", citations };
+}
+
+function collectImagesForPrompt(prompt) {
+  const images = state.memory.filter((item) => item.type === "image" && item.preview);
+  if (!images.length) return [];
+  const visual = /\b(image|photo|picture|screenshot|see|look|chart|graph|diagram|this)\b/i.test(prompt);
+  if (!visual && state.mode !== "analyst") return [];
+  return images.slice(-2).map((item) => item.preview);
+}
+
+// ---------------------------------------------------------------------------
+// Tools — what VoiceMate can actually do
+// ---------------------------------------------------------------------------
+
+function executeTool(name, args) {
+  args = args || {};
+  switch (name) {
+    case "remember_fact": {
+      const text = String(args.text || "").trim();
+      if (!text) return "Nothing to remember.";
+      state.memory.push({
+        type: "note",
+        name: truncate(text, 42),
+        summary: summarizeText(text),
+        content: text,
+        createdAt: new Date().toISOString()
+      });
+      renderMemory();
+      toast("Saved to memory");
+      return "Saved that to memory.";
+    }
+    case "search_memory": {
+      const query = String(args.query || "").toLowerCase();
+      const hits = state.memory
+        .filter((item) => `${item.name} ${item.summary} ${item.content || ""}`.toLowerCase().includes(query))
+        .slice(0, 5);
+      return hits.length ? hits.map((item) => `${item.name}: ${item.summary}`).join(" | ") : "No matching memory found.";
+    }
+    case "add_reminder": {
+      const text = String(args.text || "").trim();
+      if (!text) return "No reminder text given.";
+      state.reminders.push({ id: Date.now() + Math.random(), text, done: false, createdAt: new Date().toISOString() });
+      renderReminders();
+      toast("Reminder added");
+      return `Added a reminder: ${text}.`;
+    }
+    case "list_reminders": {
+      const open = state.reminders.filter((reminder) => !reminder.done);
+      return open.length ? open.map((reminder, index) => `${index + 1}. ${reminder.text}`).join("; ") : "No reminders right now.";
+    }
+    case "complete_reminder": {
+      const which = String(args.which || "").trim().toLowerCase();
+      const openList = state.reminders.filter((reminder) => !reminder.done);
+      const num = Number(which);
+      let target = Number.isInteger(num) && openList[num - 1] ? openList[num - 1] : null;
+      if (!target) target = openList.find((reminder) => reminder.text.toLowerCase().includes(which));
+      if (!target) return "Couldn't find that reminder.";
+      target.done = true;
+      renderReminders();
+      toast("Reminder completed");
+      return `Marked done: ${target.text}.`;
+    }
+    case "set_voice": {
+      const voice = String(args.voice || "").toLowerCase();
+      if (!GROK_VOICES.find((persona) => persona.id === voice)) return "That voice isn't available.";
+      selectPersona(voice, false);
+      toast(`Voice set to ${getPersona().name}`);
+      return `Voice set to ${getPersona().name}.`;
+    }
+    case "set_skill": {
+      const skill = String(args.skill || "").toLowerCase();
+      if (!SKILLS.find((item) => item.id === skill)) return "That skill isn't available.";
+      setMode(skill, false);
+      toast(`Switched to ${modeLabel()}`);
+      return `Switched to ${modeLabel()}.`;
+    }
+    default:
+      return "Unknown tool.";
+  }
+}
+
+function prettyTool(name) {
+  const labels = {
+    remember_fact: "memory (save)",
+    search_memory: "memory (search)",
+    add_reminder: "reminders (add)",
+    list_reminders: "reminders (list)",
+    complete_reminder: "reminders (complete)",
+    set_voice: "voice settings",
+    set_skill: "skill switch"
+  };
+  return labels[name] || name || "a tool";
 }
 
 function renderCitations(bubble, citations) {
@@ -1013,6 +1193,8 @@ async function startLiveCall() {
           session: {
             voice: getPersona().id,
             turn_detection: { type: "server_vad" },
+            tools: REALTIME_TOOLS,
+            tool_choice: "auto",
             audio: {
               input: {
                 format: { type: "audio/pcm", rate: live.rate },
@@ -1053,12 +1235,43 @@ function startMicStreaming(live) {
   live.source.connect(live.processor);
   live.processor.connect(ctx.destination);
 
+  // Analysers drive the audio-reactive orb.
+  live.inAnalyser = ctx.createAnalyser();
+  live.inAnalyser.fftSize = 256;
+  live.source.connect(live.inAnalyser);
+  live.outAnalyser = ctx.createAnalyser();
+  live.outAnalyser.fftSize = 256;
+  startOrbReaction(live);
+
   live.processor.onaudioprocess = (event) => {
     if (!live.ws || live.ws.readyState !== WebSocket.OPEN) return;
     const input = event.inputBuffer.getChannelData(0);
     const b64 = float32ToBase64PCM16(input);
     live.ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
   };
+}
+
+function startOrbReaction(live) {
+  if (!els.voiceOrb) return;
+  els.voiceOrb.classList.add("reacting");
+  const inData = new Uint8Array(live.inAnalyser.fftSize);
+  const outData = new Uint8Array(live.outAnalyser.fftSize);
+  const rms = (analyser, buffer) => {
+    analyser.getByteTimeDomainData(buffer);
+    let sum = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      const v = (buffer[i] - 128) / 128;
+      sum += v * v;
+    }
+    return Math.sqrt(sum / buffer.length);
+  };
+  const loop = () => {
+    if (state.live !== live) return;
+    const level = Math.min(1, Math.max(rms(live.inAnalyser, inData), rms(live.outAnalyser, outData)) * 2.6);
+    els.voiceOrb.style.setProperty("--level", level.toFixed(3));
+    live.raf = requestAnimationFrame(loop);
+  };
+  live.raf = requestAnimationFrame(loop);
 }
 
 function handleRealtimeMessage(live, raw) {
@@ -1114,6 +1327,27 @@ function handleRealtimeMessage(live, raw) {
       setSpeechStatus("Speaking", false, true);
       break;
 
+    case "response.function_call_arguments.done": {
+      let args = {};
+      try {
+        args = JSON.parse(msg.arguments || "{}");
+      } catch (error) {
+        args = {};
+      }
+      addReasoning("action", `Using ${prettyTool(msg.name)}.`);
+      const result = executeTool(msg.name, args);
+      if (live.ws && live.ws.readyState === WebSocket.OPEN) {
+        live.ws.send(
+          JSON.stringify({
+            type: "conversation.item.create",
+            item: { type: "function_call_output", call_id: msg.call_id, output: String(result) }
+          })
+        );
+        live.ws.send(JSON.stringify({ type: "response.create" }));
+      }
+      break;
+    }
+
     case "response.done":
       setSpeechStatus("Live", true, false);
       break;
@@ -1136,6 +1370,7 @@ function enqueueLiveAudio(live, base64) {
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   source.connect(ctx.destination);
+  if (live.outAnalyser) source.connect(live.outAnalyser);
 
   const now = ctx.currentTime;
   if (live.nextTime < now) live.nextTime = now + 0.04;
@@ -1160,12 +1395,17 @@ function stopLivePlayback(live) {
 function endLiveCall(note) {
   const live = state.live;
   if (!live) {
-    setLiveButton(false, "Live call");
+    setLiveButton(false, "Start call");
     return;
   }
   state.live = null;
 
   try {
+    if (live.raf) cancelAnimationFrame(live.raf);
+    if (els.voiceOrb) {
+      els.voiceOrb.classList.remove("reacting");
+      els.voiceOrb.style.removeProperty("--level");
+    }
     if (live.processor) {
       live.processor.disconnect();
       live.processor.onaudioprocess = null;
@@ -1179,10 +1419,11 @@ function endLiveCall(note) {
     // ignore teardown errors
   }
 
-  setLiveButton(false, "Live call");
+  setLiveButton(false, "Start call");
   setSpeechStatus("Ready", false, false);
+  updateGrokStatus();
   if (note) {
-    addActivity("Live call ended", note);
+    addActivity("Call ended", note);
     addMessage("agent", note);
   }
 }
@@ -1347,6 +1588,7 @@ function addTrace(type, title, detail) {
 // ---------------------------------------------------------------------------
 
 function renderMemory() {
+  saveState();
   els.memoryGrid.innerHTML = "";
   if (!state.memory.length) {
     const empty = document.createElement("div");
@@ -1721,6 +1963,167 @@ function logoSvg(id) {
     </g>
     <circle cx="32.5" cy="11.5" r="2.4" fill="#fff"/>
   </svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// Persistence (memory, reminders, voice, skill survive reloads)
+// ---------------------------------------------------------------------------
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.memory) && data.memory.length) state.memory = data.memory;
+    if (Array.isArray(data.reminders)) state.reminders = data.reminders;
+    if (data.persona && GROK_VOICES.find((persona) => persona.id === data.persona)) state.persona = data.persona;
+    if (data.mode && SKILLS.find((skill) => skill.id === data.mode)) state.mode = data.mode;
+  } catch (error) {
+    // ignore storage errors
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify({
+        memory: state.memory,
+        reminders: state.reminders,
+        persona: state.persona,
+        mode: state.mode
+      })
+    );
+  } catch (error) {
+    // ignore storage errors (quota, private mode)
+  }
+}
+
+function exportData() {
+  const blob = new Blob(
+    [JSON.stringify({ memory: state.memory, reminders: state.reminders }, null, 2)],
+    { type: "application/json" }
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "voicemate-memory.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
+  toast("Exported memory");
+}
+
+async function importData(file) {
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (Array.isArray(data.memory)) state.memory = state.memory.concat(data.memory);
+    if (Array.isArray(data.reminders)) state.reminders = state.reminders.concat(data.reminders);
+    renderMemory();
+    renderReminders();
+    toast("Imported memory");
+  } catch (error) {
+    toast("Couldn't read that file");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+function renderReminders() {
+  saveState();
+  if (!els.reminderList) return;
+  els.reminderList.innerHTML = "";
+  const open = state.reminders.filter((reminder) => !reminder.done);
+  if (!open.length) {
+    const empty = document.createElement("p");
+    empty.className = "reminder-empty";
+    empty.textContent = "No reminders yet. Add one, or ask VoiceMate to remind you.";
+    els.reminderList.appendChild(empty);
+    return;
+  }
+  open
+    .slice()
+    .reverse()
+    .forEach((reminder) => {
+      const row = document.createElement("div");
+      row.className = "reminder-item";
+      row.innerHTML = `
+        <button class="reminder-check" type="button" aria-label="Complete">${svgIcon("check")}</button>
+        <span>${escapeHtml(reminder.text)}</span>
+      `;
+      row.querySelector(".reminder-check").addEventListener("click", () => {
+        reminder.done = true;
+        renderReminders();
+        toast("Reminder completed");
+      });
+      els.reminderList.appendChild(row);
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Toasts
+// ---------------------------------------------------------------------------
+
+let toastHost = null;
+
+function toast(message) {
+  if (!toastHost) {
+    toastHost = document.createElement("div");
+    toastHost.className = "toast-host";
+    document.body.appendChild(toastHost);
+  }
+  const item = document.createElement("div");
+  item.className = "toast";
+  item.textContent = message;
+  toastHost.appendChild(item);
+  requestAnimationFrame(() => item.classList.add("show"));
+  setTimeout(() => {
+    item.classList.remove("show");
+    setTimeout(() => item.remove(), 260);
+  }, 2600);
+}
+
+// ---------------------------------------------------------------------------
+// Keyboard shortcuts + PWA
+// ---------------------------------------------------------------------------
+
+function setupShortcuts() {
+  document.addEventListener("keydown", (event) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "");
+
+    if (event.key === "Escape") {
+      if (state.live) endLiveCall("Call ended.");
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      showPage("talk");
+      els.promptInput.focus();
+      return;
+    }
+    if (event.key === "/" && !typing) {
+      event.preventDefault();
+      showPage("talk");
+      els.promptInput.focus();
+    }
+  });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  if (!/^https?:$/.test(window.location.protocol)) return; // skip on file://
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {
+      // offline support is optional
+    });
+  });
+}
+
+function truncate(value, max) {
+  const text = String(value || "").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}\u2026` : text;
 }
 
 // ---------------------------------------------------------------------------

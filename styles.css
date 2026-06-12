@@ -1979,6 +1979,111 @@ footer {
   --check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
 }
 
+/* Reminders */
+.reminder-add {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.reminder-add input {
+  flex: 1;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  outline: 0;
+}
+
+.reminder-list {
+  padding: 0 16px 8px;
+}
+
+.reminder-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.reminder-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.reminder-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.reminder-check:hover {
+  border-color: var(--green);
+  background: rgba(52, 199, 89, 0.14);
+  color: var(--green);
+}
+
+.reminder-empty {
+  margin: 0;
+  padding: 12px 16px 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* Toasts */
+.toast-host {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(28, 28, 30, 0.94);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Audio-reactive orb during live calls */
+.orb.reacting {
+  animation: none !important;
+  transform: scale(calc(1 + var(--level, 0) * 0.16));
+  transition: transform 70ms linear;
+}
+
+.orb.reacting::after {
+  transform: scale(calc(1 + var(--level, 0) * 0.5));
+}
+
 /* ===========================================================================
    Dark mode — driven by the theme toggle (data-theme="dark")
    =========================================================================== */
