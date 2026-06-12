@@ -97,17 +97,6 @@
             </div>
           </div>
 
-          <div class="talk-context-panel" id="talkContextPanel" aria-label="Current VoiceMate context" hidden>
-            <div class="context-head">
-              <div>
-                <span class="eyebrow">Context</span>
-                <strong id="contextTitle">Nothing active yet</strong>
-              </div>
-              <button class="tool-button subtle" id="clearActiveContext" type="button">Clear context</button>
-            </div>
-            <div class="context-chips" id="contextChips"></div>
-          </div>
-
           <div class="focus-orb-wrap">
             <div class="orb focus-orb" id="voiceOrb" role="img" aria-label="VoiceMate voice animation">
               <span class="orb-eyes"><i></i><i></i></span>
@@ -123,14 +112,6 @@
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
-
-          <details class="thinking-drawer" id="thinkingDrawer" hidden>
-            <summary>
-              <span>Thinking and actions</span>
-              <small id="thinkingSummary">VoiceMate will show context, sources, and tools here.</small>
-            </summary>
-            <div class="talk-trace" id="talkTrace"></div>
-          </details>
 
           <form class="composer" id="promptForm">
             <label class="composer-attach" for="quickFileUpload" aria-label="Attach a file">
@@ -157,10 +138,29 @@
           <div class="conversation-tools" aria-label="Conversation tools">
             <button class="tool-button" id="clearTranscript" type="button">New chat</button>
             <button class="tool-button subtle" id="historyButton" type="button">History</button>
+            <button class="tool-button subtle" id="contextButton" type="button">Context</button>
             <button class="tool-button subtle" id="saveTranscript" type="button">Save to memory</button>
             <button class="tool-button subtle" id="copyTranscript" type="button">Copy</button>
-            <span class="shortcut-help">Esc ends call · ⌘K focuses message · Space starts live call</span>
           </div>
+
+          <div class="talk-context-panel" id="talkContextPanel" aria-label="Current VoiceMate context" hidden>
+            <div class="context-head">
+              <div>
+                <span class="eyebrow">Context</span>
+                <strong id="contextTitle">Nothing active yet</strong>
+              </div>
+              <button class="tool-button subtle" id="clearActiveContext" type="button">Clear context</button>
+            </div>
+            <div class="context-chips" id="contextChips"></div>
+          </div>
+
+          <details class="thinking-drawer" id="thinkingDrawer" hidden>
+            <summary>
+              <span>Thinking and actions</span>
+              <small id="thinkingSummary">VoiceMate will show context, sources, and tools here.</small>
+            </summary>
+            <div class="talk-trace" id="talkTrace"></div>
+          </details>
         </div>
       </section>
 

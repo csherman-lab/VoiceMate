@@ -233,6 +233,7 @@ const state = {
   conversations: [],
   currentConvo: null,
   uploadContext: { ids: [], createdAt: 0 },
+  contextOpen: false,
   wakeEnabled: false,
   wakeRec: null,
   currentAudioUrl: "",
@@ -295,6 +296,7 @@ function cacheEls() {
     thinkingSummary: document.querySelector("#thinkingSummary"),
     contextTitle: document.querySelector("#contextTitle"),
     contextChips: document.querySelector("#contextChips"),
+    contextButton: document.querySelector("#contextButton"),
     clearActiveContext: document.querySelector("#clearActiveContext"),
     knowledgeUpload: document.querySelector("#knowledgeUpload"),
     imageUpload: document.querySelector("#imageUpload"),
@@ -481,10 +483,17 @@ function wireEvents() {
   if (els.clearActiveContext) {
     els.clearActiveContext.addEventListener("click", () => {
       state.uploadContext = { ids: [], createdAt: 0 };
+      state.contextOpen = false;
       saveState();
       renderContextChips();
       renderMemory();
       addActivity("Context cleared", "VoiceMate will use general memory instead of a specific upload.");
+    });
+  }
+  if (els.contextButton) {
+    els.contextButton.addEventListener("click", () => {
+      state.contextOpen = !state.contextOpen;
+      renderContextChips();
     });
   }
 
@@ -685,7 +694,11 @@ function renderContextChips() {
   if (!els.contextChips || !els.contextTitle) return;
   const active = uploadContextItems();
   els.contextChips.innerHTML = "";
-  if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length;
+  if (els.contextButton) {
+    els.contextButton.textContent = active.length ? `Context (${active.length})` : "Context";
+    els.contextButton.disabled = !active.length;
+  }
+  if (els.talkContextPanel) els.talkContextPanel.hidden = !active.length || !state.contextOpen;
   els.contextTitle.textContent = active.length
     ? `${active.length} active item${active.length === 1 ? "" : "s"}`
     : "Nothing active yet";
@@ -730,6 +743,7 @@ function activateMemoryItem(item) {
   const ids = new Set(state.uploadContext.ids || []);
   ids.add(item.id);
   state.uploadContext = { ids: [...ids], createdAt: Date.now() };
+  state.contextOpen = true;
   saveState();
   renderContextChips();
   renderMemory();
@@ -1802,7 +1816,7 @@ async function startLiveCall() {
   if (state.live) return;
   if (!state.backendOnline) {
     addMessage(
-      "agent",
+      "system",
       "The live voice needs the VoiceMate server. Start it with npm start, open localhost, and tap Start live call again."
     );
     addActivity("Live voice unavailable", "Voice server not connected.");
@@ -1827,8 +1841,13 @@ async function startLiveCall() {
     curUser: null,
     curUserText: "",
     lastUserFinal: "",
+    lastUserBubble: null,
+    lastUserFinalAt: 0,
     curAsst: null,
     curAsstText: "",
+    asstRevealQueue: [],
+    asstRevealTimer: null,
+    asstFullText: "",
     sharedMemoryIds: new Set()
   };
   state.live = live;
@@ -1897,7 +1916,7 @@ async function startLiveCall() {
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
       if (els.voiceHint) els.voiceHint.textContent = "Listening, just talk";
       addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
-      addMessage("agent", "I'm live. Just start talking whenever you're ready.");
+      addMessage("system", "Live call started. Just talk.");
     });
 
     ws.addEventListener("message", (event) => handleRealtimeMessage(live, event.data));
@@ -1908,7 +1927,7 @@ async function startLiveCall() {
       if (state.live === live) endLiveCall("The call disconnected.");
     });
   } catch (error) {
-    addMessage("agent", `Couldn't start the call: ${error.message || "unknown error"}.`);
+    addMessage("system", `Couldn't start the call: ${error.message || "unknown error"}.`);
     addActivity("Live call failed", error.message || "Unknown error.");
     endLiveCall();
   }
@@ -2013,6 +2032,7 @@ function handleRealtimeMessage(live, raw) {
     case "input_audio_buffer.speech_started":
       // Barge-in: user started talking, drop any queued assistant audio.
       stopLivePlayback(live);
+      stopAssistantReveal(live, false);
       setSpeechStatus("Listening", true, false);
       break;
 
@@ -2027,23 +2047,39 @@ function handleRealtimeMessage(live, raw) {
       }
       live.curUserText =
         msg.transcript != null ? msg.transcript : live.curUserText + (msg.delta || "");
-      live.curUser.textContent = live.curUserText;
-      els.transcript.scrollTop = els.transcript.scrollHeight;
+      setLiveText(live.curUser, live.curUserText, true);
       break;
     }
 
     case "conversation.item.input_audio_transcription.completed": {
       const text = (msg.transcript || live.curUserText || "").trim();
+      const duplicateFinal =
+        text &&
+        normalizeTranscript(text) === normalizeTranscript(live.lastUserFinal) &&
+        Date.now() - (live.lastUserFinalAt || 0) < 8000;
+      const correctionFinal = !duplicateFinal && shouldReplaceLastUserTranscript(live, text);
       if (live.curUser) {
         live.curUser.classList.remove("live-typing");
-        if (text) live.curUser.textContent = text;
+        if (duplicateFinal) live.curUser.remove();
+        else if (correctionFinal) {
+          setLiveText(live.lastUserBubble, text, false);
+          replaceLastHistory("user", text);
+          live.curUser.remove();
+        }
+        else if (text) setLiveText(live.curUser, text, false);
         else live.curUser.remove();
+      } else if (correctionFinal) {
+        setLiveText(live.lastUserBubble, text, false);
+        replaceLastHistory("user", text);
       } else if (text && text !== live.lastUserFinal) {
-        addMessage("user", text);
+        live.curUser = addMessage("user", "");
+        setLiveText(live.curUser, text, true);
       }
-      if (text) {
-        pushHistory("user", text);
+      if (text && !duplicateFinal) {
+        if (!correctionFinal) pushHistory("user", text);
         live.lastUserFinal = text;
+        live.lastUserBubble = correctionFinal ? live.lastUserBubble : live.curUser || live.lastUserBubble;
+        live.lastUserFinalAt = Date.now();
       }
       live.curUser = null;
       live.curUserText = "";
@@ -2056,28 +2092,46 @@ function handleRealtimeMessage(live, raw) {
         live.curAsst = addMessage("agent", "");
         live.curAsst.classList.add("typing");
         live.curAsstText = "";
+        live.asstFullText = "";
+        live.asstRevealQueue = [];
       }
-      live.curAsstText += msg.delta || "";
-      live.curAsst.textContent = stripSpeechTags(live.curAsstText);
-      els.transcript.scrollTop = els.transcript.scrollHeight;
+      live.asstFullText += msg.delta || "";
+      enqueueAssistantReveal(live, stripSpeechTags(msg.delta || ""));
       break;
     }
 
     case "response.output_audio_transcript.done": {
-      const finalText = stripSpeechTags(msg.transcript || live.curAsstText || "");
+      const finalText = stripSpeechTags(msg.transcript || live.asstFullText || "");
+      if (finalText && live.curAsst) {
+        const revealed = live.curAsst.dataset.liveText || "";
+        if (!live.asstRevealQueue.length && finalText.length > revealed.length && finalText.startsWith(revealed)) {
+          enqueueAssistantReveal(live, finalText.slice(revealed.length));
+        } else if (!revealed && !live.asstRevealQueue.length) {
+          enqueueAssistantReveal(live, finalText);
+        }
+      }
       if (live.curAsst) {
         live.curAsst.classList.remove("typing");
-        if (finalText) live.curAsst.textContent = finalText;
+        if (finalText) live.curAsst.dataset.finalText = finalText;
         else live.curAsst.remove();
       } else if (finalText) {
-        addMessage("agent", finalText);
+        live.curAsst = addMessage("agent", "");
+        enqueueAssistantReveal(live, finalText);
       }
       if (finalText) {
         pushHistory("assistant", finalText);
         setExpression(detectExpression(finalText));
       }
+      const doneBubble = live.curAsst;
+      live.lastAsstBubble = doneBubble;
+      window.setTimeout(() => {
+        if (doneBubble && doneBubble.dataset.finalText && (doneBubble.dataset.liveText || "") !== doneBubble.dataset.finalText) {
+          setLiveText(doneBubble, doneBubble.dataset.finalText, false);
+        }
+      }, 1200);
       live.curAsst = null;
       live.curAsstText = "";
+      live.asstFullText = "";
       break;
     }
 
@@ -2178,6 +2232,7 @@ function endLiveCall(note) {
     if (live.source) live.source.disconnect();
     if (live.stream) live.stream.getTracks().forEach((track) => track.stop());
     stopLivePlayback(live);
+    stopAssistantReveal(live, true);
     if (live.ws && live.ws.readyState <= WebSocket.OPEN) live.ws.close();
     if (live.ctx && live.ctx.state !== "closed") live.ctx.close();
   } catch (error) {
@@ -2190,7 +2245,7 @@ function endLiveCall(note) {
   updateWake();
   if (note) {
     addActivity("Call ended", note);
-    addMessage("agent", note);
+    addMessage("system", note);
   }
 }
 
@@ -2239,6 +2294,50 @@ function base64ToBytes(base64String) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function enqueueAssistantReveal(live, text) {
+  if (!live || !live.curAsst || !text) return;
+  const parts = String(text).match(/\s+|[^\s]+/g) || [];
+  live.asstRevealQueue.push(...parts);
+  if (live.asstRevealTimer) return;
+  const tick = () => {
+    if (state.live !== live && !live.curAsst) {
+      stopAssistantReveal(live, false);
+      return;
+    }
+    const bubble = live.curAsst || live.lastAsstBubble;
+    if (!bubble || !live.asstRevealQueue.length) {
+      live.asstRevealTimer = null;
+      return;
+    }
+    let chunk = "";
+    let words = 0;
+    while (live.asstRevealQueue.length && words < 1) {
+      const part = live.asstRevealQueue.shift();
+      chunk += part;
+      if (!/^\s+$/.test(part)) words += 1;
+    }
+    appendAnimatedText(bubble, chunk);
+    bubble.dataset.liveText = (bubble.dataset.liveText || "") + chunk;
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+    live.asstRevealTimer = window.setTimeout(tick, chunk.length > 14 ? 150 : 120);
+  };
+  live.asstRevealTimer = window.setTimeout(tick, 35);
+}
+
+function stopAssistantReveal(live, flush) {
+  if (!live) return;
+  if (live.asstRevealTimer) {
+    clearTimeout(live.asstRevealTimer);
+    live.asstRevealTimer = null;
+  }
+  if (flush && live.curAsst && live.asstRevealQueue?.length) {
+    const rest = live.asstRevealQueue.join("");
+    appendAnimatedText(live.curAsst, rest);
+    live.curAsst.dataset.liveText = (live.curAsst.dataset.liveText || "") + rest;
+  }
+  live.asstRevealQueue = [];
 }
 
 // ---------------------------------------------------------------------------
@@ -2441,6 +2540,27 @@ function updateOrbTurn() {
   }
 }
 
+function shouldReplaceLastUserTranscript(live, text) {
+  if (!live || !text || !live.lastUserFinal || !live.lastUserBubble) return false;
+  if (Date.now() - (live.lastUserFinalAt || 0) > 8000) return false;
+  const current = normalizeTranscript(text);
+  const previous = normalizeTranscript(live.lastUserFinal);
+  if (!current || !previous || current === previous) return false;
+  if (current.startsWith(previous) || previous.startsWith(current)) return true;
+  const curWords = current.split(" ");
+  const prevWords = previous.split(" ");
+  const sharedStart = prevWords.slice(0, Math.min(4, prevWords.length)).join(" ");
+  return sharedStart.length > 5 && current.startsWith(sharedStart) && Math.abs(curWords.length - prevWords.length) <= 10;
+}
+
+function normalizeTranscript(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\w\s']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function scheduleBlink() {
   const delay = 1800 + Math.random() * 4200;
   window.setTimeout(() => {
@@ -2466,11 +2586,47 @@ function clampEye(value) {
 function addMessage(role, text) {
   const message = document.createElement("div");
   message.className = `message ${role}`;
-  message.textContent = role === "user" ? text : noDashes(text);
+  message.textContent = role === "user" || role === "system" ? text : noDashes(text);
   els.transcript.appendChild(message);
   els.transcript.scrollTop = els.transcript.scrollHeight;
   updateTalkChrome();
   return message;
+}
+
+function setLiveText(message, text, animateNew = true) {
+  if (!message) return;
+  const clean = String(text || "");
+  const previous = message.dataset.liveText || "";
+  if (animateNew && clean.startsWith(previous) && clean.length > previous.length) {
+    appendAnimatedText(message, clean.slice(previous.length));
+  } else {
+    message.innerHTML = wordsToAnimatedHtml(clean, false);
+  }
+  message.dataset.liveText = clean;
+  els.transcript.scrollTop = els.transcript.scrollHeight;
+}
+
+function appendAnimatedText(message, text) {
+  const parts = String(text || "").match(/\s+|[^\s]+/g) || [];
+  for (const part of parts) {
+    if (/^\s+$/.test(part)) {
+      message.appendChild(document.createTextNode(part));
+    } else {
+      const span = document.createElement("span");
+      span.className = "word-pop";
+      span.textContent = part;
+      message.appendChild(span);
+    }
+  }
+}
+
+function wordsToAnimatedHtml(text, animate) {
+  return (String(text || "").match(/\s+|[^\s]+/g) || [])
+    .map((part) => {
+      if (/^\s+$/.test(part)) return escapeHtml(part);
+      return animate ? `<span class="word-pop">${escapeHtml(part)}</span>` : escapeHtml(part);
+    })
+    .join("");
 }
 
 function updateTalkChrome() {
@@ -3200,6 +3356,25 @@ function pushHistory(role, content) {
     convo.titled = true;
   }
   maybeSummarizeConversation(convo);
+  saveState();
+}
+
+function replaceLastHistory(role, content) {
+  for (let i = state.history.length - 1; i >= 0; i--) {
+    if (state.history[i].role === role) {
+      state.history[i].content = content;
+      break;
+    }
+  }
+  if (state.currentConvo) {
+    for (let i = state.currentConvo.messages.length - 1; i >= 0; i--) {
+      if (state.currentConvo.messages[i].role === role) {
+        state.currentConvo.messages[i].content = content;
+        state.currentConvo.updatedAt = Date.now();
+        break;
+      }
+    }
+  }
   saveState();
 }
 
