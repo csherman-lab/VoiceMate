@@ -81,14 +81,18 @@
       <!-- TALK -->
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
         <div class="talk-stage" id="talkStage">
-          <div class="talk-top talk-top-minimal">
-            <div class="session-title">
-              <span class="vm-logo small" id="talkLogo" aria-hidden="true"></span>
-              <div>
-                <strong>VoiceMate</strong>
-                <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
-              </div>
+          <div class="talk-bar">
+            <button class="talk-bar-back page-link" type="button" data-page="home" aria-label="Back to Home">
+              <span class="talk-bar-icon" data-icon="chevron-left"></span>
+              <span>Home</span>
+            </button>
+            <div class="talk-bar-center">
+              <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
             </div>
+            <button class="talk-bar-action" id="liveButton" type="button" aria-pressed="false">
+              <span class="call-icon" id="callIcon"></span>
+              <span class="live-label">Live</span>
+            </button>
           </div>
 
           <div class="focus-orb-wrap" id="focusOrbWrap">
@@ -96,10 +100,6 @@
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <p class="voice-hint" id="voiceHint">Ask about reminders, tomorrow, or anything your connectors pulled in.</p>
-            <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
-              <span class="call-icon" id="callIcon"></span>
-              <span class="live-label">Start live call</span>
-            </button>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>

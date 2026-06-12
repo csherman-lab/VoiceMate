@@ -397,7 +397,7 @@ function init() {
   if (els.wakeToggle) els.wakeToggle.checked = state.wakeEnabled;
   updateModeCaption();
   updateGrokStatus();
-  setLiveButton(false, "Start live call");
+  setLiveButton(false, "Live");
   setupSpeechRecognition();
   setupShortcuts();
   setupEyes();
@@ -1322,7 +1322,7 @@ function startTalkSession() {
 }
 
 function endTalkSession() {
-  if (state.live) endLiveCall("Call ended.");
+  if (state.live) endLiveCall();
   if (!state.talkStarted) return;
   state.talkStarted = false;
   if (state.recognition && state.recognizing) state.recognition.stop();
@@ -2359,7 +2359,8 @@ async function startLiveCall() {
 
   showPage("talk");
   stopWake();
-  setLiveButton(true, "Connecting...");
+  setLiveButton(true, "Connecting");
+  if (els.liveButton) els.liveButton.disabled = true;
   setSpeechStatus("Connecting", false, false);
   addActivity("Starting call", "Requesting a secure voice session.");
 
@@ -2446,7 +2447,8 @@ async function startLiveCall() {
       startMicStreaming(live);
       shareMemoryWithLive(activeUploadItems());
       startCallTimer();
-      setLiveButton(true, "End call");
+      setLiveButton(true, "End");
+      if (els.liveButton) els.liveButton.disabled = false;
       setSpeechStatus("Listening", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
       if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
@@ -2471,6 +2473,7 @@ async function startLiveCall() {
     }
     addMessage("system", `Couldn't start the call: ${message}.`);
     addActivity("Live call failed", message);
+    if (els.liveButton) els.liveButton.disabled = false;
     endLiveCall();
   }
 }
@@ -2820,7 +2823,7 @@ function stopLivePlayback(live) {
 function endLiveCall(note) {
   const live = state.live;
   if (!live) {
-    setLiveButton(false, "Start live call");
+    setLiveButton(false, "Live");
     return;
   }
   state.live = null;
@@ -2850,7 +2853,8 @@ function endLiveCall(note) {
   }
 
   stopCallTimer();
-  setLiveButton(false, "Start live call");
+  if (els.liveButton) els.liveButton.disabled = false;
+  setLiveButton(false, "Live");
   setSpeechStatus("Ready", false, false);
   setOrbMood(state.backendOnline ? "idle" : "offline");
   updateGrokStatus();
@@ -2865,10 +2869,13 @@ function endLiveCall(note) {
 function setLiveButton(active, label) {
   if (!els.liveButton) return;
   els.liveButton.classList.toggle("active", active);
+  els.liveButton.classList.toggle("is-live", active);
   const lbl = els.liveButton.querySelector(".live-label");
   if (lbl) lbl.textContent = label;
   els.liveButton.setAttribute("aria-pressed", String(active));
+  els.liveButton.setAttribute("aria-label", active ? "End live call" : "Start live call");
   if (els.callIcon) els.callIcon.innerHTML = svgIcon(active ? "phone-off" : "phone");
+  if (els.talkStage) els.talkStage.classList.toggle("talk-on-call", active);
 }
 
 function float32ToBase64PCM16(float32Array) {
@@ -3633,7 +3640,7 @@ function updateGrokStatus() {
       els.backendStatus.classList.add("connected");
     }
     if (els.voiceHint && !state.live) els.voiceHint.textContent = "Tap below to start a live call, or type a message.";
-    if (!state.live) setLiveButton(false, "Start live call");
+    if (!state.live) setLiveButton(false, "Live");
     return;
   }
   if (els.backendStatus) {
@@ -3642,7 +3649,7 @@ function updateGrokStatus() {
   }
   if (els.grokStatus) els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
   if (els.voiceHint && !state.live) els.voiceHint.textContent = "Type a message. Connect the server in Settings for live voice.";
-  if (!state.live) setLiveButton(false, "Set up live voice");
+  if (!state.live) setLiveButton(false, "Set up");
 }
 
 async function checkBackend() {
@@ -3913,7 +3920,8 @@ const ICONS = {
     '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.7-2.5h7.6L17.5 6H21a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/>',
   history:
     '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.6-6.4L3 8"/><path d="M12 7v5l3.5 2"/>',
-  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.3 1.3"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.3-1.3"/>'
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.3 1.3"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.3-1.3"/>',
+  "chevron-left": '<path d="M15 18l-6-6 6-6"/>'
 };
 
 function svgIcon(name) {

@@ -1045,6 +1045,76 @@ h3 {
   margin-bottom: 4px;
 }
 
+.talk-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: min(720px, calc(100vw - 32px));
+  margin: 0 auto 12px;
+  padding: 4px 0;
+}
+
+.talk-bar-back,
+.talk-bar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.talk-bar-back:hover,
+.talk-bar-action:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.talk-bar-back .talk-bar-icon,
+.talk-bar-action .call-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+}
+
+.talk-bar-back .talk-bar-icon svg,
+.talk-bar-action .call-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.talk-bar-center {
+  text-align: center;
+  min-width: 0;
+}
+
+.talk-bar-action {
+  border-color: rgba(0, 122, 255, 0.28);
+  color: var(--blue);
+  background: rgba(0, 122, 255, 0.08);
+}
+
+.talk-bar-action.is-live,
+.talk-bar-action.active {
+  border-color: rgba(255, 59, 48, 0.28);
+  background: rgba(255, 59, 48, 0.1);
+  color: #d70015;
+}
+
+.talk-bar-action:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .talk-status {
   display: block;
   color: var(--muted);
@@ -1082,8 +1152,7 @@ h3 {
   height: min(140px, 34vw);
 }
 
-.talk-live .voice-hint,
-.talk-live .call-cta {
+.talk-live .voice-hint {
   display: none;
 }
 
@@ -3765,6 +3834,12 @@ footer {
   background: var(--blue);
 }
 
+:root[data-theme="dark"] .talk-bar-back,
+:root[data-theme="dark"] .talk-bar-action {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 :root[data-theme="dark"] .segmented {
   background: rgba(120, 120, 128, 0.3);
 }
@@ -3988,14 +4063,18 @@ footer {
       <!-- TALK -->
       <section class="page talk-page" id="talkPage" data-page-panel="talk">
         <div class="talk-stage" id="talkStage">
-          <div class="talk-top talk-top-minimal">
-            <div class="session-title">
-              <span class="vm-logo small" id="talkLogo" aria-hidden="true"></span>
-              <div>
-                <strong>VoiceMate</strong>
-                <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
-              </div>
+          <div class="talk-bar">
+            <button class="talk-bar-back page-link" type="button" data-page="home" aria-label="Back to Home">
+              <span class="talk-bar-icon" data-icon="chevron-left"></span>
+              <span>Home</span>
+            </button>
+            <div class="talk-bar-center">
+              <span id="talkStatus" class="talk-status" aria-live="polite">Ready</span>
             </div>
+            <button class="talk-bar-action" id="liveButton" type="button" aria-pressed="false">
+              <span class="call-icon" id="callIcon"></span>
+              <span class="live-label">Live</span>
+            </button>
           </div>
 
           <div class="focus-orb-wrap" id="focusOrbWrap">
@@ -4003,10 +4082,6 @@ footer {
               <span class="orb-eyes"><i></i><i></i></span>
             </div>
             <p class="voice-hint" id="voiceHint">Ask about reminders, tomorrow, or anything your connectors pulled in.</p>
-            <button class="button primary call-cta" id="liveButton" type="button" aria-pressed="false">
-              <span class="call-icon" id="callIcon"></span>
-              <span class="live-label">Start live call</span>
-            </button>
           </div>
 
           <div class="transcript" id="transcript" aria-live="polite"></div>
@@ -4920,7 +4995,7 @@ function init() {
   if (els.wakeToggle) els.wakeToggle.checked = state.wakeEnabled;
   updateModeCaption();
   updateGrokStatus();
-  setLiveButton(false, "Start live call");
+  setLiveButton(false, "Live");
   setupSpeechRecognition();
   setupShortcuts();
   setupEyes();
@@ -5845,7 +5920,7 @@ function startTalkSession() {
 }
 
 function endTalkSession() {
-  if (state.live) endLiveCall("Call ended.");
+  if (state.live) endLiveCall();
   if (!state.talkStarted) return;
   state.talkStarted = false;
   if (state.recognition && state.recognizing) state.recognition.stop();
@@ -6882,7 +6957,8 @@ async function startLiveCall() {
 
   showPage("talk");
   stopWake();
-  setLiveButton(true, "Connecting...");
+  setLiveButton(true, "Connecting");
+  if (els.liveButton) els.liveButton.disabled = true;
   setSpeechStatus("Connecting", false, false);
   addActivity("Starting call", "Requesting a secure voice session.");
 
@@ -6969,7 +7045,8 @@ async function startLiveCall() {
       startMicStreaming(live);
       shareMemoryWithLive(activeUploadItems());
       startCallTimer();
-      setLiveButton(true, "End call");
+      setLiveButton(true, "End");
+      if (els.liveButton) els.liveButton.disabled = false;
       setSpeechStatus("Listening", true, false);
       if (els.backendStatus) els.backendStatus.textContent = "Live voice";
       if (els.voiceHint) els.voiceHint.textContent = "Just talk — VoiceMate is listening.";
@@ -6994,6 +7071,7 @@ async function startLiveCall() {
     }
     addMessage("system", `Couldn't start the call: ${message}.`);
     addActivity("Live call failed", message);
+    if (els.liveButton) els.liveButton.disabled = false;
     endLiveCall();
   }
 }
@@ -7343,7 +7421,7 @@ function stopLivePlayback(live) {
 function endLiveCall(note) {
   const live = state.live;
   if (!live) {
-    setLiveButton(false, "Start live call");
+    setLiveButton(false, "Live");
     return;
   }
   state.live = null;
@@ -7373,7 +7451,8 @@ function endLiveCall(note) {
   }
 
   stopCallTimer();
-  setLiveButton(false, "Start live call");
+  if (els.liveButton) els.liveButton.disabled = false;
+  setLiveButton(false, "Live");
   setSpeechStatus("Ready", false, false);
   setOrbMood(state.backendOnline ? "idle" : "offline");
   updateGrokStatus();
@@ -7388,10 +7467,13 @@ function endLiveCall(note) {
 function setLiveButton(active, label) {
   if (!els.liveButton) return;
   els.liveButton.classList.toggle("active", active);
+  els.liveButton.classList.toggle("is-live", active);
   const lbl = els.liveButton.querySelector(".live-label");
   if (lbl) lbl.textContent = label;
   els.liveButton.setAttribute("aria-pressed", String(active));
+  els.liveButton.setAttribute("aria-label", active ? "End live call" : "Start live call");
   if (els.callIcon) els.callIcon.innerHTML = svgIcon(active ? "phone-off" : "phone");
+  if (els.talkStage) els.talkStage.classList.toggle("talk-on-call", active);
 }
 
 function float32ToBase64PCM16(float32Array) {
@@ -8156,7 +8238,7 @@ function updateGrokStatus() {
       els.backendStatus.classList.add("connected");
     }
     if (els.voiceHint && !state.live) els.voiceHint.textContent = "Tap below to start a live call, or type a message.";
-    if (!state.live) setLiveButton(false, "Start live call");
+    if (!state.live) setLiveButton(false, "Live");
     return;
   }
   if (els.backendStatus) {
@@ -8165,7 +8247,7 @@ function updateGrokStatus() {
   }
   if (els.grokStatus) els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
   if (els.voiceHint && !state.live) els.voiceHint.textContent = "Type a message. Connect the server in Settings for live voice.";
-  if (!state.live) setLiveButton(false, "Set up live voice");
+  if (!state.live) setLiveButton(false, "Set up");
 }
 
 async function checkBackend() {
@@ -8436,7 +8518,8 @@ const ICONS = {
     '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.7-2.5h7.6L17.5 6H21a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.6"/>',
   history:
     '<path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.6-6.4L3 8"/><path d="M12 7v5l3.5 2"/>',
-  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.3 1.3"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.3-1.3"/>'
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.3 1.3"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.3-1.3"/>',
+  "chevron-left": '<path d="M15 18l-6-6 6-6"/>'
 };
 
 function svgIcon(name) {

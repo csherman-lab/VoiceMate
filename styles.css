@@ -1020,6 +1020,76 @@ h3 {
   margin-bottom: 4px;
 }
 
+.talk-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: min(720px, calc(100vw - 32px));
+  margin: 0 auto 12px;
+  padding: 4px 0;
+}
+
+.talk-bar-back,
+.talk-bar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.talk-bar-back:hover,
+.talk-bar-action:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.talk-bar-back .talk-bar-icon,
+.talk-bar-action .call-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+}
+
+.talk-bar-back .talk-bar-icon svg,
+.talk-bar-action .call-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.talk-bar-center {
+  text-align: center;
+  min-width: 0;
+}
+
+.talk-bar-action {
+  border-color: rgba(0, 122, 255, 0.28);
+  color: var(--blue);
+  background: rgba(0, 122, 255, 0.08);
+}
+
+.talk-bar-action.is-live,
+.talk-bar-action.active {
+  border-color: rgba(255, 59, 48, 0.28);
+  background: rgba(255, 59, 48, 0.1);
+  color: #d70015;
+}
+
+.talk-bar-action:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .talk-status {
   display: block;
   color: var(--muted);
@@ -1057,8 +1127,7 @@ h3 {
   height: min(140px, 34vw);
 }
 
-.talk-live .voice-hint,
-.talk-live .call-cta {
+.talk-live .voice-hint {
   display: none;
 }
 
@@ -3738,6 +3807,12 @@ footer {
 
 :root[data-theme="dark"] .send-button {
   background: var(--blue);
+}
+
+:root[data-theme="dark"] .talk-bar-back,
+:root[data-theme="dark"] .talk-bar-action {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 :root[data-theme="dark"] .segmented {
