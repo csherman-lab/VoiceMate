@@ -1464,98 +1464,596 @@ footer {
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Dark mode — Apple-style: near-black backgrounds, elevated surfaces,
-   white/8% hairline borders, soft shadows. Inspired by Settings.app.
-   --------------------------------------------------------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ink: #f5f5f7;
-    --muted: #a1a1aa;
-    --faint: #6b6b73;
-    --page: #000000;
-    --surface: rgba(28, 28, 30, 0.72);
-    --surface-solid: #1c1c1e;
-    --line: rgba(255, 255, 255, 0.09);
-    --blue: #0a84ff;
-    --blue-soft: rgba(10, 132, 255, 0.18);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.55);
-    --soft-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px rgba(0, 0, 0, 0.45);
-  }
+/* ===========================================================================
+   v0.3 redesign — logo, SF-style icons, redesigned Memory + Settings
+   =========================================================================== */
 
-  body {
-    background:
-      radial-gradient(circle at 50% 0%, rgba(10, 132, 255, 0.16), transparent 34rem),
-      linear-gradient(180deg, #111114 0%, #000000 100%);
-  }
+.vm-logo {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+}
 
-  .nav {
-    background: rgba(28, 28, 30, 0.66);
-  }
+.vm-logo svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+}
 
-  .nav nav {
-    background: rgba(120, 120, 128, 0.24);
-  }
+.vm-logo.small {
+  width: 32px;
+  height: 32px;
+}
 
-  .button.secondary,
-  .button.ghost,
-  .card-action,
-  .tool-button,
-  .quick-prompts button,
-  .drop-zone,
-  textarea,
-  select,
-  .setup-card input,
-  .persona-option,
-  .activity-item,
-  .memory-card,
-  .memory-empty,
-  .connection-card,
-  .citations a {
-    background: rgba(255, 255, 255, 0.05);
-  }
+.brand-name {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
 
-  .message.agent {
-    background: rgba(255, 255, 255, 0.07);
-  }
+/* SF-style icons render currentColor strokes */
+[data-icon] svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
-  .backend-pill,
-  .session-button {
-    background: rgba(255, 255, 255, 0.08);
-  }
+.skill-icon svg {
+  width: 24px;
+  height: 24px;
+}
 
-  .talk-dock {
-    background: rgba(28, 28, 30, 0.82);
-  }
+.home-section {
+  margin-top: 56px;
+}
 
-  .talk-session .talk-page.active {
-    background:
-      radial-gradient(circle at 50% 18%, rgba(10, 132, 255, 0.14), transparent 30rem),
-      linear-gradient(180deg, #111114 0%, #000000 100%);
-  }
+/* Voice pill (talk header) */
+.voice-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
 
-  .dock-button {
-    background: #2c2c2e;
-  }
+.voice-pill.connected {
+  border-color: rgba(52, 199, 89, 0.28);
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
 
-  .file-button {
-    background: rgba(255, 255, 255, 0.1);
-  }
+/* Big call CTA */
+.call-cta {
+  gap: 8px;
+  margin-top: 22px;
+  padding: 0 24px;
+  min-height: 50px;
+}
 
-  .file-button span {
-    border-color: #f5f5f7;
-  }
+.call-cta .call-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
 
-  .file-button span::after {
-    background: #f5f5f7;
-  }
+.call-cta.active {
+  background: var(--red);
+  box-shadow: 0 10px 24px rgba(255, 59, 48, 0.26);
+}
 
-  .send-button {
-    background: var(--blue);
-  }
+/* Dock icons */
+.dock-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+}
 
-  .memory-icon {
-    background: rgba(10, 132, 255, 0.14);
-  }
+.mic-button .dock-icon,
+.send-button .dock-icon {
+  color: #fff;
+}
+
+.file-button .dock-icon {
+  color: var(--ink);
+}
+
+/* --- Memory redesign --- */
+.memory-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.add-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(24px);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease;
+}
+
+.add-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.add-tile input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.add-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.4), transparent 42%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tint) 82%, white), var(--tint));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 8px 18px color-mix(in srgb, var(--tint) 34%, transparent);
+}
+
+.add-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.add-tile strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.add-tile small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.paste-panel {
+  margin-bottom: 18px;
+}
+
+.paste-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.memory-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.memory-list-head h3 {
+  margin: 0;
+}
+
+.memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.memory-item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+}
+
+.mem-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.38), transparent 42%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tint) 82%, white), var(--tint));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.mem-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.mem-thumb img {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  object-fit: cover;
+}
+
+.mem-text {
+  min-width: 0;
+}
+
+.mem-text strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+.mem-text p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mem-tag {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mem-delete {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.mem-delete svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mem-delete:hover {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--red);
+}
+
+.memory-empty {
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
+  text-align: center;
+}
+
+.memory-empty .empty-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.memory-empty .empty-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.memory-empty strong {
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.memory-empty p {
+  max-width: 320px;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+/* --- Settings redesign (iOS Settings.app grouped lists) --- */
+.settings-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  max-width: 720px;
+}
+
+.group-label {
+  margin: 0 0 8px 4px;
+  color: var(--faint);
+  font-size: 0.74rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.group-foot {
+  margin: 8px 4px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-row:first-child {
+  border-top: 0;
+}
+
+.row-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tint) 82%, white), var(--tint));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.row-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.row-text {
+  min-width: 0;
+}
+
+.row-text strong {
+  display: block;
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+}
+
+.row-text span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.row-control {
+  min-height: 36px;
+  margin: 0;
+  width: auto;
+  padding: 0 30px 0 12px;
+  border-radius: 10px;
+}
+
+.row-button {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.row-value {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-row.static {
+  cursor: default;
+}
+
+/* Segmented control (theme) */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(118, 118, 128, 0.16);
+}
+
+.segmented button {
+  min-height: 30px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.segmented button.active {
+  background: var(--surface-solid);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Voice rows inside the Voice group */
+.group-card .persona-list {
+  display: block;
+}
+
+.group-card .persona-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.group-card .persona-option:first-child {
+  border-top: 0;
+}
+
+.group-card .persona-option.active {
+  background: var(--blue-soft);
+}
+
+.group-card .p-text {
+  min-width: 0;
+}
+
+.group-card .p-text strong {
+  display: block;
+  letter-spacing: -0.02em;
+}
+
+.group-card .p-text span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.group-card .persona-option::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: var(--blue);
+  opacity: 0;
+  -webkit-mask: var(--check-mask) center / contain no-repeat;
+  mask: var(--check-mask) center / contain no-repeat;
+}
+
+.group-card .persona-option.active::after {
+  opacity: 1;
+}
+
+:root {
+  --check-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+/* ===========================================================================
+   Dark mode — driven by the theme toggle (data-theme="dark")
+   =========================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f5f5f7;
+  --muted: #a1a1aa;
+  --faint: #6b6b73;
+  --page: #000000;
+  --surface: rgba(28, 28, 30, 0.72);
+  --surface-solid: #2c2c2e;
+  --line: rgba(255, 255, 255, 0.1);
+  --blue: #0a84ff;
+  --blue-soft: rgba(10, 132, 255, 0.2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.55);
+  --soft-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(10, 132, 255, 0.16), transparent 34rem),
+    linear-gradient(180deg, #111114 0%, #000000 100%);
+}
+
+:root[data-theme="dark"] .nav {
+  background: rgba(28, 28, 30, 0.66);
+}
+
+:root[data-theme="dark"] .nav nav {
+  background: rgba(120, 120, 128, 0.24);
+}
+
+:root[data-theme="dark"] .button.secondary,
+:root[data-theme="dark"] .button.ghost,
+:root[data-theme="dark"] .card-action,
+:root[data-theme="dark"] .tool-button,
+:root[data-theme="dark"] .quick-prompts button,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] .activity-item,
+:root[data-theme="dark"] .citations a {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .message.agent {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .voice-pill,
+:root[data-theme="dark"] .session-button {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .talk-dock {
+  background: rgba(28, 28, 30, 0.82);
+}
+
+:root[data-theme="dark"] .talk-session .talk-page.active {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(10, 132, 255, 0.14), transparent 30rem),
+    linear-gradient(180deg, #111114 0%, #000000 100%);
+}
+
+:root[data-theme="dark"] .dock-button {
+  background: #3a3a3c;
+}
+
+:root[data-theme="dark"] .file-button {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .send-button {
+  background: var(--blue);
+}
+
+:root[data-theme="dark"] .segmented {
+  background: rgba(120, 120, 128, 0.3);
 }

@@ -1,4 +1,4 @@
-// VoiceMate — a human-sounding voice companion powered by Grok voice.
+// VoiceMate — a human-sounding voice companion.
 // Local-first inspiration from OpenJarvis: a skills catalog, automatic intent
 // routing, and a visible "show its work" reasoning trace — all wrapped in our
 // own calm, Apple-style design.
@@ -8,7 +8,7 @@ const STARTER_MEMORY = [
     type: "brief",
     name: "VoiceMate product brief",
     summary:
-      "VoiceMate is a human-sounding voice companion. It talks with real Grok voice, runs skills, remembers your uploads, and shows its reasoning.",
+      "VoiceMate is a human-sounding voice companion. It talks with a natural voice, runs skills, remembers your uploads, and shows its reasoning.",
     content:
       "VoiceMate should feel like a calm, capable teammate: natural realtime voice, a skills catalog, session memory, and a visible reasoning trace.",
     createdAt: new Date().toISOString()
@@ -124,7 +124,7 @@ const SKILLS = [
 
 const SUGGESTED_PROMPTS = [
   "Let's just chat",
-  "Research the latest on Grok voice",
+  "Research the latest AI news",
   "Give me a quick briefing",
   "Help me pitch this idea",
   "Summarize my data",
@@ -159,6 +159,8 @@ function cacheEls() {
     promptLinks: document.querySelectorAll(".prompt-link"),
     skillLinks: document.querySelectorAll("[data-skill]"),
     pages: document.querySelectorAll("[data-page-panel]"),
+    brandLogo: document.querySelector("#brandLogo"),
+    talkLogo: document.querySelector("#talkLogo"),
     skillGrid: document.querySelector("#skillGrid"),
     personaList: document.querySelector("#personaList"),
     agentMode: document.querySelector("#agentMode"),
@@ -166,11 +168,13 @@ function cacheEls() {
     activePersonaName: document.querySelector("#activePersonaName"),
     modeCaption: document.querySelector("#modeCaption"),
     speechStatus: document.querySelector("#speechStatus"),
+    voiceHint: document.querySelector("#voiceHint"),
     transcript: document.querySelector("#transcript"),
     promptForm: document.querySelector("#promptForm"),
     promptInput: document.querySelector("#promptInput"),
     micButton: document.querySelector("#micButton"),
     liveButton: document.querySelector("#liveButton"),
+    callIcon: document.querySelector("#callIcon"),
     voiceOrb: document.querySelector("#voiceOrb"),
     heroOrb: document.querySelector("#heroOrb"),
     quickPrompts: document.querySelector("#quickPrompts"),
@@ -178,6 +182,8 @@ function cacheEls() {
     knowledgeUpload: document.querySelector("#knowledgeUpload"),
     imageUpload: document.querySelector("#imageUpload"),
     quickFileUpload: document.querySelector("#quickFileUpload"),
+    pasteToggle: document.querySelector("#pasteToggle"),
+    pastePanel: document.querySelector("#pastePanel"),
     manualContext: document.querySelector("#manualContext"),
     saveContext: document.querySelector("#saveContext"),
     clearMemory: document.querySelector("#clearMemory"),
@@ -187,18 +193,24 @@ function cacheEls() {
     memoryGrid: document.querySelector("#memoryGrid"),
     grokStatus: document.querySelector("#grokStatus"),
     backendStatus: document.querySelector("#backendStatus"),
-    testConnection: document.querySelector("#testConnection")
+    testConnection: document.querySelector("#testConnection"),
+    themeSeg: document.querySelector("#themeSeg")
   });
 }
 
 function init() {
   cacheEls();
+  applyStoredTheme();
+  if (els.brandLogo) els.brandLogo.innerHTML = logoSvg("vmlogo1");
+  if (els.talkLogo) els.talkLogo.innerHTML = logoSvg("vmlogo2");
+  renderIcons();
   renderSkills();
   renderPersonas();
   renderQuickPrompts();
   renderMemory();
   updateModeCaption();
   updateGrokStatus();
+  setLiveButton(false, "Start call");
   setupSpeechRecognition();
   wireEvents();
 
@@ -238,7 +250,7 @@ function wireEvents() {
     if (!state.recognition) {
       addMessage(
         "agent",
-        "Voice input isn't available in this browser session. You can still type, or start a live call for full Grok voice."
+        "Voice input isn't available in this browser session. You can still type, or tap Start call for the live voice."
       );
       addActivity("Voice input unavailable", "This browser did not provide speech input.");
       return;
@@ -284,6 +296,20 @@ function wireEvents() {
     routeFiles(files);
     event.target.value = "";
   });
+
+  if (els.pasteToggle) {
+    els.pasteToggle.addEventListener("click", () => {
+      const hidden = els.pastePanel.hasAttribute("hidden");
+      els.pastePanel.toggleAttribute("hidden", !hidden);
+      if (hidden) els.manualContext.focus();
+    });
+  }
+
+  if (els.themeSeg) {
+    els.themeSeg.querySelectorAll("button").forEach((button) => {
+      button.addEventListener("click", () => setTheme(button.dataset.theme));
+    });
+  }
 
   els.saveContext.addEventListener("click", saveManualContext);
 
@@ -336,10 +362,10 @@ function wireEvents() {
   });
 
   els.testConnection.addEventListener("click", async () => {
-    addActivity("Testing connection", "Checking the local Grok backend.");
+    addActivity("Testing connection", "Checking the voice connection.");
     await checkBackend();
     addActivity(
-      state.backendOnline ? "Grok is connected" : "Grok is not connected",
+      state.backendOnline ? "Voice engine connected" : "Voice engine offline",
       els.grokStatus.textContent
     );
   });
@@ -442,7 +468,7 @@ function renderSkills() {
     card.dataset.skill = skill.id;
     const tint = skill.color || "#007aff";
     card.innerHTML = `
-      <span class="skill-icon" style="--tint:${tint}">${skillGlyph(skill.id)}</span>
+      <span class="skill-icon" style="--tint:${tint}">${svgIcon(skillIcon(skill.id))}</span>
       <span class="skill-tag" style="color:${tint};background:${hexToSoft(tint)}">${escapeHtml(skill.tag)}</span>
       <strong>${escapeHtml(skill.name)}</strong>
       <p>${escapeHtml(skill.blurb)}</p>
@@ -456,16 +482,16 @@ function renderSkills() {
   });
 }
 
-function skillGlyph(id) {
-  const glyphs = {
-    companion: "&#128172;",
-    research: "&#128269;",
-    digest: "&#9728;",
-    pitch: "&#9889;",
-    analyst: "&#128202;",
-    coach: "&#127919;"
+function skillIcon(id) {
+  const map = {
+    companion: "chat",
+    research: "search",
+    digest: "sun",
+    pitch: "bolt",
+    analyst: "chart",
+    coach: "target"
   };
-  return glyphs[id] || "&#10024;";
+  return map[id] || "sparkles";
 }
 
 function renderPersonas() {
@@ -476,7 +502,7 @@ function renderPersonas() {
     button.className = `persona-option${persona.id === state.persona ? " active" : ""}`;
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", String(persona.id === state.persona));
-    button.innerHTML = `<strong>${persona.name}</strong><span>${persona.style}<br>${persona.bestFor}</span>`;
+    button.innerHTML = `<div class="p-text"><strong>${persona.name}</strong><span>${persona.style} · ${persona.bestFor}</span></div>`;
     button.addEventListener("click", () => selectPersona(persona.id, true));
     els.personaList.appendChild(button);
   });
@@ -578,7 +604,7 @@ function planReasoning(prompt, detected) {
 
   steps.push({
     type: "action",
-    text: state.backendOnline ? `Asking Grok (${state.backendModel || "xAI"}).` : "Composing a local answer."
+    text: state.backendOnline ? "Thinking it through." : "Composing a local answer."
   });
 
   return steps;
@@ -643,9 +669,9 @@ async function respond(prompt) {
       });
       answer = result.text || answer;
       citations = result.citations || [];
-      addReasoning("observation", "Got Grok's reply. Speaking it now.");
+      addReasoning("observation", "Got a reply. Speaking it now.");
     } catch (error) {
-      addReasoning("observation", `Grok hiccup (${error.message || "error"}). Using a local reply.`);
+      addReasoning("observation", `Voice service hiccup (${error.message || "error"}). Using a local reply.`);
       answer = answerPrompt(prompt);
     }
   } else {
@@ -682,7 +708,7 @@ async function streamGrok(prompt, onDelta) {
 
   if (!response.ok || !response.body) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || "Grok request failed");
+    throw new Error(data.error || "Voice request failed");
   }
 
   const reader = response.body.getReader();
@@ -747,8 +773,8 @@ function answerPrompt(rawPrompt) {
   const csvs = state.memory.filter((item) => item.type === "csv");
   const images = state.memory.filter((item) => item.type === "image");
 
-  if (containsAny(prompt, ["grok", "xai", "voice model", "real voice", "human voice"])) {
-    return "Yeah, the real magic is Grok voice. Start the server with your xAI key and hit Start live call, and I'll talk back in real time with natural prosody and barge-in. Right now we're in local mode, so this is a preview.";
+  if (containsAny(prompt, ["voice model", "real voice", "human voice", "live voice", "talk out loud"])) {
+    return "The natural live voice runs through the VoiceMate server. Start it, tap Start call, and I'll talk back in real time with natural pauses and barge-in. Right now this is the local preview.";
   }
   if (containsAny(prompt, ["what are you", "what do you do", "who are you", "voicemate"])) {
     return "I'm VoiceMate, a voice companion. I can chat, research things, give you a quick briefing, help you pitch, read your data, and coach you, and I show my reasoning while I work.";
@@ -775,7 +801,7 @@ function answerPrompt(rawPrompt) {
     return `Quick briefing. ${memoryContext}. That's what I've got so far.`;
   }
   if (containsAny(prompt, ["research", "look up", "find out", "latest", "sources"])) {
-    return "I'd normally research that with live search and cite the sources, but that needs the Grok backend running. Start the server with your xAI key and ask again.";
+    return "I'd normally research that with live search and cite the sources, but that needs the VoiceMate server running. Start it and ask again.";
   }
   return `Got it. We're in ${modeLabel()} mode. ${memoryContext === "no saved memory yet" ? "Ask me anything, or add a file for sharper answers." : `Here's what I'm keeping in mind: ${memoryContext}.`}`;
 }
@@ -804,7 +830,7 @@ async function speak(text) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Grok voice failed");
+        throw new Error(data.error || "Voice request failed");
       }
 
       const audioBlob = await response.blob();
@@ -825,7 +851,15 @@ async function speak(text) {
       await audio.play();
       return;
     } catch (error) {
-      addActivity("Grok voice fallback", error.message || "Using local browser voice.");
+      addActivity("Voice fallback", error.message || "Using the browser voice.");
+      if (els.backendStatus) els.backendStatus.textContent = "Browser voice";
+      if (!state.voiceErrorShown) {
+        state.voiceErrorShown = true;
+        addMessage(
+          "agent",
+          `Heads up, the natural voice didn't load (${error.message || "unknown error"}), so I'm using the browser voice for now. Check the server console for details.`
+        );
+      }
     }
   }
 
@@ -908,15 +942,15 @@ async function startLiveCall() {
   if (!state.backendOnline) {
     addMessage(
       "agent",
-      "Live calls need the Grok backend. Start the server with your xAI key (npm start), open localhost, and try the call again."
+      "The live voice needs the VoiceMate server. Start it (npm start), open localhost, and tap Start call again."
     );
-    addActivity("Live call unavailable", "Backend / Grok key not connected.");
+    addActivity("Live voice unavailable", "Voice server not connected.");
     return;
   }
 
   showPage("talk");
   setLiveButton(true, "Connecting...");
-  addActivity("Starting live call", "Requesting a secure Grok voice session.");
+  addActivity("Starting call", "Requesting a secure voice session.");
 
   let live = {
     ws: null,
@@ -992,7 +1026,9 @@ async function startLiveCall() {
       startMicStreaming(live);
       setLiveButton(true, "End call");
       setSpeechStatus("Live", true, false);
-      addActivity("Live call connected", `Talking with Grok voice ${getPersona().name}.`);
+      if (els.backendStatus) els.backendStatus.textContent = "Live voice";
+      if (els.voiceHint) els.voiceHint.textContent = "Listening — just talk";
+      addActivity("Call connected", `Live with the ${getPersona().name} voice.`);
       addMessage("agent", "I'm live. Just start talking whenever you're ready.");
     });
 
@@ -1154,8 +1190,10 @@ function endLiveCall(note) {
 function setLiveButton(active, label) {
   if (!els.liveButton) return;
   els.liveButton.classList.toggle("active", active);
-  els.liveButton.querySelector(".live-label").textContent = label;
+  const lbl = els.liveButton.querySelector(".live-label");
+  if (lbl) lbl.textContent = label;
   els.liveButton.setAttribute("aria-pressed", String(active));
+  if (els.callIcon) els.callIcon.innerHTML = svgIcon(active ? "phone-off" : "phone");
 }
 
 function float32ToBase64PCM16(float32Array) {
@@ -1313,30 +1351,44 @@ function renderMemory() {
   if (!state.memory.length) {
     const empty = document.createElement("div");
     empty.className = "memory-empty";
-    empty.textContent = "No memory yet.";
+    empty.innerHTML = `
+      <span class="empty-icon">${svgIcon("sparkles")}</span>
+      <strong>Nothing saved yet</strong>
+      <p>Use the buttons above to add files, photos, or a note. VoiceMate will remember them for this conversation.</p>
+    `;
     els.memoryGrid.appendChild(empty);
     return;
   }
 
   state.memory
-    .slice()
+    .map((item, index) => ({ item, index }))
     .reverse()
-    .forEach((item) => {
-      const card = document.createElement("article");
-      card.className = `memory-card ${item.type}`;
+    .forEach(({ item, index }) => {
+      const row = document.createElement("article");
+      row.className = "memory-item";
+      const tint = memoryTint(item.type);
       const visual = item.preview
-        ? `<img src="${item.preview}" alt="${escapeHtml(item.name)} preview" />`
-        : `<div class="memory-icon">${memoryIcon(item.type)}</div>`;
-      card.innerHTML = `
+        ? `<span class="mem-thumb"><img src="${item.preview}" alt="${escapeHtml(item.name)} preview" /></span>`
+        : `<span class="mem-icon" style="--tint:${tint}">${svgIcon(memoryIconName(item.type))}</span>`;
+      row.innerHTML = `
         ${visual}
-        <div>
-          <span>${escapeHtml(item.type)}</span>
+        <div class="mem-text">
           <strong>${escapeHtml(item.name)}</strong>
           <p>${escapeHtml(item.summary)}</p>
         </div>
+        <span class="mem-tag" style="color:${tint};background:${hexToSoft(tint)}">${escapeHtml(memoryLabel(item.type))}</span>
+        <button class="mem-delete" type="button" aria-label="Remove ${escapeHtml(item.name)}">${svgIcon("trash")}</button>
       `;
-      els.memoryGrid.appendChild(card);
+      row.querySelector(".mem-delete").addEventListener("click", () => removeMemory(index));
+      els.memoryGrid.appendChild(row);
     });
+}
+
+function removeMemory(index) {
+  const item = state.memory[index];
+  state.memory.splice(index, 1);
+  renderMemory();
+  addActivity("Removed", `${item ? item.name : "Item"} removed from memory.`);
 }
 
 function saveManualContext() {
@@ -1406,15 +1458,16 @@ async function handleImageFiles(files) {
 
 function updateGrokStatus() {
   if (state.backendOnline) {
-    els.grokStatus.textContent = `Connected to Grok. Model ${state.backendModel || "xAI"}, realtime ${state.realtimeModel || "grok-voice"}. Your key stays on the backend.`;
-    els.backendStatus.textContent = "Grok voice";
+    els.grokStatus.textContent = "Connected. Natural live voice is ready.";
+    els.backendStatus.textContent = "VoiceMate voice";
     els.backendStatus.classList.add("connected");
-    if (els.liveButton) els.liveButton.classList.remove("disabled");
+    if (els.voiceHint) els.voiceHint.textContent = "Tap Start call to talk out loud";
     return;
   }
-  els.backendStatus.textContent = "Local mode";
+  els.backendStatus.textContent = "Browser voice";
   els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = "Local mode. Run npm start and open localhost to unlock real Grok voice and live calls.";
+  els.grokStatus.textContent = "Offline. Run the VoiceMate server to unlock the natural live voice.";
+  if (els.voiceHint) els.voiceHint.textContent = "Run the server for the natural live voice";
 }
 
 async function checkBackend() {
@@ -1425,9 +1478,9 @@ async function checkBackend() {
     state.backendModel = data.model || "";
     state.realtimeModel = data.realtimeModel || "";
     if (state.backendOnline) {
-      addActivity("Backend connected", `Grok ready with ${state.backendModel || "xAI"}.`);
+      addActivity("Voice engine connected", "Natural live voice is ready.");
     } else if (response.ok) {
-      addActivity("Backend missing key", "Add XAI_API_KEY to .env.local.");
+      addActivity("Voice key missing", "Add your voice key to .env.local on the server.");
     }
   } catch (error) {
     state.backendOnline = false;
@@ -1448,11 +1501,24 @@ function modeLabel() {
   return skill ? skill.name : "Natural chat";
 }
 
-function memoryIcon(type) {
-  if (type === "csv") return "CSV";
-  if (type === "image") return "IMG";
-  if (type === "note") return "TXT";
-  return "AI";
+function memoryIconName(type) {
+  if (type === "csv") return "table";
+  if (type === "image") return "photo";
+  if (type === "note") return "doc";
+  return "sparkles";
+}
+
+function memoryLabel(type) {
+  if (type === "csv") return "Data";
+  if (type === "image") return "Photo";
+  if (type === "note") return "Note";
+  if (type === "brief") return "Brief";
+  return type;
+}
+
+function memoryTint(type) {
+  const tints = { csv: "#34c759", image: "#0a84ff", note: "#ff9f0a", brief: "#5e5ce6" };
+  return tints[type] || "#8e8e93";
 }
 
 function summarizeMemoryForAnswer() {
@@ -1587,6 +1653,119 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// ---------------------------------------------------------------------------
+// SF Symbols-style icon set (clean stroke SVGs, no emoji)
+// ---------------------------------------------------------------------------
+
+const ICONS = {
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M7 15v-4M12 15V8M17 15v-7"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+  sparkles: '<path d="M12 3l1.8 4.9L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/>',
+  paperclip:
+    '<path d="m21.4 11.1-9.2 9.2a5 5 0 0 1-7.1-7.1l9.2-9.2a3.5 3.5 0 0 1 5 5l-9.2 9.1a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+  "arrow-up": '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  phone:
+    '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  "phone-off":
+    '<path d="M11 6.9a16 16 0 0 1 9 9M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 4 9 2 2 0 0 1 6 6.8M2 2l20 20"/>',
+  doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+  photo: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.8"/><path d="m21 15-5-5L5 21"/>',
+  text: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>',
+  play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/>',
+  theme: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>',
+  waveform: '<path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4"/>',
+  info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 16v-4M12 8h.01"/>',
+  trash: '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M18 6l-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>'
+};
+
+function svgIcon(name) {
+  const inner = ICONS[name] || ICONS.info;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
+function renderIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((el) => {
+    if (el.dataset.iconDone === "1") return;
+    el.innerHTML = svgIcon(el.dataset.icon);
+    if (el.dataset.tint) {
+      el.style.setProperty("--tint", el.dataset.tint);
+    }
+    el.dataset.iconDone = "1";
+  });
+}
+
+function logoSvg(id) {
+  return `
+  <svg viewBox="0 0 44 44" aria-hidden="true">
+    <defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#7c5cff"/>
+        <stop offset="1" stop-color="#00a3ff"/>
+      </linearGradient>
+    </defs>
+    <rect x="2" y="2" width="40" height="40" rx="12" fill="url(#${id})"/>
+    <g fill="#fff">
+      <rect x="11.5" y="18" width="3.2" height="8" rx="1.6"/>
+      <rect x="17" y="14.5" width="3.2" height="15" rx="1.6"/>
+      <rect x="22.5" y="11" width="3.2" height="22" rx="1.6"/>
+      <rect x="28" y="16" width="3.2" height="12" rx="1.6"/>
+    </g>
+    <circle cx="32.5" cy="11.5" r="2.4" fill="#fff"/>
+  </svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// Theme (System / Light / Dark)
+// ---------------------------------------------------------------------------
+
+function applyStoredTheme() {
+  applyTheme(getStoredTheme());
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      if (getStoredTheme() === "system") applyTheme("system");
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+  }
+}
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem("voicemate.theme") || "system";
+  } catch (error) {
+    return "system";
+  }
+}
+
+function setTheme(pref) {
+  try {
+    localStorage.setItem("voicemate.theme", pref);
+  } catch (error) {
+    // ignore storage errors
+  }
+  applyTheme(pref);
+  addActivity("Theme", `Switched to ${pref}.`);
+}
+
+function applyTheme(pref) {
+  const prefersDark =
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const dark = pref === "dark" || (pref === "system" && prefersDark);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  if (els.themeSeg) {
+    els.themeSeg.querySelectorAll("button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.theme === pref);
+    });
+  }
 }
 
 function hexToSoft(hex, alpha = 0.14) {
