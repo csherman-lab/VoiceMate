@@ -1714,7 +1714,7 @@ function eyeLoop() {
   const typing = document.activeElement === els.promptInput;
 
   if (eyes.mode === "speaking") {
-    // Steady, with tiny life so it isn't a stare.
+    // Steady, with tiny life so it isn't a stare. Never follows the cursor.
     if (now > eyes.nextSaccade) {
       eyes.tx = (Math.random() - 0.5) * 0.18;
       eyes.ty = (Math.random() - 0.5) * 0.14;
@@ -1723,11 +1723,19 @@ function eyeLoop() {
   } else if (eyes.mode === "thinking") {
     eyes.tx = -0.45;
     eyes.ty = -0.62;
+  } else if (eyes.mode === "listening") {
+    // In a voice call: stay engaged and forward, don't chase the mouse.
+    if (now > eyes.nextSaccade) {
+      eyes.tx = (Math.random() - 0.5) * 0.3;
+      eyes.ty = (Math.random() - 0.5) * 0.2;
+      eyes.nextSaccade = now + 900 + Math.random() * 1500;
+    }
   } else if (typing) {
     // Look down toward the message box.
     eyes.tx = 0;
     eyes.ty = 0.55;
-  } else if (mouseActive) {
+  } else if (!state.live && mouseActive) {
+    // Follow the cursor only when idle (never during a call).
     const rect = activeOrbRect();
     if (rect) {
       const cx = rect.left + rect.width / 2;
