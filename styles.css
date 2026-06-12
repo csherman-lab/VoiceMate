@@ -1948,8 +1948,16 @@ footer {
 .settings-wrap {
   display: flex;
   flex-direction: column;
-  gap: 34px;
-  max-width: 720px;
+  gap: 30px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+#settingsPage .page-heading {
+  max-width: 640px;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
 }
 
 .group-label {
