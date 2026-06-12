@@ -2623,15 +2623,17 @@ function setupEyes() {
 
 function playOrbHappy(orb) {
   if (!orb) return;
-  setExpression("happy");
-  orb.classList.remove("orb-happy-pop");
-  // Force a reflow so repeated taps restart the animation.
+  const eyeEl = orb.querySelector(".orb-eyes");
+  if (!eyeEl) return;
+  eyeEl.classList.remove("tapped");
+  orb.classList.remove("orb-tapped");
   void orb.offsetWidth;
-  orb.classList.add("orb-happy-pop");
-  window.setTimeout(() => orb.classList.remove("orb-happy-pop"), 760);
-  if (!state.live) {
-    setEyeMode("idle");
-  }
+  eyeEl.classList.add("tapped");
+  orb.classList.add("orb-tapped");
+  window.setTimeout(() => {
+    eyeEl.classList.remove("tapped");
+    orb.classList.remove("orb-tapped");
+  }, 920);
 }
 
 function setEyeMode(mode) {
