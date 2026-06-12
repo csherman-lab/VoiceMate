@@ -72,6 +72,22 @@ key would leak. Use the backend below for the real thing.
 
 3. Open `http://localhost:3000`, go to **Talk**, and hit **Live call**.
 
+### Develop with live reload (auto-deploy to localhost)
+
+Run the dev server instead and the browser refreshes itself the moment you save
+a file — no manual restart, no hard refresh:
+
+```bash
+npm run dev
+```
+
+- Editing `index.html`, `styles.css`, or `app.js` reloads the open tab instantly
+  (the server watches them and pushes a reload over Server-Sent Events).
+- Editing `server.js` restarts the server (`node --watch`) and the tab reloads
+  on reconnect.
+- Live reload is on by default in dev. Disable it with `VM_LIVE_RELOAD=0` or by
+  setting `NODE_ENV=production`.
+
 The browser talks to your local backend; the backend talks to Grok. Your API
 key never reaches the browser. For live calls the backend mints a short-lived
 ephemeral token so the browser can connect directly to xAI for low latency.
@@ -80,6 +96,19 @@ ephemeral token so the browser can connect directly to xAI for low latency.
 
 `eve` (energetic) · `ara` (warm, default) · `rex` (confident) · `sal` (smooth)
 · `leo` (grounded). Choose one in Settings.
+
+## Design & voice
+
+The look is **Apple / Settings.app**: filled colored rounded-square skill icons
+with white glyphs, soft `26px` cards with hairline borders and layered shadows
+(no heavy drop shadows), generous whitespace, chapter-style section headers, a
+breathing voice orb, and full dark-mode support.
+
+The voice is tuned to sound like a person, not a manual: punchy one-to-three
+sentence replies, contractions, no spoken symbols (no bullet points, em-dashes,
+markdown, or URLs read aloud), no corporate filler or sycophancy, and an honest
+"I don't know" when it doesn't. These principles are baked into the system
+prompt the backend sends to Grok.
 
 ## How it's built
 
