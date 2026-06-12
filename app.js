@@ -10,28 +10,44 @@ const STARTER_MEMORY = [
   }
 ];
 
-const PERSONAS = [
+const GROK_VOICES = [
   {
-    id: "sol",
-    name: "Sol",
-    style: "Warm, smooth, confident",
-    bestFor: "Everyday conversation and client friendly answers",
+    id: "eve",
+    name: "Eve",
+    style: "Energetic, upbeat",
+    bestFor: "Great default for demos and friendly conversations",
     rate: 0.98,
     pitch: 1.02
   },
   {
-    id: "nova",
-    name: "Nova",
-    style: "Bright, sharp, persuasive",
-    bestFor: "Pitches, demos, and sales moments",
-    rate: 1.04,
-    pitch: 1.08
+    id: "ara",
+    name: "Ara",
+    style: "Warm, friendly",
+    bestFor: "Best for natural support and human conversation",
+    rate: 0.98,
+    pitch: 1
   },
   {
-    id: "atlas",
-    name: "Atlas",
-    style: "Calm, precise, thoughtful",
-    bestFor: "Data, planning, and technical explanation",
+    id: "rex",
+    name: "Rex",
+    style: "Confident, clear",
+    bestFor: "Good for business and product walkthroughs",
+    rate: 0.96,
+    pitch: 0.96
+  },
+  {
+    id: "sal",
+    name: "Sal",
+    style: "Smooth, balanced",
+    bestFor: "Versatile voice for most conversations",
+    rate: 0.97,
+    pitch: 1
+  },
+  {
+    id: "leo",
+    name: "Leo",
+    style: "Authoritative, strong",
+    bestFor: "Best for direct instructions and coaching",
     rate: 0.94,
     pitch: 0.92
   }
@@ -48,7 +64,7 @@ const SUGGESTED_PROMPTS = [
 
 const state = {
   memory: [...STARTER_MEMORY],
-  persona: "sol",
+  persona: "eve",
   mode: "companion",
   voices: [],
   selectedVoiceURI: "",
@@ -56,7 +72,9 @@ const state = {
   recognizing: false,
   grokKeySaved: Boolean(window.sessionStorage.getItem("voicemateGrokKeyNote")),
   backendOnline: false,
-  backendModel: ""
+  backendModel: "",
+  talkStarted: false,
+  currentAudioUrl: ""
 };
 
 const els = {
@@ -64,7 +82,6 @@ const els = {
   pageLinks: document.querySelectorAll(".page-link"),
   pages: document.querySelectorAll("[data-page-panel]"),
   personaList: document.querySelector("#personaList"),
-  systemVoice: document.querySelector("#systemVoice"),
   agentMode: document.querySelector("#agentMode"),
   sampleVoice: document.querySelector("#sampleVoice"),
   activePersonaName: document.querySelector("#activePersonaName"),
@@ -99,12 +116,7 @@ function init() {
   updateGrokStatus();
   setupSpeechRecognition();
   wireEvents();
-  loadSystemVoices();
   checkBackend();
-
-  if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = loadSystemVoices;
-  }
 
   addActivity("Started session", "Voice, text, files, images, and memory are ready.");
   addMessage(
@@ -149,11 +161,6 @@ function wireEvents() {
     } else {
       state.recognition.start();
     }
-  });
-
-  els.systemVoice.addEventListener("change", (event) => {
-    state.selectedVoiceURI = event.target.value;
-    addActivity("Changed voice", event.target.selectedOptions[0]?.textContent || "System voice");
   });
 
   els.agentMode.addEventListener("change", (event) => {
@@ -245,6 +252,12 @@ function showPage(page) {
     update();
   }
 
+  if (page === "talk") {
+    startTalkSession();
+  } else {
+    endTalkSession();
+  }
+
   addActivity("Opened page", `${titleCase(page)} page is active.`);
   if (window.location.hash.replace("#", "") !== page) {
     window.history.replaceState(null, "", `#${page}`);
@@ -252,10 +265,37 @@ function showPage(page) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function startTalkSession() {
+  if (state.talkStarted) return;
+
+  state.talkStarted = true;
+  const persona = getPersona();
+  const greeting = state.backendOnline
+    ? `Hi, I am VoiceMate using Grok voice ${persona.name}. I am ready.`
+    : `Hi, I am VoiceMate. I am ready.`;
+
+  addActivity("Started talk session", `${persona.name} voice is active.`);
+  addMessage("agent", greeting);
+  speak(greeting);
+}
+
+function endTalkSession() {
+  if (!state.talkStarted) return;
+
+  state.talkStarted = false;
+  if (state.recognition && state.recognizing) {
+    state.recognition.stop();
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  setSpeechStatus("Ready", false, false);
+}
+
 function renderPersonas() {
   els.personaList.innerHTML = "";
 
-  PERSONAS.forEach((persona) => {
+  GROK_VOICES.forEach((persona) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `persona-option${persona.id === state.persona ? " active" : ""}`;
@@ -270,7 +310,7 @@ function renderPersonas() {
 }
 
 function selectPersona(personaId, preview) {
-  const persona = PERSONAS.find((item) => item.id === personaId);
+  const persona = GROK_VOICES.find((item) => item.id === personaId);
   if (!persona) return;
 
   state.persona = persona.id;
@@ -598,52 +638,77 @@ function setupSpeechRecognition() {
   };
 }
 
-function speak(text) {
+function startListeningAfterSpeech() {
+  if (!state.talkStarted || !state.recognition || state.recognizing) return;
+
+  try {
+    state.recognition.start();
+  } catch (error) {
+    addActivity("Tap mic to speak", "Chrome needs a mic tap before listening.");
+  }
+}
+
+async function speak(text) {
+  if (state.backendOnline) {
+    try {
+      setSpeechStatus("Speaking", false, true);
+      const response = await fetch("/api/grok/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          voiceId: getPersona().id
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Grok voice failed");
+      }
+
+      const audioBlob = await response.blob();
+      if (state.currentAudioUrl) {
+        URL.revokeObjectURL(state.currentAudioUrl);
+      }
+      state.currentAudioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(state.currentAudioUrl);
+      audio.onended = () => {
+        setSpeechStatus("Ready", false, false);
+        startListeningAfterSpeech();
+      };
+      audio.onerror = () => {
+        setSpeechStatus("Ready", false, false);
+        startListeningAfterSpeech();
+      };
+      await audio.play();
+      return;
+    } catch (error) {
+      addActivity("Grok voice fallback", error.message || "Using local browser voice.");
+    }
+  }
+
   if (!window.speechSynthesis) return;
 
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  const selected = state.voices.find((voice) => voice.voiceURI === state.selectedVoiceURI);
   const persona = getPersona();
 
-  if (selected) utterance.voice = selected;
   utterance.rate = persona.rate;
   utterance.pitch = persona.pitch;
 
   utterance.onstart = () => setSpeechStatus("Speaking", false, true);
-  utterance.onend = () => setSpeechStatus("Ready", false, false);
-  utterance.onerror = () => setSpeechStatus("Speech off", false, false);
+  utterance.onend = () => {
+    setSpeechStatus("Ready", false, false);
+    startListeningAfterSpeech();
+  };
+  utterance.onerror = () => {
+    setSpeechStatus("Ready", false, false);
+    startListeningAfterSpeech();
+  };
 
   window.speechSynthesis.speak(utterance);
-}
-
-function loadSystemVoices() {
-  state.voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  els.systemVoice.innerHTML = "";
-
-  if (!state.voices.length) {
-    const option = document.createElement("option");
-    option.textContent = "System voice";
-    option.value = "";
-    els.systemVoice.appendChild(option);
-    return;
-  }
-
-  const sortedVoices = [
-    ...state.voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")),
-    ...state.voices.filter((voice) => !voice.lang.toLowerCase().startsWith("en"))
-  ];
-
-  sortedVoices.forEach((voice) => {
-    const option = document.createElement("option");
-    option.value = voice.voiceURI;
-    option.textContent = `${voice.name} (${voice.lang})`;
-    els.systemVoice.appendChild(option);
-  });
-
-  const preferred = sortedVoices.find((voice) => /samantha|ava|alloy|aria|jenny|natural|google us english/i.test(voice.name));
-  state.selectedVoiceURI = preferred?.voiceURI || els.systemVoice.value;
-  els.systemVoice.value = state.selectedVoiceURI;
 }
 
 function setSpeechStatus(label, listening, speaking = false) {
@@ -670,7 +735,7 @@ function addActivity(title, detail) {
 }
 
 function getPersona() {
-  return PERSONAS.find((persona) => persona.id === state.persona) || PERSONAS[0];
+  return GROK_VOICES.find((persona) => persona.id === state.persona) || GROK_VOICES[0];
 }
 
 function modeLabel() {
@@ -824,7 +889,7 @@ function updateGrokStatus() {
   const saved = window.sessionStorage.getItem("voicemateGrokKeyNote");
   if (state.backendOnline) {
     els.grokStatus.textContent = `Backend connected. Model: ${state.backendModel || "xAI"}.`;
-    els.backendStatus.textContent = "Grok on";
+    els.backendStatus.textContent = "Grok voice";
     els.backendStatus.classList.add("connected");
     return;
   }

@@ -120,8 +120,8 @@ button {
   overflow: hidden;
   border-radius: 11px;
   background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.24), transparent 34%),
-    linear-gradient(180deg, #1c1c1e, #050506);
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.3), transparent 34%),
+    linear-gradient(145deg, #6d5dfc, #007aff);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.12),
     0 8px 18px rgba(0, 0, 0, 0.14);
@@ -154,7 +154,7 @@ button {
   top: 14px;
   width: 2px;
   border-radius: 999px;
-  background: var(--blue);
+  background: white;
   z-index: 1;
 }
 
@@ -510,7 +510,7 @@ h3 {
 }
 
 .talk-session {
-  overflow: hidden;
+  overflow: auto;
 }
 
 .talk-session .nav,
@@ -528,6 +528,7 @@ h3 {
   z-index: 50;
   display: block;
   padding: 0;
+  overflow-y: auto;
   background:
     radial-gradient(circle at 50% 18%, rgba(0, 122, 255, 0.1), transparent 30rem),
     linear-gradient(180deg, #fbfbfd 0%, #f3f4f7 100%);
@@ -609,6 +610,12 @@ h3 {
   backdrop-filter: blur(18px);
 }
 
+.end-button {
+  border-color: rgba(255, 59, 48, 0.22);
+  background: rgba(255, 59, 48, 0.1);
+  color: #d70015;
+}
+
 .backend-pill {
   display: inline-flex;
   align-items: center;
@@ -670,7 +677,7 @@ h3 {
   flex-direction: column;
   gap: 9px;
   min-height: 118px;
-  max-height: 190px;
+  max-height: min(34vh, 360px);
   overflow-y: auto;
   padding: 2px;
 }

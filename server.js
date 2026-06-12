@@ -36,6 +36,10 @@ const server = http.createServer(async (req, res) => {
       return handleGrokChat(req, res);
     }
 
+    if (req.url === "/api/grok/tts" && req.method === "POST") {
+      return handleGrokTts(req, res);
+    }
+
     if (req.method !== "GET") {
       return sendJson(res, 405, { error: "Method not allowed" });
     }
@@ -113,6 +117,49 @@ async function handleGrokChat(req, res) {
   });
 }
 
+async function handleGrokTts(req, res) {
+  if (!XAI_API_KEY) {
+    return sendJson(res, 400, {
+      error: "XAI_API_KEY is missing. Add it to .env.local."
+    });
+  }
+
+  const body = await readJsonBody(req);
+  const text = String(body.text || "").trim();
+  const voiceId = normalizeVoiceId(body.voiceId);
+
+  if (!text) {
+    return sendJson(res, 400, { error: "Text is required." });
+  }
+
+  const response = await fetch("https://api.x.ai/v1/tts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${XAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text: text.slice(0, 4000),
+      voice_id: voiceId,
+      language: "en"
+    })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    return sendJson(res, response.status, {
+      error: data.error?.message || data.message || "xAI text to speech request failed"
+    });
+  }
+
+  const audio = Buffer.from(await response.arrayBuffer());
+  res.writeHead(200, {
+    "Content-Type": response.headers.get("content-type") || "audio/mpeg",
+    "Cache-Control": "no-store"
+  });
+  res.end(audio);
+}
+
 function serveStatic(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
@@ -183,4 +230,10 @@ function loadEnvFile(filePath) {
       process.env[key] = value;
     }
   }
+}
+
+function normalizeVoiceId(value) {
+  const allowed = new Set(["eve", "ara", "rex", "sal", "leo"]);
+  const voiceId = String(value || "eve").toLowerCase();
+  return allowed.has(voiceId) ? voiceId : "eve";
 }

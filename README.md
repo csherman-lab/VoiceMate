@@ -75,6 +75,16 @@ http://localhost:3000
 
 Now the browser talks to your local backend, and the backend talks to Grok. The key stays in `.env.local` and is not exposed to the browser.
 
+VoiceMate uses Grok built in voices only:
+
+- Eve
+- Ara
+- Rex
+- Sal
+- Leo
+
+When `npm start` is running, VoiceMate sends text replies to the backend and plays Grok text to speech using the voice you picked in Settings.
+
 ## Notes
 
 - Text chat and uploads work directly from the file.

@@ -96,7 +96,7 @@
             <div class="session-controls">
               <span class="backend-pill" id="backendStatus">Local mode</span>
               <span class="status-pill" id="speechStatus">Ready</span>
-              <button class="session-button page-link" type="button" data-page="home">End</button>
+              <button class="session-button end-button page-link" type="button" data-page="home">End</button>
             </div>
           </div>
 
@@ -108,8 +108,8 @@
               <i></i>
             </div>
             <div class="voice-caption">
-              <strong id="activePersonaName">Sol</strong>
-              <span>Listening when you tap the mic</span>
+                <strong id="activePersonaName">Eve</strong>
+              <span>Voice starts when this opens</span>
             </div>
           </div>
 
@@ -176,13 +176,13 @@
         <div class="page-heading">
           <p class="eyebrow">Settings</p>
           <h2>Settings</h2>
-          <p class="small-copy">Choose the VoiceMate voice, mode, and Grok connection.</p>
+          <p class="small-copy">Choose the Grok voice, mode, and connection.</p>
         </div>
 
         <div class="setup-grid">
           <article class="setup-card">
-            <span>Voice</span>
-            <h3>Personality</h3>
+            <span>Grok voices</span>
+            <h3>Choose Grok voice</h3>
             <div class="persona-list" id="personaList" role="listbox" aria-label="Voice personas"></div>
           </article>
 
@@ -195,9 +195,7 @@
               <option value="analyst">Data analyst</option>
               <option value="coach">Meeting coach</option>
             </select>
-            <label class="select-label" for="systemVoice">Browser voice</label>
-            <select id="systemVoice"></select>
-            <button class="button secondary full" id="sampleVoice" type="button">Preview voice</button>
+            <button class="button secondary full" id="sampleVoice" type="button">Preview Grok voice</button>
           </article>
 
           <article class="setup-card grok-card">
