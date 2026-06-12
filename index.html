@@ -200,19 +200,16 @@
 
           <article class="setup-card grok-card">
             <span>Production voice</span>
-            <h3>Use Grok through a backend</h3>
+            <h3>Grok connection</h3>
             <p>
-              Grok xAI voice is a strong option to test because it offers realtime voice,
-              tool use, and simple minute pricing. Do not ship a secret key inside this page.
+              VoiceMate uses Grok through the local backend. Your key stays in `.env.local`.
             </p>
-            <input id="grokKeyInput" type="password" placeholder="Paste temporary Grok key for notes" />
-            <button class="button secondary full" id="saveGrokKey" type="button">Save local key note</button>
-            <p class="tiny-copy" id="grokStatus">No key note saved.</p>
+            <p class="connection-card" id="grokStatus">Checking connection.</p>
           </article>
 
           <article class="setup-card activity-card">
-            <span>Work log</span>
-            <h3>What it is doing</h3>
+            <span>Activity</span>
+            <h3>Session activity</h3>
             <div class="activity-feed" id="activityFeed"></div>
           </article>
         </div>

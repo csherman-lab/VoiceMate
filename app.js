@@ -66,15 +66,13 @@ const state = {
   memory: [...STARTER_MEMORY],
   persona: "eve",
   mode: "companion",
-  voices: [],
-  selectedVoiceURI: "",
   recognition: null,
   recognizing: false,
-  grokKeySaved: Boolean(window.sessionStorage.getItem("voicemateGrokKeyNote")),
   backendOnline: false,
   backendModel: "",
   talkStarted: false,
-  currentAudioUrl: ""
+  currentAudioUrl: "",
+  currentAudio: null
 };
 
 const els = {
@@ -102,8 +100,6 @@ const els = {
   saveContext: document.querySelector("#saveContext"),
   clearMemory: document.querySelector("#clearMemory"),
   memoryGrid: document.querySelector("#memoryGrid"),
-  grokKeyInput: document.querySelector("#grokKeyInput"),
-  saveGrokKey: document.querySelector("#saveGrokKey"),
   grokStatus: document.querySelector("#grokStatus"),
   backendStatus: document.querySelector("#backendStatus")
 };
@@ -116,22 +112,19 @@ function init() {
   updateGrokStatus();
   setupSpeechRecognition();
   wireEvents();
-  checkBackend();
 
   addActivity("Started session", "Voice, text, files, images, and memory are ready.");
-  addMessage(
-    "agent",
-    "Hi, I am VoiceMate. Talk to me, type to me, upload files, upload images, or ask me to pitch an idea. I will show what I am doing while I answer."
-  );
 
   const pageFromHash = window.location.hash.replace("#", "");
   const initialPage = pageFromHash === "setup" ? "settings" : pageFromHash;
-  if (["home", "talk", "memory", "settings"].includes(initialPage)) {
-    showPage(initialPage);
-  }
+  checkBackend().finally(() => {
+    if (["home", "talk", "memory", "settings"].includes(initialPage)) {
+      showPage(initialPage);
+    }
 
-  window.requestAnimationFrame(() => {
-    document.body.classList.add("ui-ready");
+    window.requestAnimationFrame(() => {
+      document.body.classList.add("ui-ready");
+    });
   });
 }
 
@@ -202,25 +195,6 @@ function wireEvents() {
     addMessage("agent", "I cleared the memory for this session.");
   });
 
-  els.saveGrokKey.addEventListener("click", () => {
-    const value = els.grokKeyInput.value.trim();
-    if (!value) {
-      addActivity("Grok key note", "No key was entered.");
-      els.grokStatus.textContent = "No key note saved.";
-      return;
-    }
-
-    window.sessionStorage.setItem("voicemateGrokKeyNote", maskKey(value));
-    state.grokKeySaved = true;
-    els.grokKeyInput.value = "";
-    updateGrokStatus();
-    addActivity("Saved Grok note", "Stored only a masked local note for this session.");
-    addMessage(
-      "agent",
-      "I saved a local Grok key note for planning. For the real app, the secret key should live on a backend, not inside the website."
-    );
-  });
-
   document.addEventListener("dragover", (event) => event.preventDefault());
   document.addEventListener("drop", (event) => {
     event.preventDefault();
@@ -288,6 +262,14 @@ function endTalkSession() {
   }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
+  }
+  if (state.currentAudio) {
+    state.currentAudio.pause();
+    state.currentAudio = null;
+  }
+  if (state.currentAudioUrl) {
+    URL.revokeObjectURL(state.currentAudioUrl);
+    state.currentAudioUrl = "";
   }
   setSpeechStatus("Ready", false, false);
 }
@@ -673,12 +655,18 @@ async function speak(text) {
         URL.revokeObjectURL(state.currentAudioUrl);
       }
       state.currentAudioUrl = URL.createObjectURL(audioBlob);
+      if (state.currentAudio) {
+        state.currentAudio.pause();
+      }
       const audio = new Audio(state.currentAudioUrl);
+      state.currentAudio = audio;
       audio.onended = () => {
+        state.currentAudio = null;
         setSpeechStatus("Ready", false, false);
         startListeningAfterSpeech();
       };
       audio.onerror = () => {
+        state.currentAudio = null;
         setSpeechStatus("Ready", false, false);
         startListeningAfterSpeech();
       };
@@ -886,16 +874,15 @@ function getImageDimensions(src) {
 }
 
 function updateGrokStatus() {
-  const saved = window.sessionStorage.getItem("voicemateGrokKeyNote");
   if (state.backendOnline) {
-    els.grokStatus.textContent = `Backend connected. Model: ${state.backendModel || "xAI"}.`;
+    els.grokStatus.textContent = `Connected to Grok. Model: ${state.backendModel || "xAI"}. Voice key is protected by the backend.`;
     els.backendStatus.textContent = "Grok voice";
     els.backendStatus.classList.add("connected");
     return;
   }
   els.backendStatus.textContent = "Local mode";
   els.backendStatus.classList.remove("connected");
-  els.grokStatus.textContent = saved ? `Local key note saved as ${saved}.` : "No key note saved.";
+  els.grokStatus.textContent = "Local mode. Run npm start and open localhost to use Grok voice.";
 }
 
 async function checkBackend() {
@@ -915,12 +902,6 @@ async function checkBackend() {
   }
 
   updateGrokStatus();
-}
-
-function maskKey(value) {
-  const clean = value.trim();
-  if (clean.length <= 8) return "saved";
-  return `${clean.slice(0, 4)} hidden ${clean.slice(-4)}`;
 }
 
 function containsAny(value, needles) {
