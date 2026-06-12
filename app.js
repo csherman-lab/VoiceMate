@@ -257,6 +257,7 @@ const LANGUAGES = [
 ];
 
 const els = {};
+let backendCheckPromise = null;
 
 function cacheEls() {
   Object.assign(els, {
@@ -648,7 +649,7 @@ function wireEvents() {
 
   els.testConnection.addEventListener("click", async () => {
     addActivity("Testing connection", "Checking the voice connection.");
-    await checkBackend();
+    await checkBackend(true);
     addActivity(
       state.backendOnline ? "Voice engine connected" : "Voice engine offline",
       els.grokStatus.textContent
@@ -1308,6 +1309,7 @@ async function handlePrompt(prompt) {
     addActivity("Auto-routed", `Switched to ${detected.name} based on what you asked.`);
   }
 
+  await checkBackend();
   const steps = planReasoning(cleaned, detected);
   steps.forEach((step) => addReasoning(step.type, step.text));
   respond(cleaned);
@@ -1742,6 +1744,8 @@ async function speak(text) {
   const speechText = humanizeForSpeech(text);
   if (!speechText) return;
 
+  await checkBackend();
+
   if (state.backendOnline) {
     try {
       setSpeechStatus("Speaking", false, true);
@@ -1798,10 +1802,10 @@ async function speak(text) {
       if (analyser) startTtsReaction(analyser);
       else setSpeechStatus("Speaking", false, true);
       await audio.play();
+      updateGrokStatus();
       return;
     } catch (error) {
       addActivity("Voice fallback", error.message || "Using the browser voice.");
-      if (els.backendStatus) els.backendStatus.textContent = "Browser voice";
       if (!state.voiceErrorShown) {
         state.voiceErrorShown = true;
         addMessage(
@@ -2088,7 +2092,7 @@ async function startLiveCall() {
   } catch (error) {
     const message = error.message || "unknown error";
     if (/key|configured|session/i.test(message)) {
-      showTranscriptError("Live voice needs a server connection and API key. Check Settings → Connection diagnostics.");
+      showTranscriptError("Live voice needs a server connection and API key. Check Settings → Connection.");
     } else {
       showTranscriptError(`Couldn't start the call: ${message}.`);
     }
@@ -3273,23 +3277,31 @@ function updateGrokStatus() {
   if (!state.live) setLiveButton(false, "Set up live voice");
 }
 
-async function checkBackend() {
-  try {
-    const response = await fetch("/api/health", { cache: "no-store" });
-    const data = await response.json();
-    state.backendOnline = Boolean(response.ok && data.xaiConfigured);
-    state.backendModel = data.model || "";
-    state.realtimeModel = data.realtimeModel || "";
-    if (state.backendOnline) {
-      addActivity("Voice engine connected", "Natural live voice is ready.");
-    } else if (response.ok) {
-      addActivity("Voice key missing", "Add your voice key to .env.local on the server.");
-    }
-  } catch (error) {
-    state.backendOnline = false;
+async function checkBackend(force = false) {
+  if (force) backendCheckPromise = null;
+  if (!backendCheckPromise) {
+    backendCheckPromise = (async () => {
+      const wasOnline = state.backendOnline;
+      try {
+        const response = await fetch("/api/health", { cache: "no-store" });
+        const data = await response.json();
+        state.backendOnline = Boolean(response.ok && data.xaiConfigured);
+        state.backendModel = data.model || "";
+        state.realtimeModel = data.realtimeModel || "";
+        if (state.backendOnline && !wasOnline) {
+          state.voiceErrorShown = false;
+          addActivity("Voice engine connected", "Natural live voice is ready.");
+        } else if (response.ok && !state.backendOnline) {
+          addActivity("Voice key missing", "Add your voice key to .env.local on the server.");
+        }
+      } catch (error) {
+        state.backendOnline = false;
+      }
+      updateGrokStatus();
+      renderHomeDashboard();
+    })();
   }
-  updateGrokStatus();
-  renderHomeDashboard();
+  return backendCheckPromise;
 }
 
 // ---------------------------------------------------------------------------
