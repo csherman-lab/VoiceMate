@@ -227,6 +227,84 @@ function buildSystemPrompt(persona, modeKey, memoryItems) {
   ].join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// Tools (function calling) — VoiceMate can actually do things
+// ---------------------------------------------------------------------------
+
+const TOOL_SPECS = [
+  {
+    name: "remember_fact",
+    description:
+      "Save an important fact, preference, or note to the user's memory so you can use it later in this and future sessions.",
+    parameters: {
+      type: "object",
+      properties: { text: { type: "string", description: "The fact or note to remember" } },
+      required: ["text"]
+    }
+  },
+  {
+    name: "search_memory",
+    description: "Search the user's saved memory (notes, files, reminders) for relevant information.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "What to look for" } },
+      required: ["query"]
+    }
+  },
+  {
+    name: "add_reminder",
+    description: "Add a reminder or to-do item for the user.",
+    parameters: {
+      type: "object",
+      properties: { text: { type: "string", description: "The reminder text" } },
+      required: ["text"]
+    }
+  },
+  {
+    name: "list_reminders",
+    description: "List the user's current reminders.",
+    parameters: { type: "object", properties: {} }
+  },
+  {
+    name: "complete_reminder",
+    description: "Mark a reminder as done, identified by its text or its number in the list.",
+    parameters: {
+      type: "object",
+      properties: { which: { type: "string", description: "Reminder text or number" } },
+      required: ["which"]
+    }
+  },
+  {
+    name: "set_voice",
+    description: "Change the voice VoiceMate speaks with.",
+    parameters: {
+      type: "object",
+      properties: { voice: { type: "string", enum: ["eve", "ara", "rex", "sal", "leo"] } },
+      required: ["voice"]
+    }
+  },
+  {
+    name: "set_skill",
+    description: "Switch the active skill / conversation mode.",
+    parameters: {
+      type: "object",
+      properties: {
+        skill: {
+          type: "string",
+          enum: ["companion", "research", "digest", "pitch", "analyst", "coach"]
+        }
+      },
+      required: ["skill"]
+    }
+  }
+];
+
+// OpenAI chat-completions tool shape (nested under "function").
+const CHAT_TOOLS = TOOL_SPECS.map((spec) => ({ type: "function", function: spec }));
+
+// Realtime tool shape (flattened).
+const REALTIME_TOOLS = TOOL_SPECS.map((spec) => ({ type: "function", ...spec }));
+
 function summarizeMemory(memoryItems) {
   if (!Array.isArray(memoryItems) || !memoryItems.length) return "nothing yet";
   return memoryItems
@@ -241,6 +319,7 @@ function buildChatMessages(body) {
   const mode = String(body.mode || "companion").toLowerCase();
   const memory = Array.isArray(body.memory) ? body.memory : [];
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
+  const images = Array.isArray(body.images) ? body.images.slice(0, 3) : [];
 
   const messages = [{ role: "system", content: buildSystemPrompt(persona, mode, memory) }];
 
@@ -250,7 +329,27 @@ function buildChatMessages(body) {
     if (content) messages.push({ role, content });
   }
 
-  messages.push({ role: "user", content: message });
+  // Vision: attach images as multimodal content when provided.
+  if (images.length) {
+    const content = [{ type: "text", text: message || "What do you see in this?" }];
+    for (const url of images) {
+      if (typeof url === "string" && url.startsWith("data:image")) {
+        content.push({ type: "image_url", image_url: { url } });
+      }
+    }
+    messages.push({ role: "user", content });
+  } else {
+    messages.push({ role: "user", content: message });
+  }
+
+  // Tool round-trips: the client replays the assistant's tool call(s) plus the
+  // tool results so the model can finish its answer.
+  if (Array.isArray(body.toolMessages)) {
+    for (const tm of body.toolMessages) {
+      if (tm && tm.role) messages.push(tm);
+    }
+  }
+
   return { messages, mode };
 }
 
@@ -274,7 +373,9 @@ async function handleGrokChat(req, res) {
     model: XAI_MODEL,
     temperature: 0.8,
     max_completion_tokens: 600,
-    messages
+    messages,
+    tools: CHAT_TOOLS,
+    tool_choice: "auto"
   };
   if (mode === "research") {
     payload.search_parameters = { mode: "auto", return_citations: true };
@@ -290,13 +391,15 @@ async function handleGrokChat(req, res) {
 
   if (!response.ok) {
     return sendJson(res, response.status, {
-      error: data.error?.message || data.message || "xAI request failed"
+      error: data.error?.message || data.message || "Voice request failed"
     });
   }
 
+  const choice = data.choices?.[0]?.message || {};
   return sendJson(res, 200, {
-    answer: data.choices?.[0]?.message?.content || "Sorry, I didn't catch that.",
-    citations: data.citations || data.choices?.[0]?.message?.citations || [],
+    answer: choice.content || "",
+    toolCalls: choice.tool_calls || [],
+    citations: data.citations || choice.citations || [],
     model: data.model || XAI_MODEL
   });
 }
@@ -471,6 +574,8 @@ async function handleRealtimeSecret(req, res) {
     instructions: buildSystemPrompt(persona, mode, memory),
     voice,
     turn_detection: { type: "server_vad" },
+    tools: REALTIME_TOOLS,
+    tool_choice: "auto",
     audio: {
       input: {
         format: { type: "audio/pcm", rate: 24000 },
