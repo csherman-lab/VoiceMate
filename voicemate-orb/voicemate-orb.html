@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VoiceMate Orb — Demo &amp; Export</title>
+  <link rel="stylesheet" href="voicemate-orb.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #f5f6f8;
+      --ink: #111114;
+      --muted: #6e7480;
+      --line: rgba(60, 60, 67, 0.14);
+      --surface: #fff;
+      --blue: #007aff;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page);
+      color: var(--ink);
+    }
+
+    .demo {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+      display: grid;
+      gap: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.03em;
+    }
+
+    .lead {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 62ch;
+    }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      padding: 28px 16px 12px;
+      border-radius: 28px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.06);
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+      border-radius: 22px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+
+    .controls h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button, .demo-input {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: inherit;
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: rgba(0, 122, 255, 0.35); }
+    button.active { background: rgba(0, 122, 255, 0.12); border-color: rgba(0, 122, 255, 0.35); }
+
+    .demo-input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fff;
+    }
+
+    .note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <header>
+      <h1>VoiceMate Orb</h1>
+      <p class="lead">
+        Drop-in voice bubble with living eyes, moods, and animations. Click the orb to squint.
+        Move your cursor to see gaze follow. Use the buttons below to preview each state.
+      </p>
+    </header>
+
+    <section class="stage">
+      <div class="orb orb--hero" id="demoOrb" aria-label="VoiceMate">
+        <span class="orb-eyes"><i></i><i></i></span>
+      </div>
+    </section>
+
+    <section class="controls">
+      <h2>Voice states</h2>
+      <div class="btn-row" id="statusButtons">
+        <button type="button" data-status='{"label":"Ready"}'>Idle</button>
+        <button type="button" data-status='{"label":"Listening","listening":true}'>Listening</button>
+        <button type="button" data-status='{"label":"Thinking"}'>Thinking</button>
+        <button type="button" data-status='{"label":"Speaking","speaking":true}'>Speaking</button>
+        <button type="button" data-status='{"label":"Error","label":"Error"}'>Error</button>
+        <button type="button" data-status='{"label":"Ready","online":false}'>Offline</button>
+      </div>
+
+      <h2>Moods</h2>
+      <div class="btn-row" id="moodButtons">
+        <button type="button" data-mood="idle">Idle</button>
+        <button type="button" data-mood="confused">Confused</button>
+        <button type="button" data-mood="reading">Reading</button>
+        <button type="button" data-mood="error">Error</button>
+        <button type="button" data-mood="offline">Offline</button>
+      </div>
+
+      <h2>Expressions</h2>
+      <div class="btn-row">
+        <button type="button" id="curiousBtn">Curious (?)</button>
+        <button type="button" id="squintBtn">Squint</button>
+        <button type="button" id="blinkBtn">Blink</button>
+      </div>
+
+      <h2>Try typing (eyes look down)</h2>
+      <input class="demo-input" id="demoInput" type="text" placeholder="Focus here to see reading gaze…" />
+
+      <p class="note">
+        To use in your project, copy <code>voicemate-orb.css</code> and <code>voicemate-orb.js</code>,
+        add the orb HTML, then call <code>VoiceMateOrb.init({ selector: "#myOrb", typingTarget: "#myInput" })</code>.
+        See <code>README.md</code> for the full API.
+      </p>
+    </section>
+  </main>
+
+  <script src="voicemate-orb.js"></script>
+  <script>
+    VoiceMateOrb.init({ selector: "#demoOrb", typingTarget: "#demoInput" });
+
+    document.getElementById("statusButtons").addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-status]");
+      if (!btn) return;
+      VoiceMateOrb.setStatus(JSON.parse(btn.dataset.status));
+    });
+
+    document.getElementById("moodButtons").addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-mood]");
+      if (!btn) return;
+      VoiceMateOrb.setMood(btn.dataset.mood);
+    });
+
+    document.getElementById("curiousBtn").addEventListener("click", () => {
+      VoiceMateOrb.setExpression("curious", 2600);
+    });
+
+    document.getElementById("squintBtn").addEventListener("click", () => {
+      VoiceMateOrb.squint();
+    });
+
+    document.getElementById("blinkBtn").addEventListener("click", () => {
+      const eye = document.querySelector("#demoOrb .orb-eyes");
+      eye.classList.add("blinking");
+      setTimeout(() => eye.classList.remove("blinking"), 120);
+    });
+  </script>
+</body>
+</html>

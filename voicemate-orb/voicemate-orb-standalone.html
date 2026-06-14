@@ -1,0 +1,739 @@
+<!doctype html>
+<!--
+  VoiceMate Orb — standalone single-file bundle.
+  Copy this file into any project. No server or build step required.
+  Open in a browser to preview; extract <style> and <script> to embed elsewhere.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VoiceMate Orb</title>
+  <style>
+/* VoiceMate Orb — standalone styles (no external dependencies) */
+
+@property --orb-scale {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+/* Voice orb: dark glass depth + rainbow warmth (blue → purple → pink → coral). */
+.orb {
+  position: relative;
+  border-radius: 50%;
+  isolation: isolate;
+  overflow: hidden;
+  cursor: pointer;
+  transform:
+    perspective(900px)
+    rotateX(var(--orb-tilt-x, 0deg))
+    rotateY(var(--orb-tilt-y, 0deg))
+    scale(var(--orb-scale, 1));
+  transform-style: preserve-3d;
+  background:
+    radial-gradient(58% 52% at 72% 16%, rgba(218, 238, 255, 0.82) 0%, rgba(128, 157, 255, 0.48) 22%, transparent 58%),
+    radial-gradient(128% 128% at 30% 24%,
+      rgba(255, 255, 255, 0.42) 0%, rgba(211, 230, 255, 0.38) 4%, rgba(79, 139, 255, 0.52) 20%,
+      rgba(91, 84, 242, 0.48) 38%, rgba(168, 61, 240, 0.44) 55%, rgba(255, 79, 151, 0.4) 71%,
+      rgba(255, 106, 44, 0.32) 87%, rgba(192, 38, 63, 0.28) 100%),
+    radial-gradient(68% 78% at 20% 46%, rgba(2, 8, 85, 0.9) 0%, rgba(18, 13, 112, 0.78) 30%, rgba(36, 18, 130, 0.24) 62%, transparent 76%),
+    radial-gradient(46% 38% at 74% 70%, rgba(255, 44, 193, 0.66) 0%, rgba(159, 47, 232, 0.44) 38%, transparent 72%),
+    radial-gradient(95% 95% at 60% 44%, #c8ddff 0%, #6b92ff 18%, #5b54f2 36%, #8d37e6 56%, #ff4f97 74%, #241068 100%);
+  box-shadow:
+    inset 0 3px 4px rgba(255, 255, 255, 0.86),
+    inset 0 2px 3px rgba(255, 255, 255, 0.72),
+    inset 10px 16px 36px rgba(230, 244, 255, 0.4),
+    inset 0 22px 50px rgba(255, 255, 255, 0.32),
+    inset -18px -10px 50px rgba(90, 40, 160, 0.3),
+    inset -34px 0 58px rgba(1, 4, 55, 0.72),
+    inset 0 -34px 60px rgba(70, 5, 50, 0.48),
+    inset 0 -42px 70px rgba(91, 0, 117, 0.58),
+    inset 0 0 0 1px rgba(218, 228, 255, 0.32),
+    0 18px 44px rgba(120, 70, 220, 0.24),
+    0 24px 56px rgba(40, 30, 140, 0.26),
+    0 0 90px rgba(128, 112, 255, 0.24);
+  animation: orbHue 14s ease-in-out infinite;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: filter, transform;
+}
+
+.orb:focus-visible {
+  outline: 4px solid rgba(0, 122, 255, 0.34);
+  outline-offset: 8px;
+}
+
+.orb::before {
+  content: "";
+  position: absolute;
+  inset: -32%;
+  background:
+    conic-gradient(from 0deg at 50% 50%,
+      rgba(80, 130, 255, 0.22) 0deg,
+      rgba(95, 84, 242, 0.78) 56deg,
+      rgba(168, 61, 240, 0.72) 112deg,
+      rgba(255, 79, 151, 0.78) 168deg,
+      rgba(255, 106, 44, 0.68) 224deg,
+      rgba(13, 7, 96, 0.82) 280deg,
+      rgba(1, 5, 64, 0.88) 320deg,
+      rgba(80, 130, 255, 0.22) 360deg),
+    radial-gradient(54% 58% at 18% 44%, rgba(0, 0, 56, 0.78), transparent 68%),
+    radial-gradient(48% 28% at 70% 18%, rgba(207, 242, 255, 0.68), transparent 72%);
+  filter: blur(18px) saturate(1.42);
+  mix-blend-mode: screen;
+  opacity: 0.76;
+  animation: orbSwirl 11s linear infinite;
+  transform: translate3d(var(--orb-fluid-x, 0px), var(--orb-fluid-y, 0px), -18px) rotate(var(--orb-fluid-rot, 0deg));
+  transition: transform 220ms ease-out;
+}
+
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(16% 13% at 33% 21%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(46% 36% at 31% 25%, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0) 62%),
+    radial-gradient(13% 10% at 68% 70%, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(25% 20% at 39% 14%, rgba(246, 252, 255, 0.78), rgba(246, 252, 255, 0.06) 52%, transparent 75%),
+    radial-gradient(46% 30% at 59% 8%, rgba(187, 225, 255, 0.38), transparent 66%),
+    radial-gradient(26% 20% at 83% 39%, rgba(233, 247, 255, 0.24), transparent 70%),
+    radial-gradient(36% 16% at 69% 78%, rgba(255, 67, 211, 0.4), transparent 74%),
+    radial-gradient(118% 112% at 50% 49%, transparent 61%, rgba(214, 224, 255, 0.4) 78%, rgba(255, 255, 255, 0.12) 84%, transparent 91%),
+    radial-gradient(120% 80% at 50% 122%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.18) 100%),
+    linear-gradient(116deg, rgba(255, 255, 255, 0.28), transparent 22%, transparent 67%, rgba(255, 255, 255, 0.1));
+  transform: translate3d(var(--orb-glint-x, 0px), var(--orb-glint-y, 0px), 28px) rotate(var(--orb-glint-rot, 0deg));
+  transition: transform 220ms ease-out;
+}
+
+.orb.orb-tapped {
+  animation: none;
+}
+
+.orb-eyes.squinting i {
+  transform: scale(1.12, 0.38);
+}
+
+.orb-eyes {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9%;
+  will-change: transform;
+}
+
+.orb-eyes i {
+  width: 8%;
+  aspect-ratio: 1 / 2.3;
+  border-radius: 999px;
+  background: linear-gradient(160deg, #ffffff, #eaf0ff);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 3px rgba(60, 20, 90, 0.12),
+    0 2px 12px rgba(40, 0, 40, 0.24);
+  transform-origin: center;
+  transition: transform 110ms ease;
+}
+
+.orb-eyes.alert i {
+  transform: scaleY(1.18);
+}
+
+.orb-eyes.blinking i {
+  transform: scaleY(0.08);
+}
+
+.orb.listening {
+  animation: orbHue 14s ease-in-out infinite, breathe 1.7s ease-in-out infinite;
+}
+
+.orb.speaking {
+  animation: orbHue 14s ease-in-out infinite, orbSpeak 0.8s ease-in-out infinite;
+}
+
+.orb.confused {
+  filter: saturate(0.92) contrast(1.02);
+}
+
+.orb.confused .orb-eyes i {
+  transform: scaleY(0.88) rotate(-4deg);
+}
+
+.orb.error,
+.orb.offline {
+  filter: saturate(0.72) brightness(0.92);
+  opacity: 0.92;
+}
+
+.orb.reading .orb-eyes {
+  transform: translateY(4%);
+}
+
+.orb.reacting {
+  animation: none !important;
+  --orb-scale: calc(1 + var(--level, 0) * 0.06);
+  transition: transform 120ms ease-out;
+}
+
+/* Size presets */
+.orb--hero {
+  width: min(260px, 62vw);
+  height: min(260px, 62vw);
+}
+
+.orb--focus {
+  width: min(280px, 52vw);
+  height: min(280px, 52vw);
+}
+
+.orb--sm {
+  width: 120px;
+  height: 120px;
+}
+
+.orb--md {
+  width: 200px;
+  height: 200px;
+}
+
+.orb--lg {
+  width: 320px;
+  height: 320px;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    --orb-scale: 1;
+  }
+
+  50% {
+    --orb-scale: 1.035;
+  }
+}
+
+@keyframes orbSwirl {
+  from {
+    transform: translate3d(var(--orb-fluid-x, 0px), var(--orb-fluid-y, 0px), -18px) rotate(var(--orb-fluid-rot, 0deg));
+  }
+  to {
+    transform: translate3d(var(--orb-fluid-x, 0px), var(--orb-fluid-y, 0px), -18px) rotate(calc(360deg + var(--orb-fluid-rot, 0deg)));
+  }
+}
+
+@keyframes orbHue {
+  0%,
+  100% {
+    filter: saturate(1.12) contrast(1.04) hue-rotate(0deg);
+  }
+  50% {
+    filter: saturate(1.28) contrast(1.08) hue-rotate(12deg);
+  }
+}
+
+@keyframes orbSpeak {
+  0%,
+  100% {
+    --orb-scale: 1;
+    filter: saturate(1);
+  }
+
+  50% {
+    --orb-scale: 1.05;
+    filter: saturate(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb::before,
+  .orb::after,
+  .orb {
+    animation: none !important;
+  }
+}
+
+
+    :root {
+      color-scheme: light dark;
+      --page: #f5f6f8;
+      --ink: #111114;
+      --muted: #6e7480;
+      --line: rgba(60, 60, 67, 0.14);
+      --surface: #fff;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--page); color: var(--ink); }
+    .demo { max-width: 920px; margin: 0 auto; padding: 32px 20px 48px; display: grid; gap: 28px; }
+    h1 { margin: 0; font-size: 1.75rem; letter-spacing: -0.03em; }
+    .lead { margin: 8px 0 0; color: var(--muted); line-height: 1.5; }
+    .stage { display: grid; place-items: center; padding: 28px 16px; border-radius: 28px; background: var(--surface); border: 1px solid var(--line); }
+    .controls { display: grid; gap: 12px; padding: 20px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+    .demo-input { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font: inherit; }
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <header>
+      <h1>VoiceMate Orb</h1>
+      <p class="lead">Portable voice bubble — click to squint, move cursor for gaze, use buttons to preview states.</p>
+    </header>
+    <section class="stage">
+      <div class="orb orb--hero" id="demoOrb"><span class="orb-eyes"><i></i><i></i></span></div>
+    </section>
+    <section class="controls">
+      <div class="btn-row" id="statusButtons">
+        <button type="button" data-status='{"label":"Ready"}'>Idle</button>
+        <button type="button" data-status='{"label":"Listening","listening":true}'>Listening</button>
+        <button type="button" data-status='{"label":"Thinking"}'>Thinking</button>
+        <button type="button" data-status='{"label":"Speaking","speaking":true}'>Speaking</button>
+        <button type="button" data-status='{"label":"Ready","online":false}'>Offline</button>
+      </div>
+      <div class="btn-row" id="moodButtons">
+        <button type="button" data-mood="confused">Confused</button>
+        <button type="button" data-mood="reading">Reading</button>
+        <button type="button" data-mood="error">Error</button>
+      </div>
+      <div class="btn-row">
+        <button type="button" id="curiousBtn">Curious</button>
+        <button type="button" id="squintBtn">Squint</button>
+      </div>
+      <input class="demo-input" id="demoInput" type="text" placeholder="Focus here — eyes look down while typing" />
+    </section>
+  </main>
+  <script>
+/**
+ * VoiceMate Orb — standalone bubble with emotions and animations.
+ * Vanilla JS, no dependencies. Works in any HTML page or can be wrapped in React/Vue.
+ *
+ * Usage:
+ *   VoiceMateOrb.init({ selector: ".orb" });
+ *   VoiceMateOrb.setStatus({ listening: true });
+ *   VoiceMateOrb.setMood("listening");
+ *   VoiceMateOrb.setExpression("curious");
+ *   VoiceMateOrb.squint();
+ */
+(function (global) {
+  "use strict";
+
+  const MOODS = ["listening", "speaking", "confused", "error", "offline", "reading"];
+
+  const config = {
+    selector: ".orb",
+    typingTarget: null,
+    followCursor: true,
+    ariaLabel: "VoiceMate"
+  };
+
+  const state = {
+    orbs: [],
+    eyeEls: [],
+    mode: "idle",
+    expr: null,
+    gx: 0,
+    gy: 0,
+    tx: 0,
+    ty: 0,
+    rot: 0,
+    mouseX: 0,
+    mouseY: 0,
+    mouseTs: -9999,
+    nextSaccade: 0,
+    live: false,
+    streaming: false,
+    backendOnline: true,
+    lastUserActivity: performance.now(),
+    pauseCuriousAt: 0,
+    audioRaf: null,
+    smoothLevel: 0,
+    audioActive: false,
+    exprTimer: null,
+    blinkTimer: null,
+    loopRunning: false,
+    mouseHandler: null,
+    activityHandler: null
+  };
+
+  function clampEye(value) {
+    return Math.min(1, Math.max(-1, value));
+  }
+
+  function resolveOrbs(selector) {
+    if (!selector) return [];
+    if (typeof selector === "string") return Array.from(document.querySelectorAll(selector));
+    if (selector instanceof Element) return [selector];
+    if (Array.isArray(selector) || selector instanceof NodeList) return Array.from(selector);
+    return [];
+  }
+
+  function activeOrbRect() {
+    for (const orb of state.orbs) {
+      const rect = orb.getBoundingClientRect();
+      if (rect.width && rect.bottom > 0 && rect.top < window.innerHeight) return rect;
+    }
+    return null;
+  }
+
+  function updateOrbTurn() {
+    const tiltY = state.gx * 15;
+    const tiltX = state.gy * -11;
+    const glintX = state.gx * -12;
+    const glintY = state.gy * -8;
+    const fluidX = state.gx * 10;
+    const fluidY = state.gy * 8;
+    const glintRot = state.gx * -5;
+    const fluidRot = state.gx * 8;
+
+    for (const orb of state.orbs) {
+      orb.style.setProperty("--orb-tilt-x", `${tiltX.toFixed(2)}deg`);
+      orb.style.setProperty("--orb-tilt-y", `${tiltY.toFixed(2)}deg`);
+      orb.style.setProperty("--orb-glint-x", `${glintX.toFixed(2)}px`);
+      orb.style.setProperty("--orb-glint-y", `${glintY.toFixed(2)}px`);
+      orb.style.setProperty("--orb-glint-rot", `${glintRot.toFixed(2)}deg`);
+      orb.style.setProperty("--orb-fluid-x", `${fluidX.toFixed(2)}px`);
+      orb.style.setProperty("--orb-fluid-y", `${fluidY.toFixed(2)}px`);
+      orb.style.setProperty("--orb-fluid-rot", `${fluidRot.toFixed(2)}deg`);
+    }
+  }
+
+  function eyeLoop() {
+    if (!state.loopRunning) return;
+
+    const now = performance.now();
+    const mouseActive = now - state.mouseTs < 2500;
+    const typingTarget = config.typingTarget
+      ? (typeof config.typingTarget === "string"
+        ? document.querySelector(config.typingTarget)
+        : config.typingTarget)
+      : null;
+    const typing = typingTarget && document.activeElement === typingTarget;
+
+    if (state.mode === "speaking") {
+      if (now > state.nextSaccade) {
+        state.tx = (Math.random() - 0.5) * 0.18;
+        state.ty = (Math.random() - 0.5) * 0.14;
+        state.nextSaccade = now + 600 + Math.random() * 900;
+      }
+    } else if (state.mode === "thinking") {
+      state.tx = -0.45;
+      state.ty = -0.62;
+    } else if (state.mode === "listening") {
+      if (now > state.nextSaccade) {
+        state.tx = (Math.random() - 0.5) * 0.3;
+        state.ty = (Math.random() - 0.5) * 0.2;
+        state.nextSaccade = now + 900 + Math.random() * 1500;
+      }
+    } else if (typing) {
+      state.tx = 0;
+      state.ty = 0.55;
+    } else if (config.followCursor && !state.live && mouseActive) {
+      const rect = activeOrbRect();
+      if (rect) {
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        state.tx = clampEye((state.mouseX - cx) / (rect.width * 0.9));
+        state.ty = clampEye((state.mouseY - cy) / (rect.height * 0.9));
+      }
+    } else if (now > state.nextSaccade) {
+      state.tx = Math.random() < 0.4 ? 0 : Math.random() * 1.2 - 0.6;
+      state.ty = Math.random() * 0.7 - 0.35;
+      state.nextSaccade = now + 1400 + Math.random() * 3000;
+    }
+
+    const idleMs = now - state.lastUserActivity;
+    if (!state.live && !state.streaming && state.mode === "idle" && idleMs > 8000 && now > state.pauseCuriousAt) {
+      state.pauseCuriousAt = now + 14000;
+      setExpression("curious");
+      blinkOnce();
+    }
+
+    state.gx += (state.tx - state.gx) * 0.12;
+    state.gy += (state.ty - state.gy) * 0.12;
+    const rotTarget = state.expr === "curious" ? 7 : 0;
+    state.rot += (rotTarget - state.rot) * 0.15;
+    const transform = `translate(${(state.gx * 8).toFixed(2)}%, ${(state.gy * 6).toFixed(2)}%) rotate(${state.rot.toFixed(2)}deg)`;
+    for (const el of state.eyeEls) el.style.transform = transform;
+    updateOrbTurn();
+
+    requestAnimationFrame(eyeLoop);
+  }
+
+  function blinkOnce(done) {
+    state.eyeEls.forEach((el) => el.classList.add("blinking"));
+    window.setTimeout(() => {
+      state.eyeEls.forEach((el) => el.classList.remove("blinking"));
+      if (done) done();
+    }, 120);
+  }
+
+  function scheduleBlink() {
+    const delay = 1800 + Math.random() * 4200;
+    state.blinkTimer = window.setTimeout(() => {
+      blinkOnce(() => {
+        if (Math.random() < 0.25) {
+          window.setTimeout(() => blinkOnce(scheduleBlink), 180);
+        } else {
+          scheduleBlink();
+        }
+      });
+    }, delay);
+  }
+
+  function analyserRms(analyser, buffer) {
+    analyser.getByteTimeDomainData(buffer);
+    let sum = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      const v = (buffer[i] - 128) / 128;
+      sum += v * v;
+    }
+    return Math.sqrt(sum / buffer.length);
+  }
+
+  function init(options = {}) {
+    destroy();
+    Object.assign(config, options);
+    state.orbs = resolveOrbs(config.selector);
+    state.eyeEls = state.orbs
+      .map((orb) => orb.querySelector(".orb-eyes"))
+      .filter(Boolean);
+
+    if (!state.orbs.length) {
+      console.warn("[VoiceMateOrb] No orb elements found for selector:", config.selector);
+      return VoiceMateOrb;
+    }
+
+    for (const orb of state.orbs) {
+      orb.setAttribute("tabindex", "0");
+      orb.setAttribute("role", "button");
+      orb.setAttribute("aria-label", config.ariaLabel);
+      orb.addEventListener("click", () => squint(orb));
+      orb.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          squint(orb);
+        }
+      });
+    }
+
+    state.mouseHandler = (event) => {
+      state.mouseX = event.clientX;
+      state.mouseY = event.clientY;
+      state.mouseTs = performance.now();
+    };
+    state.activityHandler = () => {
+      state.lastUserActivity = performance.now();
+    };
+
+    if (config.followCursor) {
+      window.addEventListener("mousemove", state.mouseHandler);
+    }
+    window.addEventListener("pointerdown", state.activityHandler);
+    window.addEventListener("keydown", state.activityHandler);
+
+    state.loopRunning = true;
+    scheduleBlink();
+    requestAnimationFrame(eyeLoop);
+
+    return VoiceMateOrb;
+  }
+
+  function destroy() {
+    state.loopRunning = false;
+    if (state.blinkTimer) clearTimeout(state.blinkTimer);
+    if (state.exprTimer) clearTimeout(state.exprTimer);
+    stopAudioReaction();
+    if (state.mouseHandler) window.removeEventListener("mousemove", state.mouseHandler);
+    if (state.activityHandler) {
+      window.removeEventListener("pointerdown", state.activityHandler);
+      window.removeEventListener("keydown", state.activityHandler);
+    }
+    state.orbs = [];
+    state.eyeEls = [];
+    state.mouseHandler = null;
+    state.activityHandler = null;
+    return VoiceMateOrb;
+  }
+
+  function setEyeMode(mode) {
+    if (state.mode === mode) return VoiceMateOrb;
+    state.mode = mode;
+    state.eyeEls.forEach((el) => el.classList.toggle("alert", mode === "listening"));
+    return VoiceMateOrb;
+  }
+
+  function setMood(mood) {
+    const active = mood === "idle" ? null : mood;
+    for (const orb of state.orbs) {
+      MOODS.forEach((name) => orb.classList.toggle(name, name === active));
+    }
+    return VoiceMateOrb;
+  }
+
+  /**
+   * High-level status helper — maps voice/chat states to orb classes and eye modes.
+   * @param {{ label?: string, listening?: boolean, speaking?: boolean, online?: boolean }} status
+   */
+  function setStatus(status = {}) {
+    const { label = "", listening = false, speaking = false, online = true } = status;
+    const normalized = String(label).toLowerCase();
+    state.backendOnline = online;
+
+    for (const orb of state.orbs) {
+      orb.classList.toggle("listening", Boolean(listening));
+      orb.classList.toggle("speaking", Boolean(speaking));
+    }
+
+    if (speaking) {
+      setEyeMode("speaking");
+      setMood("speaking");
+    } else if (listening || normalized.includes("you're speaking")) {
+      setEyeMode("listening");
+      setMood("listening");
+    } else if (normalized.includes("thinking") || normalized.includes("connecting")) {
+      setEyeMode("thinking");
+      setMood("idle");
+    } else if (normalized.includes("error") || normalized.includes("interrupted")) {
+      setMood("error");
+    } else {
+      setEyeMode("idle");
+      setMood(state.backendOnline ? "idle" : "offline");
+    }
+
+    return VoiceMateOrb;
+  }
+
+  function squint(orb) {
+    const target = orb || state.orbs[0];
+    if (!target) return VoiceMateOrb;
+    const eyeEl = target.querySelector(".orb-eyes");
+    if (!eyeEl) return VoiceMateOrb;
+    eyeEl.classList.remove("squinting");
+    void eyeEl.offsetWidth;
+    eyeEl.classList.add("squinting");
+    window.setTimeout(() => eyeEl.classList.remove("squinting"), 500);
+    return VoiceMateOrb;
+  }
+
+  function detectExpression(text) {
+    if (String(text || "").trim().endsWith("?")) return "curious";
+    return null;
+  }
+
+  function setExpression(type, durationMs = 0) {
+    clearTimeout(state.exprTimer);
+    state.expr = type === "curious" ? "curious" : null;
+    if (durationMs > 0) {
+      state.exprTimer = window.setTimeout(() => {
+        state.expr = null;
+      }, durationMs);
+    }
+    return VoiceMateOrb;
+  }
+
+  function setLive(active) {
+    state.live = Boolean(active);
+    return VoiceMateOrb;
+  }
+
+  function setStreaming(active) {
+    state.streaming = Boolean(active);
+    return VoiceMateOrb;
+  }
+
+  /**
+   * Pulse the orb from a Web Audio AnalyserNode (TTS or live voice).
+   * @param {AnalyserNode} analyser
+   * @param {{ gain?: number }} options
+   */
+  function startAudioReaction(analyser, options = {}) {
+    if (!analyser || !state.orbs.length) return VoiceMateOrb;
+    const gain = options.gain ?? 3.4;
+    stopAudioReaction();
+    state.audioActive = true;
+    setStatus({ label: "Speaking", speaking: true });
+    for (const orb of state.orbs) orb.classList.add("reacting");
+
+    const data = new Uint8Array(analyser.fftSize);
+    const loop = () => {
+      if (!state.audioActive) return;
+      const raw = Math.min(1, analyserRms(analyser, data) * gain);
+      state.smoothLevel += (raw - state.smoothLevel) * 0.3;
+      for (const orb of state.orbs) {
+        orb.style.setProperty("--level", state.smoothLevel.toFixed(3));
+      }
+      state.audioRaf = requestAnimationFrame(loop);
+    };
+    state.audioRaf = requestAnimationFrame(loop);
+    return VoiceMateOrb;
+  }
+
+  function stopAudioReaction() {
+    state.audioActive = false;
+    if (state.audioRaf) {
+      cancelAnimationFrame(state.audioRaf);
+      state.audioRaf = null;
+    }
+    state.smoothLevel = 0;
+    for (const orb of state.orbs) {
+      orb.classList.remove("reacting");
+      orb.style.removeProperty("--level");
+    }
+    return VoiceMateOrb;
+  }
+
+  function createOrbMarkup(options = {}) {
+    const sizeClass = options.size ? ` orb--${options.size}` : " orb--hero";
+    const id = options.id ? ` id="${options.id}"` : "";
+    const extraClass = options.className ? ` ${options.className}` : "";
+    return `<div class="orb${sizeClass}${extraClass}"${id} role="button" tabindex="0" aria-label="${config.ariaLabel}">
+  <span class="orb-eyes"><i></i><i></i></span>
+</div>`;
+  }
+
+  const VoiceMateOrb = {
+    init,
+    destroy,
+    setStatus,
+    setMood,
+    setEyeMode,
+    setExpression,
+    detectExpression,
+    squint,
+    setLive,
+    setStreaming,
+    startAudioReaction,
+    stopAudioReaction,
+    createOrbMarkup,
+    MOODS
+  };
+
+  global.VoiceMateOrb = VoiceMateOrb;
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = VoiceMateOrb;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+    VoiceMateOrb.init({ selector: "#demoOrb", typingTarget: "#demoInput" });
+    document.getElementById("statusButtons").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-status]");
+      if (btn) VoiceMateOrb.setStatus(JSON.parse(btn.dataset.status));
+    });
+    document.getElementById("moodButtons").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-mood]");
+      if (btn) VoiceMateOrb.setMood(btn.dataset.mood);
+    });
+    document.getElementById("curiousBtn").onclick = () => VoiceMateOrb.setExpression("curious", 2600);
+    document.getElementById("squintBtn").onclick = () => VoiceMateOrb.squint();
+  </script>
+</body>
+</html>
